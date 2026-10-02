@@ -81,15 +81,6 @@ return [
         'button' => 'View Post',
     ],
 
-    'webhook_paused' => [
-        'subject' => 'Webhook paused: :endpoint',
-        'title' => 'Webhook paused after repeated failures',
-        'preview' => 'We paused a webhook after 5 consecutive delivery failures.',
-        'heading' => 'Webhook paused after repeated failures',
-        'body' => 'We paused the webhook at :endpoint after 5 consecutive delivery failures. Review the endpoint and re-enable it from the webhook details page.',
-        'button' => 'View webhook',
-    ],
-
     'workspace_connections_disconnected' => [
         'subject' => '{1} :count account needs to be reconnected in :workspace|[0,*] :count accounts need to be reconnected in :workspace',
         'title' => 'Accounts need reconnection',

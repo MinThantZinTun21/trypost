@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
-use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
 use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostCommentController;
@@ -14,13 +13,9 @@ use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
-use App\Http\Controllers\App\UnsplashController;
-use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
 use App\Http\Controllers\App\WorkspaceController;
 use App\Http\Controllers\App\WorkspaceInviteController;
-use App\Http\Controllers\App\WorkspaceLabelController;
-use App\Http\Controllers\App\WorkspaceSignatureController;
 use App\Http\Controllers\Auth\BlueskyController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\Auth\FacebookController;
@@ -191,40 +186,8 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     Route::delete('settings/workspace/members/{user}', [WorkspaceInviteController::class, 'removeMember'])->name('app.members.remove');
     Route::put('settings/workspace/members/{user}/role', [WorkspaceInviteController::class, 'updateRole'])->name('app.members.update-role');
 
-    // Signatures
-    Route::get('signatures', [WorkspaceSignatureController::class, 'index'])->name('app.signatures.index');
-    Route::post('signatures', [WorkspaceSignatureController::class, 'store'])->name('app.signatures.store');
-    Route::put('signatures/{signature}', [WorkspaceSignatureController::class, 'update'])->name('app.signatures.update');
-    Route::delete('signatures/{signature}', [WorkspaceSignatureController::class, 'destroy'])->name('app.signatures.destroy');
-
-    // Assets
-    Route::get('assets', [AssetController::class, 'index'])->name('app.assets.index');
-    Route::get('assets/search', [AssetController::class, 'search'])->name('app.assets.search');
-    Route::post('assets', [AssetController::class, 'store'])->name('app.assets.store');
+    // Media uploads (chunked, from the post composer)
     Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');
-    Route::post('assets/from-url', [AssetController::class, 'storeFromUrl'])->name('app.assets.store-from-url');
-    Route::get('assets/{media}/download', [AssetController::class, 'download'])->name('app.assets.download');
-    Route::delete('assets/{media}', [AssetController::class, 'destroy'])->name('app.assets.destroy');
-    Route::get('assets/unsplash/search', [UnsplashController::class, 'search'])->name('app.assets.unsplash.search');
-    Route::get('assets/unsplash/trending', [UnsplashController::class, 'trending'])->name('app.assets.unsplash.trending');
-    Route::get('assets/giphy/search', [GiphyController::class, 'search'])->name('app.assets.giphy.search');
-    Route::get('assets/giphy/trending', [GiphyController::class, 'trending'])->name('app.assets.giphy.trending');
-
-    // Labels
-    Route::get('labels', [WorkspaceLabelController::class, 'index'])->name('app.labels.index');
-    Route::post('labels', [WorkspaceLabelController::class, 'store'])->name('app.labels.store');
-    Route::put('labels/{label}', [WorkspaceLabelController::class, 'update'])->name('app.labels.update');
-    Route::delete('labels/{label}', [WorkspaceLabelController::class, 'destroy'])->name('app.labels.destroy');
-
-    // Webhooks
-    Route::get('webhooks', [WebhookController::class, 'index'])->name('app.webhooks.index');
-    Route::post('webhooks', [WebhookController::class, 'store'])->name('app.webhooks.store');
-    Route::get('webhooks/{webhook}', [WebhookController::class, 'show'])->name('app.webhooks.show');
-    Route::put('webhooks/{webhook}', [WebhookController::class, 'update'])->name('app.webhooks.update');
-    Route::post('webhooks/{webhook}/send-test', [WebhookController::class, 'sendTest'])->name('app.webhooks.send-test');
-    Route::post('webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret'])->name('app.webhooks.rotate-secret');
-    Route::post('webhooks/{webhook}/logs/{webhookLog}/replay', [WebhookController::class, 'replay'])->name('app.webhooks.replay');
-    Route::delete('webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('app.webhooks.destroy');
 });
 
 // Notifications (auth only)

@@ -12,7 +12,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Clones a Post (and its still-connected platform rows + label associations)
+ * Clones a Post (and its still-connected platform rows)
  * into a fresh Draft. The new post is owned by the actor and unscheduled —
  * the user picks a new date in the editor.
  *
@@ -59,8 +59,6 @@ class DuplicatePost
                     'published_at' => null,
                 ]);
             }
-
-            $copy->labels()->attach($original->labels->pluck('id'));
 
             return $copy;
         });

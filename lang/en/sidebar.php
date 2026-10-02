@@ -13,10 +13,6 @@ return [
     'help' => 'Help',
     'workspace' => [
         'connections' => 'Connections',
-        'signatures' => 'Signatures',
-        'labels' => 'Labels',
-        'assets' => 'Assets',
-        'webhooks' => 'Webhooks',
     ],
     'groups' => [
         'posts' => 'Posts',

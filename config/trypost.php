@@ -55,7 +55,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Per-type size caps in megabytes. Single source of truth — direct
-    | uploads (StoreAssetRequest, AssetController::storeChunked), URL
+    | uploads (AssetController::storeChunked), URL
     | fetches (MediaAttacher), and the MediaType enum all read from here.
     |
     */

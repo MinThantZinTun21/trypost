@@ -9,16 +9,11 @@ return [
     'no_search_results' => 'No posts match your search',
     'try_different_search' => 'Try a different keyword or clear the search.',
     'start_creating' => 'Start by creating your first post.',
-    'filter_by_label' => 'Filter by label',
-    'label_search_placeholder' => 'Search labels...',
-    'no_labels' => 'No labels found.',
-    'clear_label_filter' => 'Clear label filter',
     'table' => [
         'post' => 'Post',
         'status' => 'Status',
         'content' => 'Content',
         'platforms' => 'Platforms',
-        'labels' => 'Labels',
         'scheduled_at' => 'Date',
         'actions' => '',
     ],
@@ -293,8 +288,6 @@ return [
     'edit' => [
         'title' => 'Edit Post',
         'view_title' => 'View Post',
-        'labels' => 'Labels',
-        'no_labels' => 'No labels created yet',
         'schedule' => 'Schedule',
         'pick_time' => 'Pick time',
         'pick_time_past' => 'Pick a future date and time.',
@@ -323,7 +316,6 @@ return [
         'add' => 'Add',
         'publish_to' => 'Publish to',
         'organize' => 'Organize',
-        'signatures' => 'Signatures',
         'view_on_platform' => 'View on platform',
         'platform_status' => 'Platform status',
         'compliance_incomplete' => 'Some platform settings are incomplete or incompatible with the attached media.',
@@ -361,15 +353,6 @@ return [
             'channels' => 'Channels',
             'comments' => 'Comments',
             'comments_empty' => 'No comments yet.',
-        ],
-
-        'media_picker' => [
-            'title' => 'Pick from gallery',
-            'search' => 'Search media...',
-            'empty' => 'No media in your gallery yet',
-            'cancel' => 'Cancel',
-            'add' => 'Add',
-            'add_count' => 'Add :count',
         ],
 
         'alt_text' => [
@@ -431,11 +414,6 @@ return [
         'platforms_dialog' => [
             'title' => 'Select Platforms',
             'description' => 'Choose which platforms to publish this post to.',
-        ],
-
-        'signatures_modal' => [
-            'search' => 'Search signatures...',
-            'no_results' => 'No signatures found.',
         ],
 
         'validation' => [

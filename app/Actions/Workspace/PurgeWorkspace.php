@@ -14,7 +14,7 @@ class PurgeWorkspace
 {
     /**
      * Delete workspace media rows and the workspace itself.
-     * Related posts/accounts/labels/etc. cascade via FK.
+     * Related posts/accounts/etc. cascade via FK.
      *
      * Returns media storage paths for DeleteOrphanedMediaFiles after commit.
      *

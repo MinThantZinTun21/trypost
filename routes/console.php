@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Console\Commands\CheckSocialConnections;
 use App\Console\Commands\CheckUpcomingPostConnections;
 use App\Console\Commands\ProcessScheduledPosts;
-use App\Console\Commands\PruneWebhookLogs;
 use App\Console\Commands\ReconcileGoogleBusinessPosts;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
@@ -17,4 +16,3 @@ Schedule::command(CheckUpcomingPostConnections::class)->everyFifteenMinutes()->w
 Schedule::command(RefreshExpiringTokens::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(ReconcileGoogleBusinessPosts::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
-Schedule::command(PruneWebhookLogs::class)->daily()->withoutOverlapping()->onOneServer();

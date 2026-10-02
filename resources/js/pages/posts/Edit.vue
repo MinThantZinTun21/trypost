@@ -65,7 +65,6 @@ interface Post {
     scheduled_at: string | null;
     published_at: string | null;
     post_platforms: PostPlatform[];
-    labels?: { id: string; name: string }[];
 }
 
 interface Workspace {
@@ -91,8 +90,6 @@ const props = defineProps<{
     platformConfigs: Record<string, any>;
     pinterestBoards: Record<string, PinterestBoardsPayload>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
-    labels: { id: string; name: string; color: string }[];
-    signatures: { id: string; name: string; content: string }[];
     authUserId: string;
 }>();
 
@@ -178,11 +175,6 @@ const pickTimeLabel = computed(() => {
     }
     return date.formatLocalDateTime(scheduledDateTime.value);
 });
-
-// Labels
-const selectedLabelIds = ref<string[]>(
-    post.value.labels?.map((l) => l.id) || [],
-);
 
 // UI state
 const isSubmitting = ref(false);
@@ -272,7 +264,6 @@ const getSubmitData = () => {
         media: media.value,
         platforms,
         scheduled_at: date.formatLocalDateTimeForApi(scheduledDateTime.value),
-        label_ids: selectedLabelIds.value,
     };
 };
 
@@ -324,7 +315,6 @@ watch(
         media,
         selectedPlatformIds,
         scheduledDateTime,
-        selectedLabelIds,
         platformMeta,
         platformContentTypes,
     ],
@@ -355,15 +345,6 @@ const submit = (status: string = PostStatus.Scheduled) => {
             },
         },
     );
-};
-
-const toggleLabel = (labelId: string) => {
-    const index = selectedLabelIds.value.indexOf(labelId);
-    if (index === -1) {
-        selectedLabelIds.value.push(labelId);
-    } else {
-        selectedLabelIds.value.splice(index, 1);
-    }
 };
 
 const deletePost = () => {
@@ -465,7 +446,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                         <PostEditorComposer
                             v-model:content="content"
                             v-model:media="media"
-                            :signatures="signatures"
                             :platform-limits="platformLimits"
                             :media-issues="mediaIssues"
                             :read-only="!canCreatePost"
@@ -488,8 +468,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             :platform-content-types="platformContentTypes"
                             :platform-issues="platformIssues"
                             :platform-configs="platformConfigs"
-                            :labels="labels"
-                            :selected-label-ids="selectedLabelIds"
                             :tiktok-creator-infos="tiktokCreatorInfos"
                             :pinterest-boards="pinterestBoards"
                             :is-read-only="isLocked"
@@ -499,7 +477,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             "
                             :posted-at="scheduledDateTime || null"
                             @toggle-platform="togglePlatform"
-                            @toggle-label="toggleLabel"
                             @update:platform-meta="updatePlatformMeta"
                             @update:platform-content-type="
                                 updatePlatformContentType

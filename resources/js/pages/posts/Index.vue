@@ -20,8 +20,6 @@ import {
 } from '@/actions/App/Http/Controllers/App/PostController';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import LabelBadge from '@/components/labels/LabelBadge.vue';
-import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -79,12 +77,6 @@ interface PostPlatform {
     social_account: SocialAccount | null;
 }
 
-interface Label {
-    id: string;
-    name: string;
-    color: string;
-}
-
 interface Post {
     id: string;
     content: string | null;
@@ -92,7 +84,6 @@ interface Post {
     scheduled_at: string | null;
     published_at: string | null;
     post_platforms: PostPlatform[];
-    labels: Label[];
 }
 
 interface ScrollPosts {
@@ -111,17 +102,14 @@ interface Props {
     workspace: Workspace;
     posts: ScrollPosts;
     currentStatus: string | null;
-    labels: Label[];
     filters: {
         search: string;
-        labels: string[];
     };
 }
 
 const props = defineProps<Props>();
 
 const searchQuery = ref(props.filters.search);
-const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
 
 const buildFilterUrl = () => {
     const url = props.currentStatus
@@ -131,9 +119,6 @@ const buildFilterUrl = () => {
         url,
         {
             search: searchQuery.value || undefined,
-            labels: selectedLabelIds.value.length
-                ? selectedLabelIds.value
-                : undefined,
         },
         {
             preserveState: true,
@@ -146,7 +131,6 @@ const buildFilterUrl = () => {
 const search = debounce(buildFilterUrl, 300);
 
 watch(searchQuery, () => search());
-watch(selectedLabelIds, () => buildFilterUrl(), { deep: true });
 
 const pageTitle = computed(() => {
     if (props.currentStatus) {
@@ -204,9 +188,7 @@ const handleCopyId = (post: Post) =>
 
 const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
 
-const hasActiveFilters = computed(
-    () => hasActiveSearch.value || selectedLabelIds.value.length > 0,
-);
+const hasActiveFilters = computed(() => hasActiveSearch.value);
 
 const refreshPosts = () => router.reload({ only: ['posts'], reset: ['posts'] });
 
@@ -238,12 +220,6 @@ useWorkspaceEcho(
                             class="w-full pl-9"
                         />
                     </div>
-
-                    <LabelFilter
-                        v-if="labels.length"
-                        v-model="selectedLabelIds"
-                        :labels="labels"
-                    />
                 </div>
 
                 <Button
@@ -389,29 +365,6 @@ useWorkspaceEcho(
                                                         .length - 4
                                                 }}</span
                                             >
-                                            <div
-                                                v-if="post.labels?.length"
-                                                class="ml-1 flex flex-wrap items-center gap-1"
-                                            >
-                                                <LabelBadge
-                                                    v-for="label in post.labels.slice(
-                                                        0,
-                                                        3,
-                                                    )"
-                                                    :key="label.id"
-                                                    :label="label"
-                                                />
-                                                <span
-                                                    v-if="
-                                                        post.labels.length > 3
-                                                    "
-                                                    class="text-xs font-bold text-foreground/60"
-                                                >
-                                                    +{{
-                                                        post.labels.length - 3
-                                                    }}
-                                                </span>
-                                            </div>
                                         </div>
                                         <p class="truncate text-foreground/80">
                                             {{ getPostPreview(post) }}

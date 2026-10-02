@@ -7,12 +7,8 @@ import {
     IconClock,
     IconFileCheck,
     IconFileText,
-    IconHash,
     IconPencil,
-    IconPhoto,
     IconSelector,
-    IconTag,
-    IconWebhook,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
@@ -40,10 +36,6 @@ import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import { useCreatePost } from '@/composables/useCreatePost';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, calendar } from '@/routes/app';
-import { index as assets } from '@/routes/app/assets';
-import { index as labels } from '@/routes/app/labels';
-import { index as signatures } from '@/routes/app/signatures';
-import { index as webhooks } from '@/routes/app/webhooks';
 import type { NavItem, User } from '@/types';
 
 interface Workspace {
@@ -61,12 +53,8 @@ const workspaces = computed<Workspace[]>(
     () => page.props.auth.workspaces as Workspace[],
 );
 
-const {
-    canCreatePost,
-    canManageAccounts,
-    canManageWebhooks,
-    canCreateWorkspace,
-} = useWorkspaceRole();
+const { canCreatePost, canManageAccounts, canCreateWorkspace } =
+    useWorkspaceRole();
 const { isMobile } = useSidebar();
 const { createPost, creatingPost } = useCreatePost();
 
@@ -113,34 +101,6 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                   title: trans('sidebar.workspace.connections'),
                   href: accounts.url(),
                   icon: IconAffiliate,
-              },
-          ]
-        : []),
-    ...(canCreatePost.value
-        ? [
-              {
-                  title: trans('sidebar.workspace.signatures'),
-                  href: signatures.url(),
-                  icon: IconHash,
-              },
-              {
-                  title: trans('sidebar.workspace.labels'),
-                  href: labels.url(),
-                  icon: IconTag,
-              },
-              {
-                  title: trans('sidebar.workspace.assets'),
-                  href: assets.url(),
-                  icon: IconPhoto,
-              },
-          ]
-        : []),
-    ...(canManageWebhooks.value
-        ? [
-              {
-                  title: trans('sidebar.workspace.webhooks'),
-                  href: webhooks.url(),
-                  icon: IconWebhook,
               },
           ]
         : []),

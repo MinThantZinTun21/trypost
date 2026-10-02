@@ -22,7 +22,6 @@ class PostResource extends JsonResource
             'scheduled_at' => $this->scheduled_at?->format('Y-m-d H:i:s'),
             'published_at' => $this->published_at?->format('Y-m-d H:i:s'),
             'platforms' => PostPlatformResource::collection($this->whenLoaded('postPlatforms')),
-            'labels' => PostLabelResource::collection($this->whenLoaded('labels')),
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];

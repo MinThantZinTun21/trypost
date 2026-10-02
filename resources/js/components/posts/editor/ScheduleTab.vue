@@ -3,7 +3,6 @@ import { IconExternalLink, IconLoader2 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
-import LabelBadge from '@/components/labels/LabelBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -12,8 +11,8 @@ import { isVideo } from '@/lib/mediaType';
 import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 import type { Channel } from '@/types/channel';
 import type { MediaItem } from '@/types/media';
-import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 import { PostPlatformStatus } from '@/types/post';
+import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
 interface SocialAccount {
     id: string;
@@ -41,12 +40,6 @@ interface PostPlatform {
     meta?: Record<string, any>;
 }
 
-interface Label {
-    id: string;
-    name: string;
-    color: string;
-}
-
 interface PlatformConfig {
     id: string;
     platform: string;
@@ -72,8 +65,6 @@ interface TikTokCreatorInfo {
 const props = defineProps<{
     postPlatforms: PostPlatform[];
     selectedPlatformIds: string[];
-    labels: Label[];
-    selectedLabelIds: string[];
     isReadOnly: boolean;
     platformConfigs: Record<string, PlatformConfig>;
     platformMeta: Record<string, Record<string, any>>;
@@ -86,25 +77,33 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     togglePlatform: [platformId: string];
-    toggleLabel: [labelId: string];
     'update:platformMeta': [platformId: string, meta: Record<string, any>];
     'update:platformContentType': [platformId: string, contentType: string];
 }>();
 
 const getPublishConfig = (pp: PostPlatform): Record<string, any> | null =>
-    pp.social_account_id ? props.platformConfigs[pp.social_account_id]?.publishConfig ?? null : null;
+    pp.social_account_id
+        ? (props.platformConfigs[pp.social_account_id]?.publishConfig ?? null)
+        : null;
 
 const getCreatorInfo = (pp: PostPlatform): TikTokCreatorInfo | null =>
-    pp.social_account_id ? props.tiktokCreatorInfos?.[pp.social_account_id] ?? null : null;
+    pp.social_account_id
+        ? (props.tiktokCreatorInfos?.[pp.social_account_id] ?? null)
+        : null;
 
 const boardsPayload = (pp: PostPlatform): PinterestBoardsPayload =>
     pp.social_account_id
-        ? props.pinterestBoards?.[pp.social_account_id] ?? { boards: [], truncated: false }
+        ? (props.pinterestBoards?.[pp.social_account_id] ?? {
+              boards: [],
+              truncated: false,
+          })
         : { boards: [], truncated: false };
 
-const getBoards = (pp: PostPlatform): PinterestBoard[] => boardsPayload(pp).boards;
+const getBoards = (pp: PostPlatform): PinterestBoard[] =>
+    boardsPayload(pp).boards;
 
-const boardsTruncated = (pp: PostPlatform): boolean => boardsPayload(pp).truncated;
+const boardsTruncated = (pp: PostPlatform): boolean =>
+    boardsPayload(pp).truncated;
 
 const videoDurationSec = computed(() => {
     const video = props.media?.find((m) => isVideo(m));
@@ -126,7 +125,9 @@ const submitIndexByPpId = computed<Record<string, number>>(() => {
     const map: Record<string, number> = {};
     props.postPlatforms
         .filter((pp) => props.selectedPlatformIds.includes(pp.id))
-        .forEach((pp, index) => { map[pp.id] = index; });
+        .forEach((pp, index) => {
+            map[pp.id] = index;
+        });
     return map;
 });
 
@@ -161,7 +162,9 @@ const channels = computed<Channel[]>(() =>
 <template>
     <div class="space-y-6">
         <div>
-            <p class="mb-3 text-[11px] font-black uppercase tracking-widest text-foreground/60">
+            <p
+                class="mb-3 text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+            >
                 {{ $t('posts.edit.publish_to') }}
             </p>
             <ChannelConfigurator
@@ -171,35 +174,104 @@ const channels = computed<Channel[]>(() =>
                 :video-duration-sec="videoDurationSec"
                 :disabled="isReadOnly"
                 @toggle="(id: string) => emit('togglePlatform', id)"
-                @update:content-type="(id: string, value: string) => emit('update:platformContentType', id, value)"
-                @update:meta="(id: string, value: Record<string, any>) => emit('update:platformMeta', id, value)"
+                @update:content-type="
+                    (id: string, value: string) =>
+                        emit('update:platformContentType', id, value)
+                "
+                @update:meta="
+                    (id: string, value: Record<string, any>) =>
+                        emit('update:platformMeta', id, value)
+                "
             >
-                <div v-if="postPlatforms.some(pp => pp.status !== PostPlatformStatus.Pending)">
-                    <p class="mb-2 text-[11px] font-black uppercase tracking-widest text-foreground/60">
+                <div
+                    v-if="
+                        postPlatforms.some(
+                            (pp) => pp.status !== PostPlatformStatus.Pending,
+                        )
+                    "
+                >
+                    <p
+                        class="mb-2 text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
                         {{ $t('posts.edit.platform_status') }}
                     </p>
                     <div class="space-y-2">
                         <div
-                            v-for="pp in postPlatforms.filter(p => p.enabled)"
+                            v-for="pp in postPlatforms.filter((p) => p.enabled)"
                             :key="pp.id"
                             class="rounded-xl border-2 border-foreground bg-card p-3 shadow-2xs"
                         >
                             <div class="flex items-center justify-between">
                                 <div class="flex min-w-0 items-center gap-2">
-                                    <span class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card">
-                                        <img :src="getPlatformLogo(pp.platform)" :alt="pp.platform" class="size-full object-cover" />
+                                    <span
+                                        class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card"
+                                    >
+                                        <img
+                                            :src="getPlatformLogo(pp.platform)"
+                                            :alt="pp.platform"
+                                            class="size-full object-cover"
+                                        />
                                     </span>
-                                    <span class="truncate text-sm font-bold text-foreground">{{ getPlatformDisplayName(pp) }}</span>
+                                    <span
+                                        class="truncate text-sm font-bold text-foreground"
+                                        >{{ getPlatformDisplayName(pp) }}</span
+                                    >
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <Badge v-if="pp.status === PostPlatformStatus.Published" variant="success">{{ $t('posts.edit.status.published') }}</Badge>
-                                    <Badge v-else-if="pp.status === PostPlatformStatus.Publishing" variant="warning">
-                                        <IconLoader2 class="size-3 animate-spin" />
+                                    <Badge
+                                        v-if="
+                                            pp.status ===
+                                            PostPlatformStatus.Published
+                                        "
+                                        variant="success"
+                                        >{{
+                                            $t('posts.edit.status.published')
+                                        }}</Badge
+                                    >
+                                    <Badge
+                                        v-else-if="
+                                            pp.status ===
+                                            PostPlatformStatus.Publishing
+                                        "
+                                        variant="warning"
+                                    >
+                                        <IconLoader2
+                                            class="size-3 animate-spin"
+                                        />
                                         {{ $t('posts.edit.status.publishing') }}
                                     </Badge>
-                                    <Badge v-else-if="pp.status === PostPlatformStatus.PendingReview" variant="warning">{{ $t('posts.edit.status.pending_review') }}</Badge>
-                                    <Badge v-else-if="pp.status === PostPlatformStatus.Rejected" variant="destructive">{{ $t('posts.edit.status.rejected') }}</Badge>
-                                    <Badge v-else-if="pp.status === PostPlatformStatus.Failed" variant="destructive">{{ $t('posts.edit.status.failed') }}</Badge>
+                                    <Badge
+                                        v-else-if="
+                                            pp.status ===
+                                            PostPlatformStatus.PendingReview
+                                        "
+                                        variant="warning"
+                                        >{{
+                                            $t(
+                                                'posts.edit.status.pending_review',
+                                            )
+                                        }}</Badge
+                                    >
+                                    <Badge
+                                        v-else-if="
+                                            pp.status ===
+                                            PostPlatformStatus.Rejected
+                                        "
+                                        variant="destructive"
+                                        >{{
+                                            $t('posts.edit.status.rejected')
+                                        }}</Badge
+                                    >
+                                    <Badge
+                                        v-else-if="
+                                            pp.status ===
+                                            PostPlatformStatus.Failed
+                                        "
+                                        variant="destructive"
+                                        >{{
+                                            $t('posts.edit.status.failed')
+                                        }}</Badge
+                                    >
                                     <a
                                         v-if="pp.platform_url"
                                         :href="pp.platform_url"
@@ -207,12 +279,21 @@ const channels = computed<Channel[]>(() =>
                                         rel="noopener noreferrer"
                                         class="inline-flex size-7 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground shadow-2xs transition-transform hover:rotate-3 hover:bg-violet-100"
                                     >
-                                        <IconExternalLink class="size-3.5" stroke-width="2.5" />
+                                        <IconExternalLink
+                                            class="size-3.5"
+                                            stroke-width="2.5"
+                                        />
                                     </a>
                                 </div>
                             </div>
                             <p
-                                v-if="(pp.status === PostPlatformStatus.Rejected || pp.status === PostPlatformStatus.Failed) && pp.error_message"
+                                v-if="
+                                    (pp.status ===
+                                        PostPlatformStatus.Rejected ||
+                                        pp.status ===
+                                            PostPlatformStatus.Failed) &&
+                                    pp.error_message
+                                "
                                 class="mt-2 text-xs font-semibold text-rose-700"
                             >
                                 {{ pp.error_message }}
@@ -221,24 +302,6 @@ const channels = computed<Channel[]>(() =>
                     </div>
                 </div>
             </ChannelConfigurator>
-        </div>
-
-        <div>
-            <p class="mb-3 text-[11px] font-black uppercase tracking-widest text-foreground/60">
-                {{ $t('posts.edit.labels') }}
-            </p>
-            <div v-if="labels.length > 0" class="flex flex-wrap gap-2">
-                <LabelBadge
-                    v-for="label in labels"
-                    :key="label.id"
-                    :label="label"
-                    interactive
-                    :selected="selectedLabelIds.includes(label.id)"
-                    :disabled="isReadOnly"
-                    @click="emit('toggleLabel', label.id)"
-                />
-            </div>
-            <p v-else class="text-sm font-medium text-foreground/60">{{ $t('posts.edit.no_labels') }}</p>
         </div>
     </div>
 </template>

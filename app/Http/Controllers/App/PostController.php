@@ -41,7 +41,7 @@ class PostController extends Controller
         $this->authorize('view', $workspace);
 
         $query = $workspace->posts()
-            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'user', 'labels']);
+            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'user']);
 
         if ($status) {
             $query = match ($status) {
@@ -56,24 +56,12 @@ class PostController extends Controller
             $query->whereLike('content', "%{$search}%");
         }
 
-        $labelIds = $request->collect('labels')
-            ->filter(fn ($id) => is_string($id) && $id !== '')
-            ->values()
-            ->all();
-
-        $query->when($labelIds, fn ($q) => $q->whereHas(
-            'labels',
-            fn ($q) => $q->whereIn('workspace_labels.id', $labelIds),
-        ));
-
         return Inertia::render('posts/Index', [
             'workspace' => $workspace,
             'posts' => Inertia::scroll(fn () => $query->latest('scheduled_at')->paginate(config('app.pagination.default'))),
             'currentStatus' => $status,
-            'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => [
                 'search' => $request->input('search', ''),
-                'labels' => $labelIds,
             ],
         ]);
     }
@@ -178,7 +166,7 @@ class PostController extends Controller
             return redirect()->route('app.posts.edit', $post);
         }
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load('postPlatforms.socialAccount');
 
         return Inertia::render('posts/Show', [
             'workspace' => $workspace,
@@ -204,10 +192,8 @@ class PostController extends Controller
             SyncPostPlatforms::execute($post);
         }
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load('postPlatforms.socialAccount');
         $socialAccounts = $workspace->socialAccounts()->active()->get();
-        $labels = $workspace->labels;
-        $signatures = $workspace->signatures;
 
         $platformConfigs = $socialAccounts->mapWithKeys(fn ($account) => [
             $account->id => new PlatformConfigResource($account),
@@ -241,8 +227,6 @@ class PostController extends Controller
             'platformConfigs' => $platformConfigs,
             'pinterestBoards' => $pinterestBoards,
             'tiktokCreatorInfos' => $tiktokCreatorInfos,
-            'labels' => $labels,
-            'signatures' => $signatures,
             'authUserId' => $request->user()->id,
             'xLinkTlds' => config('trypost.platforms.x.defuse_links') ? LinkTlds::all() : [],
         ]);
@@ -320,7 +304,7 @@ class PostController extends Controller
     {
         $this->authorize('duplicate', $post);
 
-        $post->load(['postPlatforms', 'labels']);
+        $post->load('postPlatforms');
 
         $copy = DuplicatePost::execute($post, $request->user());
 

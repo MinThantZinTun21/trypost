@@ -14,12 +14,8 @@ use App\Models\PostComment;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
-use App\Models\Webhook;
-use App\Models\WebhookLog;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvite;
-use App\Models\WorkspaceLabel;
-use App\Models\WorkspaceSignature;
 use App\Services\PostHogService;
 use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
@@ -84,12 +80,8 @@ class AppServiceProvider extends ServiceProvider
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,
             'user' => User::class,
-            'webhook' => Webhook::class,
-            'webhookLog' => WebhookLog::class,
             'workspace' => Workspace::class,
             'workspaceInvite' => WorkspaceInvite::class,
-            'workspaceLabel' => WorkspaceLabel::class,
-            'workspaceSignature' => WorkspaceSignature::class,
         ]);
     }
 

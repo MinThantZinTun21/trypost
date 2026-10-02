@@ -5,20 +5,19 @@ import {
     IconExternalLink,
     IconFileTypePdf,
     IconGripVertical,
-    IconHash,
     IconLibraryPhoto,
+    IconLoader2,
     IconMoodSmile,
     IconTrash,
     IconVideo,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref } from 'vue';
+import { toast } from 'vue-sonner';
 
 import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
 import AltTextDialog from '@/components/posts/editor/AltTextDialog.vue';
 import EmojiPicker from '@/components/posts/EmojiPicker.vue';
-import MediaPickerDialog from '@/components/posts/MediaPickerDialog.vue';
-import SignaturesModal from '@/components/posts/SignaturesModal.vue';
 import {
     Popover,
     PopoverAnchor,
@@ -38,19 +37,16 @@ import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
 import {
+    acceptAttribute,
     classify,
     isDocument,
     isImage,
     isVideo,
     MediaType,
 } from '@/lib/mediaType';
+import { storeChunked } from '@/routes/app/assets';
 import type { MediaItem } from '@/types/media';
-
-interface Signature {
-    id: string;
-    name: string;
-    content: string;
-}
+import { uploadChunked } from '@/utils/chunkedUpload';
 
 interface PlatformLimit {
     platform: string;
@@ -64,7 +60,6 @@ interface MediaIssue {
 
 const props = withDefaults(
     defineProps<{
-        signatures: Signature[];
         platformLimits: PlatformLimit[];
         mediaIssues: Record<string, MediaIssue[]>;
         readOnly?: boolean;
@@ -78,10 +73,9 @@ const content = defineModel<string>('content', { required: true });
 const media = defineModel<MediaItem[]>('media', { required: true });
 
 const emojiOpen = ref(false);
-const mediaPickerDialog = ref<InstanceType<typeof MediaPickerDialog> | null>(
-    null,
-);
-const signaturesModal = ref<InstanceType<typeof SignaturesModal> | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+const uploading = ref(false);
+const uploadProgress = ref(0);
 
 const dragMediaIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
@@ -154,16 +148,49 @@ const removeMedia = (mediaId: string) => {
     media.value = media.value.filter((m) => m.id !== mediaId);
 };
 
-const addMediaFromGallery = (picked: MediaItem[]) => {
-    const existingIds = new Set(media.value.map((m) => m.id));
-    const additions = picked.filter((m) => !existingIds.has(m.id));
-    if (additions.length === 0) return;
-    media.value = [...media.value, ...additions];
+/** Uploads go through the chunked endpoint so large videos stay within request limits. */
+const uploadFiles = async (files: File[]) => {
+    if (uploading.value || files.length === 0) return;
+    uploading.value = true;
+
+    for (const file of files) {
+        uploadProgress.value = 0;
+        try {
+            const uploaded = await uploadChunked({
+                file,
+                url: storeChunked.url(),
+                collection: 'assets',
+                onProgress: (progress) => {
+                    uploadProgress.value = progress;
+                },
+            });
+            media.value = [
+                ...media.value,
+                {
+                    id: uploaded.id,
+                    path: uploaded.path,
+                    url: uploaded.url,
+                    type: uploaded.type,
+                    mime_type: uploaded.mime_type,
+                    original_filename: uploaded.original_filename,
+                    size: uploaded.size,
+                    meta: uploaded.meta ?? undefined,
+                },
+            ];
+        } catch {
+            toast.error(trans('assets.upload.failed', { file: file.name }));
+        }
+    }
+
+    uploading.value = false;
 };
 
-const appendSignature = (signature: Signature) => {
-    const separator = content.value.trim() ? '\n\n' : '';
-    content.value += separator + signature.content;
+const onFileSelect = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    if (target.files) {
+        void uploadFiles(Array.from(target.files));
+        target.value = '';
+    }
 };
 
 const appendEmoji = (emoji: string) => {
@@ -449,15 +476,36 @@ const onAltTextSave = (alt: string): void => {
                     <button
                         v-if="!readOnly"
                         type="button"
-                        class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-foreground/25 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground"
-                        @click="mediaPickerDialog?.open()"
+                        data-testid="media-upload"
+                        :disabled="uploading"
+                        class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-foreground/25 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground disabled:cursor-wait"
+                        @click="fileInput?.click()"
                     >
-                        <IconLibraryPhoto class="size-5" />
-                        <span
-                            class="text-[10px] font-bold tracking-widest uppercase"
-                            >{{ $t('posts.edit.add') }}</span
-                        >
+                        <template v-if="uploading">
+                            <IconLoader2 class="size-5 animate-spin" />
+                            <span
+                                class="text-[10px] font-bold tracking-widest uppercase tabular-nums"
+                                >{{ uploadProgress }}%</span
+                            >
+                        </template>
+                        <template v-else>
+                            <IconLibraryPhoto class="size-5" />
+                            <span
+                                class="text-[10px] font-bold tracking-widest uppercase"
+                                >{{ $t('posts.edit.add') }}</span
+                            >
+                        </template>
                     </button>
+                    <input
+                        v-if="!readOnly"
+                        ref="fileInput"
+                        type="file"
+                        multiple
+                        class="hidden"
+                        data-testid="media-upload-input"
+                        :accept="acceptAttribute()"
+                        @change="onFileSelect"
+                    />
                 </div>
             </div>
 
@@ -486,23 +534,6 @@ const onAltTextSave = (alt: string): void => {
                         <EmojiPicker @select="appendEmoji" />
                     </PopoverContent>
                 </Popover>
-
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger as-child>
-                            <button
-                                type="button"
-                                class="inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:-translate-y-0.5 hover:bg-violet-100 hover:shadow-sm"
-                                @click="signaturesModal?.open()"
-                            >
-                                <IconHash class="size-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>{{
-                            $t('posts.edit.signatures')
-                        }}</TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
             </div>
 
             <!-- Per-platform counters (below menu, above textarea) -->
@@ -572,15 +603,6 @@ const onAltTextSave = (alt: string): void => {
             </div>
         </div>
 
-        <SignaturesModal
-            ref="signaturesModal"
-            :signatures="signatures"
-            @select="appendSignature"
-        />
-        <MediaPickerDialog
-            ref="mediaPickerDialog"
-            @select="addMediaFromGallery"
-        />
         <ImagePreviewDialog ref="lightbox" />
         <AltTextDialog
             v-model:open="altDialogOpen"

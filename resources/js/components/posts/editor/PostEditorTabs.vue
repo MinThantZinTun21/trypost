@@ -63,8 +63,6 @@ const props = defineProps<{
     platformContentTypes: Record<string, string>;
     platformIssues: Record<string, PlatformIssue>;
     platformConfigs: Record<string, any>;
-    labels: { id: string; name: string; color: string }[];
-    selectedLabelIds: string[];
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
     pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     isReadOnly: boolean;
@@ -77,7 +75,6 @@ const activeTab = defineModel<string>('activeTab', { required: true });
 
 const emit = defineEmits<{
     (e: 'toggle-platform', platformId: string): void;
-    (e: 'toggle-label', labelId: string): void;
     (
         e: 'update:platformMeta',
         platformId: string,
@@ -145,8 +142,6 @@ defineExpose({
             <ScheduleTab
                 :post-platforms="post.post_platforms"
                 :selected-platform-ids="selectedPlatformIds"
-                :labels="labels"
-                :selected-label-ids="selectedLabelIds"
                 :is-read-only="isReadOnly"
                 :platform-configs="platformConfigs"
                 :platform-meta="platformMeta"
@@ -156,7 +151,6 @@ defineExpose({
                 :pinterest-boards="pinterestBoards"
                 :media="media"
                 @toggle-platform="(id) => emit('toggle-platform', id)"
-                @toggle-label="(id) => emit('toggle-label', id)"
                 @update:platform-meta="
                     (id, meta) => emit('update:platformMeta', id, meta)
                 "

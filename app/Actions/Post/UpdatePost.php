@@ -46,10 +46,6 @@ class UpdatePost
                 'scheduled_at' => $scheduledAt,
             ]);
 
-            if (Arr::has($data, 'label_ids')) {
-                $post->labels()->sync(data_get($data, 'label_ids', []));
-            }
-
             if (Arr::has($data, 'platforms')) {
                 $post->postPlatforms()->update(['enabled' => false]);
 

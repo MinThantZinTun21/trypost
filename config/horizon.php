@@ -240,21 +240,6 @@ return [
             'tries' => 1,
             'nice' => 0,
         ],
-
-        'webhooks' => [
-            'connection' => 'redis',
-            'queue' => ['webhooks'],
-            'balance' => 'auto',
-            'autoScalingStrategy' => 'time',
-            'minProcesses' => 1,
-            'maxProcesses' => 2,
-            'timeout' => 60,
-            'maxTime' => 0,
-            'maxJobs' => 0,
-            'memory' => 256,
-            'tries' => 1,
-            'nice' => 0,
-        ],
     ],
 
     'environments' => [
@@ -270,12 +255,6 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
-
-            'webhooks' => [
-                'maxProcesses' => 3,
-                'balanceMaxShift' => 1,
-                'balanceCooldown' => 3,
-            ],
         ],
 
         'local' => [
@@ -285,10 +264,6 @@ return [
 
             'social-publishing' => [
                 'maxProcesses' => 3,
-            ],
-
-            'webhooks' => [
-                'maxProcesses' => 1,
             ],
         ],
     ],

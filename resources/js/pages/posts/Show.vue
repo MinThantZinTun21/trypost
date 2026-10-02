@@ -11,7 +11,6 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
-import LabelBadge from '@/components/labels/LabelBadge.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -83,7 +82,6 @@ interface Post {
     scheduled_at: string | null;
     published_at: string | null;
     platforms: PostPlatform[];
-    labels?: { id: string; name: string; color: string }[];
 }
 
 interface Workspace {
@@ -276,18 +274,6 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                         >
                             {{ post.content }}
                         </p>
-
-                        <!-- Labels -->
-                        <div
-                            v-if="post.labels && post.labels.length > 0"
-                            class="mt-6 flex flex-wrap gap-2"
-                        >
-                            <LabelBadge
-                                v-for="label in post.labels"
-                                :key="label.id"
-                                :label="label"
-                            />
-                        </div>
                     </div>
                 </div>
 

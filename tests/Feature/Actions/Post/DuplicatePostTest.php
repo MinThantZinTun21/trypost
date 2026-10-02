@@ -89,7 +89,7 @@ test('execute skips platform rows whose social account was removed', function ()
         'enabled' => true,
     ]);
 
-    $copy = DuplicatePost::execute($original->load(['postPlatforms', 'labels']), $user);
+    $copy = DuplicatePost::execute($original->load('postPlatforms'), $user);
 
     $copiedPlatforms = $copy->postPlatforms()->get();
 
@@ -125,7 +125,7 @@ test('execute copies only platforms that still have a social account relation', 
 
     expect($platform->social_account_id)->toBeNull();
 
-    $copy = DuplicatePost::execute($original->fresh(['postPlatforms', 'labels']), $user);
+    $copy = DuplicatePost::execute($original->fresh('postPlatforms'), $user);
 
     expect($copy->postPlatforms)->toHaveCount(0);
 });
