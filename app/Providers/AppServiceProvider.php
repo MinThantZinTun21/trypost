@@ -20,12 +20,9 @@ use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
 use Carbon\CarbonImmutable;
-use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -71,13 +68,6 @@ class AppServiceProvider extends ServiceProvider
 
     protected function configureSocialite(): void
     {
-        // Google Auth (login/signup) - separate from YouTube OAuth
-        Socialite::extend('google-auth', function ($app) {
-            $config = $app['config']['services.google-auth'];
-
-            return Socialite::buildProvider(GoogleProvider::class, $config);
-        });
-
         // Google Business Profile — dedicated app, separate from 'google' (YouTube).
         Socialite::extend('google-business', function ($app) {
             $config = $app['config']['services.google-business'];
@@ -126,36 +116,5 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null
         );
-
-        // Custom email verification template
-        VerifyEmail::toMailUsing(function (User $user, string $url) {
-            return (new MailMessage)
-                ->from(config('mail.from.address'), config('mail.from.name'))
-                ->subject(__('mail.email_verification.subject'))
-                ->view('mail.email-verification', [
-                    'title' => __('mail.email_verification.subject'),
-                    'previewText' => __('mail.email_verification.preview'),
-                    'user' => $user,
-                    'url' => $url,
-                ]);
-        });
-
-        // Custom password reset template
-        ResetPassword::toMailUsing(function (User $user, string $token) {
-            $url = url(route('password.reset', [
-                'token' => $token,
-                'email' => $user->getEmailForPasswordReset(),
-            ], false));
-
-            return (new MailMessage)
-                ->from(config('mail.from.address'), config('mail.from.name'))
-                ->subject(__('mail.password_reset.subject'))
-                ->view('mail.password-reset', [
-                    'title' => __('mail.password_reset.subject'),
-                    'previewText' => __('mail.password_reset.preview'),
-                    'user' => $user,
-                    'url' => $url,
-                ]);
-        });
     }
 }

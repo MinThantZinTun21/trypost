@@ -4,15 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Notification\Type as NotificationType;
-use App\Enums\User\Persona;
-use App\Enums\User\ReferralSource;
 use App\Models\Traits\HasAccount;
 use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
 use Database\Factories\UserFactory;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,7 +17,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasAccount, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
@@ -33,26 +29,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
-        'google_id',
-        'github_id',
         'account_id',
         'current_workspace_id',
         'email_verified_at',
-        'utm_source',
-        'utm_medium',
-        'utm_campaign',
-        'utm_term',
-        'utm_content',
-        'gclid',
-        'fbclid',
-        'li_fat_id',
-        'ttclid',
-        'rdt_cid',
-        'epik',
-        'registration_ip',
-        'persona',
-        'goals',
-        'referral_source',
     ];
 
     /**
@@ -94,9 +73,6 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
-            'persona' => Persona::class,
-            'goals' => 'array',
-            'referral_source' => ReferralSource::class,
         ];
     }
 
@@ -125,10 +101,5 @@ class User extends Authenticatable implements MustVerifyEmail
             NotificationType::MentionedInComment => $preference->mentioned_in_comment ?? true,
             default => true,
         };
-    }
-
-    public function isConnectedTo(SocialAuthProvider $provider): bool
-    {
-        return (bool) $this->{"{$provider->value}_id"};
     }
 }

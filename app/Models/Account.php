@@ -21,12 +21,6 @@ class Account extends Model
         'name',
     ];
 
-    protected $casts = [
-        'onboarding_completed_at' => 'datetime',
-        'onboarding_dismissed_at' => 'datetime',
-        'onboarding_skipped_steps' => 'array',
-    ];
-
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');

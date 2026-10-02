@@ -49,9 +49,6 @@ return [
         'name_placeholder' => 'Full name',
         'email' => 'Email address',
         'email_placeholder' => 'Email address',
-        'email_unverified' => 'Your email address is unverified.',
-        'resend_verification' => 'Click here to resend the verification email.',
-        'verification_sent' => 'A new verification link has been sent to your email address.',
         'save' => 'Save',
     ],
 
@@ -86,18 +83,6 @@ return [
             'confirm_password' => 'Confirm password',
             'save' => 'Save password',
             'set' => 'Set password',
-        ],
-        'providers' => [
-            'title' => 'Connected accounts',
-            'description' => 'Sign in faster with these connected providers.',
-            'connected' => 'Connected',
-            'not_connected' => 'Not connected',
-            'connect' => 'Connect',
-            'disconnect' => 'Disconnect',
-            'flash_disconnected' => ':provider disconnected successfully.',
-            'flash_connected' => ':provider connected successfully.',
-            'flash_already_linked' => 'That :provider account is already linked to another user.',
-            'flash_cannot_disconnect' => 'You cannot disconnect your only sign-in method. Set a password or connect another provider first.',
         ],
     ],
 

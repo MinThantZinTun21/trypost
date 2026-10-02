@@ -13,7 +13,6 @@ use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
-use App\Http\Controllers\App\WelcomeController;
 use App\Http\Controllers\App\WorkspaceController;
 use App\Http\Controllers\App\WorkspaceInviteController;
 use App\Http\Controllers\Auth\BlueskyController;
@@ -34,26 +33,12 @@ use App\Http\Controllers\Auth\YouTubeController;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use Illuminate\Support\Facades\Route;
 
-// Onboarding and workspace bootstrap (auth only)
+// Workspace bootstrap (auth only)
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', function () {
         return redirect()->route('app.calendar');
     })->name('app.home');
-
-    Route::get('welcome', fn () => redirect()->route('app.welcome.persona'))->name('app.welcome');
-    Route::get('welcome/persona', [WelcomeController::class, 'persona'])->name('app.welcome.persona');
-    Route::post('welcome/persona', [WelcomeController::class, 'storePersona'])->name('app.welcome.persona.store');
-    Route::get('welcome/goals', [WelcomeController::class, 'goals'])->name('app.welcome.goals');
-    Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
-    Route::get('welcome/referral-source', [WelcomeController::class, 'referralSource'])->name('app.welcome.referral-source');
-    Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])
-        ->middleware('throttle:6,1')
-        ->name('app.welcome.referral-source.store');
-    Route::get('welcome/connect', [WelcomeController::class, 'connect'])->name('app.welcome.connect');
-    Route::post('welcome/connect', [WelcomeController::class, 'storeConnect'])
-        ->middleware('throttle:6,1')
-        ->name('app.welcome.connect.store');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');
@@ -217,10 +202,6 @@ Route::middleware(['auth'])->group(function () {
         ->name('app.authentication.update-password');
     Route::delete('settings/authentication/sessions', [AuthenticationController::class, 'destroyOtherSessions'])
         ->name('app.authentication.destroy-other-sessions');
-    Route::get('settings/authentication/providers/{provider}/connect', [AuthenticationController::class, 'connectProvider'])
-        ->name('app.authentication.connect-provider');
-    Route::delete('settings/authentication/providers/{provider}', [AuthenticationController::class, 'disconnectProvider'])
-        ->name('app.authentication.disconnect-provider');
 
     Route::get('settings/profile/notifications', [NotificationPreferenceController::class, 'edit'])->name('app.notifications.preferences');
     Route::put('settings/profile/notifications', [NotificationPreferenceController::class, 'update'])->name('app.notifications.preferences.update');

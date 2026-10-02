@@ -3,8 +3,6 @@ import { Form, Head } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-import LegalLinks from '@/components/auth/LegalLinks.vue';
-import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -20,7 +18,6 @@ import {
 import { usePageErrors } from '@/composables/usePageErrors';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { store } from '@/routes/login';
-import { request } from '@/routes/password';
 
 defineProps<{
     status?: string;
@@ -49,8 +46,6 @@ const pageErrors = usePageErrors();
         </div>
 
         <div class="flex flex-col gap-6">
-            <SocialLogin mode="login" :invite="invite" />
-
             <Form
                 v-bind="store.form()"
                 :reset-on-success="['password']"
@@ -82,18 +77,9 @@ const pageErrors = usePageErrors();
                     </div>
 
                     <div class="grid gap-2">
-                        <div class="flex items-center justify-between">
-                            <Label for="password">{{
-                                $t('auth.login.password')
-                            }}</Label>
-                            <TextLink
-                                :href="request()"
-                                class="text-sm"
-                                :tabindex="5"
-                            >
-                                {{ $t('auth.login.forgot_password') }}
-                            </TextLink>
-                        </div>
+                        <Label for="password">{{
+                            $t('auth.login.password')
+                        }}</Label>
                         <div class="relative">
                             <Input
                                 id="password"
@@ -175,8 +161,6 @@ const pageErrors = usePageErrors();
                     </Button>
                 </div>
             </Form>
-
-            <LegalLinks />
         </div>
     </AuthBase>
 </template>

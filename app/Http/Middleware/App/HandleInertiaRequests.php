@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
-use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
@@ -42,15 +41,9 @@ class HandleInertiaRequests extends Middleware
                     : [],
                 'account' => $account ? AuthAccountResource::make($account) : null,
             ],
-            'legal' => [
-                'terms' => (string) config('trypost.legal.terms_url'),
-                'privacy' => (string) config('trypost.legal.privacy_url'),
-            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'locale' => app()->getLocale(),
-            'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),
-            'githubAuthEnabled' => SocialAuthProvider::GitHub->isEnabled(),
         ];
     }
 

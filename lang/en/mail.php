@@ -25,29 +25,11 @@ return [
         'button' => 'Reconnect Account',
     ],
 
-    'email_verification' => [
-        'subject' => 'Verify your email address',
-        'preview' => 'Please verify your email address.',
-        'greeting' => 'Hi :name,',
-        'body' => 'Please confirm your email address by clicking the button below:',
-        'button' => 'Verify Email Address',
-        'ignore' => 'If you did not create an account, you can safely ignore this email.',
-    ],
-
     'mentioned_in_comment' => [
         'subject' => ':name mentioned you on TryPost',
         'title' => ':name mentioned you',
         'intro' => ':name mentioned you in a post comment.',
         'button' => 'View comment',
-    ],
-
-    'password_reset' => [
-        'subject' => 'Reset your password',
-        'preview' => 'Reset your password.',
-        'greeting' => 'Hi :name,',
-        'body' => 'We received a request to reset your password. Click the button below to create a new password:',
-        'button' => 'Reset Password',
-        'expiry' => 'This link expires in 60 minutes. If you did not request a password reset, you can safely ignore this email.',
     ],
 
     'post_at_risk' => [

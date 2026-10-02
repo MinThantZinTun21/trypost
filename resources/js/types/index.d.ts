@@ -2,13 +2,6 @@ import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
 import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
-import type { WelcomeSummary } from '@/types/welcome';
-
-export type {
-    WelcomeNetwork,
-    WelcomeStep,
-    WelcomeSummary,
-} from '@/types/welcome';
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 
@@ -56,19 +49,12 @@ export interface NavItem {
     badge?: string;
 }
 
-export interface LegalLinks {
-    terms: string;
-    privacy: string;
-}
-
 export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
     sidebarOpen: boolean;
-    legal: LegalLinks;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
-    welcome?: WelcomeSummary;
     [key: string]: unknown;
 }
 

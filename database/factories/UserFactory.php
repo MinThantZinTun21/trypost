@@ -32,21 +32,12 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'google_id' => null,
-            'github_id' => null,
             'remember_token' => Str::random(10),
             'account_id' => Account::factory(),
             'current_workspace_id' => null,
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
-            'utm_source' => null,
-            'utm_medium' => null,
-            'utm_campaign' => null,
-            'utm_term' => null,
-            'utm_content' => null,
-            'registration_ip' => null,
-            'persona' => null,
         ];
     }
 
@@ -57,16 +48,6 @@ class UserFactory extends Factory
                 $user->account->update(['owner_id' => $user->id]);
             }
         });
-    }
-
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
-    public function unverified(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
     }
 
     /**

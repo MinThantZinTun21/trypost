@@ -86,6 +86,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Owner
+    |--------------------------------------------------------------------------
+    |
+    | The single Owner created by `php artisan db:seed`. When the password is
+    | empty the seeder generates one and prints it once. Change it later with
+    | `php artisan owner:reset-password`.
+    |
+    */
+
+    'owner' => [
+        'name' => env('OWNER_NAME', 'Owner'),
+        'email' => env('OWNER_EMAIL', 'admin@trypost.it'),
+        'password' => env('OWNER_PASSWORD'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

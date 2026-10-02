@@ -16,7 +16,6 @@ test('authentication page is displayed', function () {
             ->component('settings/profile/Authentication')
             ->has('sessions')
             ->where('hasPassword', true)
-            ->has('connectedAccounts')
         );
 });
 
@@ -69,7 +68,7 @@ test('password must be confirmed', function () {
 });
 
 test('user without a password can set one without current_password', function () {
-    $user = User::factory()->create(['password' => null, 'google_id' => 'google-123']);
+    $user = User::factory()->create(['password' => null]);
 
     $this->actingAs($user)
         ->from(route('app.authentication.edit'))
@@ -80,36 +79,6 @@ test('user without a password can set one without current_password', function ()
         ->assertSessionHasNoErrors();
 
     expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
-});
-
-test('disconnect provider removes the link', function () {
-    $user = User::factory()->create(['google_id' => 'google-123', 'password' => bcrypt('password')]);
-
-    $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->delete(route('app.authentication.disconnect-provider', 'google'))
-        ->assertRedirect(route('app.authentication.edit'));
-
-    expect($user->refresh()->google_id)->toBeNull();
-});
-
-test('disconnect provider blocked when it is the only sign-in method', function () {
-    $user = User::factory()->create(['google_id' => 'google-123', 'password' => null]);
-
-    $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->delete(route('app.authentication.disconnect-provider', 'google'))
-        ->assertSessionHas('flash.error');
-
-    expect($user->refresh()->google_id)->toBe('google-123');
-});
-
-test('disconnect provider rejects unknown provider', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->delete(route('app.authentication.disconnect-provider', 'twitter'))
-        ->assertNotFound();
 });
 
 test('destroy other sessions removes other rows for the user', function () {

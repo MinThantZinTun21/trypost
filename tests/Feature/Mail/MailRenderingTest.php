@@ -11,10 +11,6 @@ use App\Models\Invite;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Notifications\Notification as BaseNotification;
-use Illuminate\Support\Facades\Mail;
 
 test('the workspace invite renders the account and role', function () {
     $account = Account::factory()->create(['name' => 'Acme Co']);
@@ -63,32 +59,4 @@ test('the disconnected-connections digest renders every account and reason', fun
     foreach ($accounts as $account) {
         $mailable->assertSeeInHtml($account->platform->label());
     }
-});
-
-function sentNotificationHtml(User $user, BaseNotification $notification): string
-{
-    Mail::mailer()->getSymfonyTransport()->messages()->take(0);
-
-    $user->notify($notification);
-
-    $message = Mail::mailer()->getSymfonyTransport()->messages()->last();
-
-    return (string) $message->getOriginalMessage()->getHtmlBody();
-}
-
-test('the verification email renders the translated copy', function () {
-    $user = User::factory()->create();
-
-    expect(sentNotificationHtml($user, new VerifyEmail))
-        ->toContain(__('mail.email_verification.body'))
-        ->toContain(__('mail.email_verification.button'))
-        ->toContain(__('mail.layout.team'));
-});
-
-test('the password reset email renders the translated copy', function () {
-    $user = User::factory()->create();
-
-    expect(sentNotificationHtml($user, new ResetPassword('token-123')))
-        ->toContain(__('mail.password_reset.body'))
-        ->toContain(__('mail.password_reset.expiry'));
 });

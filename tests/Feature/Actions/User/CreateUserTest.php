@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Actions\User\CreateUser;
 use App\Models\Account;
-use App\Models\Workspace;
 
 test('CreateUser creates the owner a default workspace and sets it as current', function () {
     $user = CreateUser::execute([
@@ -33,16 +32,4 @@ test('CreateUser sets account owner_id to the new user', function () {
     ]);
 
     expect($user->account->owner_id)->toBe($user->id);
-});
-
-test('CreateUser invite-style still creates user without workspace (workspace assignment happens via invite acceptance)', function () {
-    $user = CreateUser::execute([
-        'name' => 'Invited',
-        'email' => 'invited@example.com',
-        'password' => 'secret123',
-        'is_invite' => true,
-    ]);
-
-    expect($user->email_verified_at)->not->toBeNull();
-    expect(Workspace::count())->toBe(0);
 });
