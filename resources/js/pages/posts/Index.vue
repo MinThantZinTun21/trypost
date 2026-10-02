@@ -53,7 +53,6 @@ import {
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -164,7 +163,6 @@ const canEdit = (post: Post): boolean =>
 const canDelete = (post: Post): boolean =>
     DELETABLE_STATUSES.includes(post.status);
 
-const { canCreatePost } = useWorkspaceRole();
 const { createPost, creatingPost } = useCreatePost();
 
 const postUrl = (post: Post): string =>
@@ -223,7 +221,6 @@ useWorkspaceEcho(
                 </div>
 
                 <Button
-                    v-if="canCreatePost"
                     class="w-full sm:w-auto"
                     :disabled="creatingPost"
                     @click="createPost()"
@@ -413,7 +410,6 @@ useWorkspaceEcho(
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem
-                                                v-if="canCreatePost"
                                                 @click="handleDuplicate(post)"
                                             >
                                                 <IconCopyPlus class="size-4" />
@@ -431,12 +427,7 @@ useWorkspaceEcho(
                                                     $t('posts.actions.copy_id')
                                                 }}
                                             </DropdownMenuItem>
-                                            <template
-                                                v-if="
-                                                    canCreatePost &&
-                                                    canDelete(post)
-                                                "
-                                            >
+                                            <template v-if="canDelete(post)">
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
                                                     variant="destructive"

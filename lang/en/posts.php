@@ -351,8 +351,6 @@ return [
             'compose' => 'Compose',
             'preview' => 'Preview',
             'channels' => 'Channels',
-            'comments' => 'Comments',
-            'comments_empty' => 'No comments yet.',
         ],
 
         'alt_text' => [

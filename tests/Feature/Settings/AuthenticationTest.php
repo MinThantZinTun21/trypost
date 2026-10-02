@@ -15,7 +15,7 @@ test('authentication page is displayed', function () {
         ->assertInertia(fn ($page) => $page
             ->component('settings/profile/Authentication')
             ->has('sessions')
-            ->where('hasPassword', true)
+            ->missing('hasPassword')
         );
 });
 
@@ -67,8 +67,8 @@ test('password must be confirmed', function () {
         ->assertSessionHasErrors('password');
 });
 
-test('user without a password can set one without current_password', function () {
-    $user = User::factory()->create(['password' => null]);
+test('current password is always required to change the password', function () {
+    $user = User::factory()->create();
 
     $this->actingAs($user)
         ->from(route('app.authentication.edit'))
@@ -76,9 +76,9 @@ test('user without a password can set one without current_password', function ()
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
         ])
-        ->assertSessionHasNoErrors();
+        ->assertSessionHasErrors('current_password');
 
-    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
+    expect(Hash::check('password', $user->refresh()->password))->toBeTrue();
 });
 
 test('destroy other sessions removes other rows for the user', function () {

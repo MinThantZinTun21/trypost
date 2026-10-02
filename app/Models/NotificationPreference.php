@@ -20,7 +20,6 @@ class NotificationPreference extends Model
         'post_published',
         'post_failed',
         'account_disconnected',
-        'mentioned_in_comment',
     ];
 
     protected function casts(): array
@@ -29,7 +28,6 @@ class NotificationPreference extends Model
             'post_published' => 'boolean',
             'post_failed' => 'boolean',
             'account_disconnected' => 'boolean',
-            'mentioned_in_comment' => 'boolean',
         ];
     }
 

@@ -26,7 +26,7 @@ class PostPolicy
 
     /**
      * Authorize updating a post: tenancy guard (404 across tenants) then the
-     * role gate — viewers are read-only (403).
+     * workspace access gate (403).
      */
     public function update(User $user, Post $post): bool|Response
     {
@@ -39,7 +39,7 @@ class PostPolicy
 
     /**
      * Authorize deleting a post: tenancy guard (404 across tenants) then the
-     * same role gate as `update` — viewers are read-only (403).
+     * same workspace access gate as `update` (403).
      */
     public function delete(User $user, Post $post): bool|Response
     {

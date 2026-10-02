@@ -3,12 +3,8 @@
 declare(strict_types=1);
 
 return [
-    'workspaces' => 'Workspaces',
-    'select_workspace' => 'Select workspace',
-    'create_workspace' => 'Create workspace',
     'create_post' => 'Create post',
     'my_account' => 'My account',
-    'workspace_settings' => 'Workspace settings',
     'log_out' => 'Log out',
     'help' => 'Help',
     'workspace' => [

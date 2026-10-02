@@ -150,12 +150,13 @@ test('instagram callback handles oauth errors gracefully', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
 
-test('instagram connect redirects to create workspace if none exists', function () {
+test('instagram connect falls back to the single workspace when none is current', function () {
     $this->user->update(['current_workspace_id' => null]);
 
     $response = $this->actingAs($this->user)->get(route('app.social.instagram.connect'));
 
-    $response->assertRedirect(route('app.workspaces.create'));
+    expect($response->headers->get('Location'))->toStartWith('https://www.instagram.com/oauth/authorize')
+        ->and($this->user->fresh()->current_workspace_id)->toBe($this->workspace->id);
 });
 
 test('instagram callback refuses an identity already connected via the facebook variant', function () {

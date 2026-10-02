@@ -38,9 +38,8 @@ type Session = {
     is_current: boolean;
 };
 
-const props = defineProps<{
+defineProps<{
     sessions: Session[];
-    hasPassword: boolean;
 }>();
 
 const tabs = computed(() => [
@@ -60,18 +59,6 @@ const tabs = computed(() => [
         href: notificationPreferences().url,
     },
 ]);
-
-const passwordHeading = computed(() =>
-    props.hasPassword
-        ? trans('settings.authentication.password.update_title')
-        : trans('settings.authentication.password.set_title'),
-);
-
-const passwordDescription = computed(() =>
-    props.hasPassword
-        ? trans('settings.authentication.password.update_description')
-        : trans('settings.authentication.password.set_description'),
-);
 
 const logoutDialogOpen = ref(false);
 </script>
@@ -212,18 +199,14 @@ const logoutDialogOpen = ref(false);
                                     }}</DialogTitle>
                                     <DialogDescription>
                                         {{
-                                            hasPassword
-                                                ? $t(
-                                                      'settings.authentication.sessions.modal_description_password',
-                                                  )
-                                                : $t(
-                                                      'settings.authentication.sessions.modal_description_email',
-                                                  )
+                                            $t(
+                                                'settings.authentication.sessions.modal_description_password',
+                                            )
                                         }}
                                     </DialogDescription>
                                 </DialogHeader>
 
-                                <div v-if="hasPassword" class="grid gap-2">
+                                <div class="grid gap-2">
                                     <Label
                                         for="session_password"
                                         class="sr-only"
@@ -245,29 +228,6 @@ const logoutDialogOpen = ref(false);
                                         "
                                     />
                                     <InputError :message="errors.password" />
-                                </div>
-
-                                <div v-else class="grid gap-2">
-                                    <Label
-                                        for="session_email_confirmation"
-                                        class="sr-only"
-                                    >
-                                        Email
-                                    </Label>
-                                    <Input
-                                        id="session_email_confirmation"
-                                        type="email"
-                                        name="email_confirmation"
-                                        :placeholder="
-                                            trans(
-                                                'settings.authentication.sessions.email_placeholder',
-                                            )
-                                        "
-                                        autocomplete="off"
-                                    />
-                                    <InputError
-                                        :message="errors.email_confirmation"
-                                    />
                                 </div>
 
                                 <DialogFooter class="gap-2">
@@ -300,8 +260,14 @@ const logoutDialogOpen = ref(false);
 
                 <div class="space-y-6">
                     <HeadingSmall
-                        :title="passwordHeading"
-                        :description="passwordDescription"
+                        :title="
+                            $t('settings.authentication.password.update_title')
+                        "
+                        :description="
+                            $t(
+                                'settings.authentication.password.update_description',
+                            )
+                        "
                     />
 
                     <Form
@@ -316,7 +282,7 @@ const logoutDialogOpen = ref(false);
                         class="space-y-6"
                         v-slot="{ errors, processing }"
                     >
-                        <div v-if="hasPassword" class="grid gap-2">
+                        <div class="grid gap-2">
                             <Label for="current_password">{{
                                 $t(
                                     'settings.authentication.password.current_password',
@@ -367,20 +333,14 @@ const logoutDialogOpen = ref(false);
                             :disabled="processing"
                             data-test="update-password-button"
                         >
-                            {{
-                                hasPassword
-                                    ? $t(
-                                          'settings.authentication.password.save',
-                                      )
-                                    : $t('settings.authentication.password.set')
-                            }}
+                            {{ $t('settings.authentication.password.save') }}
                         </Button>
                     </Form>
                 </div>
 
                 <Separator />
 
-                <DeleteUser :has-password="hasPassword" />
+                <DeleteUser />
             </section>
         </div>
     </AppLayout>

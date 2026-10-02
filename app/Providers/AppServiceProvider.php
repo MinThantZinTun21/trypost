@@ -5,17 +5,14 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\Account;
-use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
 use App\Models\NotificationPreference;
 use App\Models\Post;
-use App\Models\PostComment;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Models\WorkspaceInvite;
 use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
@@ -52,17 +49,14 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'account' => Account::class,
-            'invite' => Invite::class,
             'media' => Media::class,
             'notification' => Notification::class,
             'notificationPreference' => NotificationPreference::class,
             'post' => Post::class,
-            'postComment' => PostComment::class,
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,
             'user' => User::class,
             'workspace' => Workspace::class,
-            'workspaceInvite' => WorkspaceInvite::class,
         ]);
     }
 

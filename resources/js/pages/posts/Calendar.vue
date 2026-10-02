@@ -17,7 +17,6 @@ import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -64,7 +63,6 @@ const props = defineProps<Props>();
 
 // Mobile detection
 const isMobile = ref(false);
-const { canCreatePost } = useWorkspaceRole();
 const { createPost, creatingPost } = useCreatePost();
 
 const checkMobile = () => {
@@ -334,7 +332,6 @@ const formatTime = (scheduledAt: string): string => {
                     </div>
                 </div>
                 <Button
-                    v-if="canCreatePost"
                     class="w-full"
                     :disabled="creatingPost"
                     @click="createPost()"
@@ -382,12 +379,9 @@ const formatTime = (scheduledAt: string): string => {
                         </TabsList>
                     </Tabs>
 
-                    <Button
-                        v-if="canCreatePost"
-                        :disabled="creatingPost"
-                        @click="createPost()"
-                        >{{ $t('calendar.new_post') }}</Button
-                    >
+                    <Button :disabled="creatingPost" @click="createPost()">{{
+                        $t('calendar.new_post')
+                    }}</Button>
                 </div>
             </header>
 
@@ -567,7 +561,6 @@ const formatTime = (scheduledAt: string): string => {
                     <div class="flex-1 space-y-2 overflow-y-auto p-2">
                         <!-- Add Post Button -->
                         <button
-                            v-if="canCreatePost"
                             type="button"
                             :disabled="creatingPost"
                             class="flex w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground"
@@ -728,7 +721,6 @@ const formatTime = (scheduledAt: string): string => {
                                     {{ day.format('D') }}
                                 </span>
                                 <button
-                                    v-if="canCreatePost"
                                     type="button"
                                     :disabled="creatingPost"
                                     class="inline-flex size-6 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all group-hover:opacity-100 hover:rotate-90 hover:bg-violet-100 focus:opacity-100"

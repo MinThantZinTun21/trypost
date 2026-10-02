@@ -10,7 +10,6 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,11 +17,8 @@ class AuthenticationController extends Controller
 {
     public function edit(Request $request): Response
     {
-        $user = $request->user();
-
         return Inertia::render('settings/profile/Authentication', [
             'sessions' => $this->getSessions($request),
-            'hasPassword' => (bool) $user->password,
         ]);
     }
 
@@ -37,22 +33,12 @@ class AuthenticationController extends Controller
 
     public function destroyOtherSessions(Request $request): RedirectResponse
     {
-        $user = $request->user();
-
-        if ($user->password) {
-            $request->validate([
-                'password' => ['required', 'string', 'current_password'],
-            ]);
-        } else {
-            $request->validate([
-                'email_confirmation' => ['required', 'string', Rule::in([$user->email])],
-            ], [
-                'email_confirmation.in' => __('settings.authentication.sessions.email_mismatch'),
-            ]);
-        }
+        $request->validate([
+            'password' => ['required', 'string', 'current_password'],
+        ]);
 
         DB::table(config('session.table', 'sessions'))
-            ->where('user_id', $user->id)
+            ->where('user_id', $request->user()->id)
             ->where('id', '!=', $request->session()->getId())
             ->delete();
 

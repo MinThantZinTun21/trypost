@@ -11,17 +11,11 @@ return [
             'title' => 'Profile',
             'description' => 'Update your personal info, password, and notification preferences.',
         ],
-        'workspace' => [
-            'title' => 'Workspace',
-            'description' => 'Configure your workspace, brand, and members.',
-        ],
     ],
 
     'nav' => [
         'profile' => 'Profile',
         'authentication' => 'Authentication',
-        'workspace' => 'Workspace',
-        'members' => 'Members',
         'notifications' => 'Notifications',
     ],
 
@@ -65,24 +59,18 @@ return [
             'log_out_others' => 'Log out other devices',
             'modal_title' => 'Log out other devices',
             'modal_description_password' => 'Enter your current password to confirm you want to log out other browser sessions.',
-            'modal_description_email' => 'Type your email address to confirm you want to log out other browser sessions.',
             'password_placeholder' => 'Current password',
-            'email_placeholder' => 'Your account email',
             'cancel' => 'Cancel',
             'submit' => 'Log out other devices',
-            'email_mismatch' => 'The email address does not match your account.',
             'flash_logged_out' => 'You have been logged out from other devices.',
         ],
         'password' => [
             'update_title' => 'Update password',
-            'set_title' => 'Set a password',
             'update_description' => 'Ensure your account is using a long, random password to stay secure.',
-            'set_description' => 'Add a password so you can sign in without a connected provider.',
             'current_password' => 'Current password',
             'new_password' => 'New password',
             'confirm_password' => 'Confirm password',
             'save' => 'Save password',
-            'set' => 'Set password',
         ],
     ],
 
@@ -90,121 +78,21 @@ return [
         'heading' => 'Delete account',
         'description' => 'Delete your account and all of its resources',
         'warning' => 'Warning',
-        'warning_message' => 'Please proceed with caution, this cannot be undone. If you own this account, invited members will also be permanently deleted.',
+        'warning_message' => 'Please proceed with caution, this cannot be undone.',
         'button' => 'Delete account',
         'modal_title' => 'Are you sure you want to delete your account?',
-        'modal_description_password' => 'Once your account is deleted, all of its resources and data will also be permanently deleted. If you own the account, invited members will be permanently deleted too. Please enter your password to confirm.',
-        'modal_description_email' => 'Once your account is deleted, all of its resources and data will also be permanently deleted. If you own the account, invited members will be permanently deleted too. Please type your email address :email to confirm.',
+        'modal_description_password' => 'Once your account is deleted, all of its resources and data will also be permanently deleted. Please enter your password to confirm.',
         'password' => 'Password',
         'password_placeholder' => 'Password',
-        'email_placeholder' => 'Your account email',
-        'email_mismatch' => 'The email address does not match your account.',
         'cancel' => 'Cancel',
         'confirm' => 'Delete account',
-    ],
-
-    'workspace' => [
-        'tabs' => [
-            'workspace' => 'Workspace',
-            'users' => 'Members',
-        ],
-        'title' => 'Workspace settings',
-        'logo_heading' => 'Workspace logo',
-        'logo_description' => 'Upload a logo for your workspace',
-        'heading' => 'Workspace name',
-        'description' => 'Update your workspace name',
-        'members_heading' => 'Members',
-        'members_description' => 'Manage workspace members and invitations',
-        'name' => 'Name',
-        'name_placeholder' => 'My Workspace',
-        'save' => 'Save',
-        'danger_description' => 'Irreversible actions.',
-        'delete_warning' => 'Warning',
-        'delete_title' => 'Delete this workspace',
-        'delete_description' => 'Permanently deletes this workspace, its posts, connected accounts, and media.',
-        'delete_members_warning' => '{1}:count other member will lose access. Members without another TryPost workspace are permanently deleted.|[2,*]:count other members will lose access. Members without another TryPost workspace are permanently deleted.',
-        'delete_action' => 'Delete workspace',
-        'delete_cancel' => 'Cancel',
-        'delete_confirm_title' => 'Delete workspace?',
-        'delete_confirm_description' => 'This permanently deletes the workspace and all of its data.',
-    ],
-
-    'members' => [
-        'title' => 'Members',
-        'heading' => 'Team members',
-        'description' => 'Manage members and invites for this workspace',
-
-        'cancel' => 'Cancel',
-        'remove' => 'Remove',
-        'make_role' => 'Make :role',
-
-        'invite' => [
-            'title' => 'Invite Member',
-            'description' => 'Send an email invite to add collaborators',
-            'email' => 'Email',
-            'email_placeholder' => 'collaborator@email.com',
-            'role' => 'Role',
-            'role_placeholder' => 'Select a role',
-            'submit' => 'Send Invite',
-        ],
-
-        'pending' => [
-            'title' => 'Pending Invites',
-            'description' => 'Invites awaiting acceptance',
-            'empty' => 'No pending invites',
-        ],
-
-        'list' => [
-            'title' => 'Members',
-            'description' => 'People with access to this workspace',
-            'empty' => 'No members besides the owner',
-        ],
-
-        'remove_modal' => [
-            'title' => 'Remove member',
-            'description' => 'Are you sure you want to remove this member from the workspace? They will lose access to all workspace resources.',
-            'action' => 'Remove member',
-        ],
-
-        'cancel_invite_modal' => [
-            'title' => 'Cancel invitation',
-            'description' => 'Are you sure you want to cancel this invitation?',
-            'action' => 'Cancel invitation',
-        ],
-
-        'roles' => [
-            'owner' => 'Owner',
-            'admin' => 'Admin',
-            'member' => 'Member',
-            'viewer' => 'Viewer',
-        ],
-
-        'errors' => [
-            'invite_exists' => 'An invite already exists for this email.',
-            'email_belongs_to_account' => 'This email already belongs to another TryPost account. Ask for a dedicated work email instead.',
-        ],
-
-        'flash' => [
-            'invite_sent' => 'Invite sent successfully!',
-            'invite_deleted' => 'Invite deleted.',
-            'member_removed' => 'Member removed successfully.',
-            'role_updated' => 'Member role updated.',
-            'wrong_email' => 'This invite is for a different email address.',
-            'already_member' => 'You are already a member of this workspace.',
-            'invite_accepted' => 'Welcome! You are now a member of the workspace.',
-            'invite_workspace_gone' => 'This invite is no longer valid because the workspace was deleted.',
-            'invite_declined' => 'Invite declined.',
-        ],
     ],
 
     'flash' => [
         'profile_updated' => 'Profile updated successfully!',
         'password_updated' => 'Password updated successfully!',
-        'workspace_updated' => 'Settings updated successfully!',
         'photo_updated' => 'Photo updated successfully!',
         'photo_deleted' => 'Photo removed successfully!',
-        'logo_updated' => 'Logo uploaded successfully!',
-        'logo_deleted' => 'Logo removed successfully!',
         'notifications_updated' => 'Notification preferences updated!',
     ],
 ];

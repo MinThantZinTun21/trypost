@@ -3,31 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
-use App\Enums\UserWorkspace\Role;
 use App\Mail\WorkspaceConnectionsDisconnected;
-use App\Mail\WorkspaceInvite;
-use App\Models\Account;
-use App\Models\Invite;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-
-test('the workspace invite renders the account and role', function () {
-    $account = Account::factory()->create(['name' => 'Acme Co']);
-    $invite = Invite::factory()->create([
-        'account_id' => $account->id,
-        'email' => 'invitee@example.com',
-        'role' => Role::Member,
-    ]);
-
-    $mailable = new WorkspaceInvite($invite);
-
-    $mailable->assertHasSubject(__('mail.workspace_invite.subject', ['account' => 'Acme Co']));
-    $mailable->assertSeeInHtml(__('mail.workspace_invite.heading'));
-    $mailable->assertSeeInHtml(__('mail.workspace_invite.expiry'));
-    $mailable->assertSeeInHtml('Acme Co');
-    $mailable->assertSeeInHtml(Role::Member->label());
-});
 
 test('the disconnected-connections digest renders every account and reason', function () {
     $user = User::factory()->create();

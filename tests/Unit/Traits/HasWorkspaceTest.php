@@ -48,40 +48,6 @@ test('user can switch workspace', function () {
     expect($user->fresh()->current_workspace_id)->toBe($workspace2->id);
 });
 
-test('user belongs to member workspace on the same account', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $member->update(['account_id' => $owner->account_id]);
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-
-    expect($member->belongsToWorkspace($workspace))->toBeTrue();
-});
-
-test('user does not belong to a workspace on another account even with a pivot', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-
-    expect($member->account_id)->not->toBe($workspace->account_id);
-    expect($member->belongsToWorkspace($workspace))->toBeFalse();
-});
-
-test('user belongs to owned workspace', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
-
-    expect($user->belongsToWorkspace($workspace))->toBeTrue();
-});
-
 test('accountWorkspaces excludes memberships on other accounts', function () {
     $sharedOwner = User::factory()->create();
     $user = User::factory()->create();
@@ -104,21 +70,25 @@ test('accountWorkspaces excludes memberships on other accounts', function () {
         ->toEqualCanonicalizing([$sharedWorkspace->id]);
 });
 
-test('user does not belong to other workspace', function () {
+test('resolveCurrentWorkspace keeps an existing current workspace', function () {
     $user = User::factory()->create();
-    $otherUser = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $user->update(['current_workspace_id' => $workspace->id]);
 
-    expect($user->belongsToWorkspace($workspace))->toBeFalse();
+    expect($user->fresh()->resolveCurrentWorkspace()->id)->toBe($workspace->id);
 });
 
-test('user can get owned workspaces count', function () {
-    $user = User::factory()->create();
-    $workspaces = Workspace::factory()->count(3)->create(['user_id' => $user->id]);
+test('resolveCurrentWorkspace falls back to the single workspace and remembers it', function () {
+    $user = User::factory()->create(['current_workspace_id' => null]);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
 
-    foreach ($workspaces as $workspace) {
-        $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
-    }
+    expect($user->resolveCurrentWorkspace()->id)->toBe($workspace->id)
+        ->and($user->fresh()->current_workspace_id)->toBe($workspace->id);
+});
 
-    expect($user->ownedWorkspacesCount())->toBe(3);
+test('resolveCurrentWorkspace returns null when the user has no workspace', function () {
+    $user = User::factory()->create(['current_workspace_id' => null]);
+
+    expect($user->resolveCurrentWorkspace())->toBeNull();
 });

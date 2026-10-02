@@ -22,7 +22,6 @@ import { store } from '@/routes/login';
 defineProps<{
     status?: string;
     email?: string | null;
-    invite?: string | null;
     devLogin?: { email: string; password: string } | null;
 }>();
 
@@ -52,12 +51,6 @@ const pageErrors = usePageErrors();
                 v-slot="{ errors, processing }"
                 class="flex flex-col gap-6"
             >
-                <input
-                    v-if="invite"
-                    type="hidden"
-                    name="invite"
-                    :value="invite"
-                />
                 <div class="grid gap-6">
                     <div class="grid gap-2">
                         <Label for="email">{{ $t('auth.login.email') }}</Label>

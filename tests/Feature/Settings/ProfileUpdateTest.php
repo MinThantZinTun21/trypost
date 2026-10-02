@@ -91,25 +91,6 @@ test('correct password must be provided to delete account', function () {
     expect($user->fresh())->not->toBeNull();
 });
 
-test('deleting account deletes members who belong to the shared account', function () {
-    [
-        'owner' => $owner,
-        'member' => $member,
-        'shared_workspaces' => [$workspace],
-    ] = strandedMemberOnSharedAccount(
-        sharedWorkspaces: 1,
-        setMemberCurrent: true,
-    );
-
-    $this
-        ->actingAs($owner)
-        ->delete(route('app.profile.destroy'), [
-            'password' => 'password',
-        ]);
-
-    expect(User::find($member->id))->toBeNull();
-});
-
 test('user can upload profile photo', function () {
     Storage::fake();
 
@@ -252,25 +233,6 @@ test('member deleting profile detaches them from workspaces', function () {
     ]);
 
     expect($workspace->fresh()->members()->where('users.id', $member->id)->exists())->toBeFalse();
-});
-
-test('owner deleting profile deletes remaining members of the account', function () {
-    [
-        'owner' => $owner,
-        'member' => $member,
-        'shared_workspaces' => [$workspace],
-    ] = strandedMemberOnSharedAccount(
-        sharedWorkspaces: 1,
-        setMemberCurrent: true,
-    );
-    $accountId = $owner->account_id;
-
-    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect(Account::find($accountId))->toBeNull();
-    expect(User::find($member->id))->toBeNull();
 });
 
 test('owner deleting profile destroys the account and cascades', function () {

@@ -6,7 +6,6 @@ namespace App\Models;
 
 use App\Models\Traits\HasMedia;
 use Database\Factories\WorkspaceFactory;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,18 +23,6 @@ class Workspace extends Model
         'user_id',
         'name',
     ];
-
-    protected $appends = ['has_logo', 'logo_url'];
-
-    public function getHasLogoAttribute(): bool
-    {
-        return $this->getFirstMedia('logo') !== null;
-    }
-
-    public function getLogoUrlAttribute(): ?string
-    {
-        return $this->getFirstMediaUrl('logo') ?: null;
-    }
 
     public function account(): BelongsTo
     {
@@ -62,18 +49,6 @@ class Workspace extends Model
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);
-    }
-
-    /**
-     * Get invites for this workspace (invites from the same account that include this workspace).
-     *
-     * @return Collection<int, Invite>
-     */
-    public function invites()
-    {
-        return Invite::where('account_id', $this->account_id)
-            ->whereJsonContains('workspaces', $this->id)
-            ->whereNull('accepted_at');
     }
 
     public function hasMember(User $user): bool

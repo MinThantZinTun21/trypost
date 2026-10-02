@@ -53,12 +53,13 @@ test('posts index shows posts for current workspace', function () {
     );
 });
 
-test('posts index redirects to create workspace if no workspace', function () {
+test('posts index falls back to the single workspace when none is current', function () {
     $this->user->update(['current_workspace_id' => null]);
 
     $response = $this->actingAs($this->user)->get(route('app.posts.index'));
 
-    $response->assertRedirect(route('app.workspaces.create'));
+    $response->assertOk();
+    expect($this->user->fresh()->current_workspace_id)->toBe($this->workspace->id);
 });
 
 // Calendar tests
@@ -175,12 +176,13 @@ test('new post from a calendar day creates a draft on that day and lands on the 
     $response->assertRedirect(route('app.posts.edit', $post));
 });
 
-test('new post redirects to workspaces.create when user has no workspace', function () {
+test('new post gives a user with no workspace one and sends them to connect accounts', function () {
     $newUser = User::factory()->create();
 
     $response = $this->actingAs($newUser)->post(route('app.posts.store'));
 
-    $response->assertRedirect(route('app.workspaces.create'));
+    $response->assertRedirect(route('app.accounts'));
+    expect($newUser->fresh()->current_workspace_id)->not->toBeNull();
 });
 
 // Store tests

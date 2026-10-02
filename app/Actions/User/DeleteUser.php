@@ -7,7 +7,6 @@ namespace App\Actions\User;
 use App\Actions\Auth\LogoutAndInvalidateSession;
 use App\Actions\Workspace\PurgeWorkspace;
 use App\Models\Account;
-use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\Request;
@@ -17,7 +16,7 @@ class DeleteUser
 {
     /**
      * Permanently delete the authenticated user and, when they own the
-     * account, the shared account.
+     * account, the account with its workspace.
      */
     public static function execute(User $user, Request $request): void
     {
@@ -27,15 +26,12 @@ class DeleteUser
         $settlement = DB::transaction(function () use ($user, $account, $isOwner): StrandedSettlement {
             $user->update(['current_workspace_id' => null]);
 
-            if ($isOwner && $account) {
-                $settlement = self::deleteOwnedAccount($user, $account);
-            } else {
-                // Members must never delete shared-account workspaces (even ones
-                // they created). They own nothing, so just detach from the shared ones.
-                $user->workspaces()->detach();
-                $settlement = StrandedSettlement::none();
-                $user->update(['account_id' => null]);
-            }
+            $settlement = $isOwner && $account
+                ? self::deleteOwnedAccount($user, $account)
+                : StrandedSettlement::none();
+
+            $user->workspaces()->detach();
+            $user->update(['account_id' => null]);
 
             return $settlement->merge(new StrandedSettlement(
                 mediaPaths: PurgeUserAccess::execute($user),
@@ -51,8 +47,8 @@ class DeleteUser
     }
 
     /**
-     * Tear down the owned shared account: workspaces, invites, and delete its
-     * members. Must run inside a DB transaction (locks the account row).
+     * Tear down the owned account and its workspaces. Must run inside a DB
+     * transaction (locks the account row).
      */
     private static function deleteOwnedAccount(User $owner, Account $account): StrandedSettlement
     {
@@ -67,25 +63,11 @@ class DeleteUser
         Workspace::query()
             ->where('account_id', $account->id)
             ->get()
-            ->each(function (Workspace $workspace) use ($owner, &$settlement): void {
-                ReassignCurrentWorkspace::awayFromWorkspace(
-                    $workspace,
-                    exceptUserId: $owner->id,
-                );
-
+            ->each(function (Workspace $workspace) use (&$settlement): void {
                 $settlement = $settlement->merge(new StrandedSettlement(
                     mediaPaths: PurgeWorkspace::execute($workspace),
                 ));
             });
-
-        $owner->workspaces()->detach();
-
-        Invite::query()->where('account_id', $account->id)->delete();
-
-        // Every non-owner member of this account is deleted with it.
-        $settlement = $settlement->merge(
-            SettleStrandedMember::forAccountMembers($account, exceptUserId: $owner->id),
-        );
 
         $owner->update(['account_id' => null]);
 

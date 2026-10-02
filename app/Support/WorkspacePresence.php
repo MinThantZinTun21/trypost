@@ -11,9 +11,7 @@ use Illuminate\Support\Facades\Cache;
  *
  * Frontend pings `markOnline()` every ~30s while any authenticated workspace
  * page is mounted; the entry lives in the application's default cache store
- * for 60 seconds. Presence is consulted by NotifyMentions to skip the email
- * channel for users that are already online in the workspace (the in-app
- * bell already covers them).
+ * for 60 seconds.
  */
 final class WorkspacePresence
 {

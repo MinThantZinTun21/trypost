@@ -3,13 +3,9 @@ import type { Component } from 'vue';
 
 import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
 
-export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
-
 export interface Workspace {
     id: string;
     name: string;
-    logo_url: string | null;
-    role?: WorkspaceRole | null;
     [key: string]: unknown;
 }
 
@@ -21,9 +17,7 @@ export interface AuthAccount {
 
 export interface Auth {
     user: User;
-    role: WorkspaceRole | null;
     currentWorkspace: Workspace | null;
-    workspaces: Workspace[];
     account: AuthAccount | null;
 }
 

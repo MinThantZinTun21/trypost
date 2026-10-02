@@ -30,13 +30,9 @@ use Inertia\Response;
 
 class PostController extends Controller
 {
-    public function index(Request $request, ?string $status = null): Response|RedirectResponse
+    public function index(Request $request, ?string $status = null): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $workspace);
 
@@ -66,13 +62,9 @@ class PostController extends Controller
         ]);
     }
 
-    public function calendar(Request $request): Response|RedirectResponse
+    public function calendar(Request $request): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $workspace);
 
@@ -126,10 +118,6 @@ class PostController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('createPost', $workspace);
 
         $socialAccounts = $workspace->socialAccounts()->active()->get();
@@ -138,9 +126,7 @@ class PostController extends Controller
             session()->flash('flash.banner', __('posts.flash.connect_first'));
             session()->flash('flash.bannerStyle', 'danger');
 
-            return $request->user()->can('manageAccounts', $workspace)
-                ? redirect()->route('app.accounts')
-                : redirect()->route('app.calendar');
+            return redirect()->route('app.accounts');
         }
 
         $post = CreatePost::execute($workspace, $request->user(), [
@@ -155,10 +141,6 @@ class PostController extends Controller
     public function show(Request $request, Post $post): Response|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $post);
 
@@ -177,10 +159,6 @@ class PostController extends Controller
     public function edit(Request $request, Post $post): Response|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $post);
 
@@ -227,7 +205,6 @@ class PostController extends Controller
             'platformConfigs' => $platformConfigs,
             'pinterestBoards' => $pinterestBoards,
             'tiktokCreatorInfos' => $tiktokCreatorInfos,
-            'authUserId' => $request->user()->id,
             'xLinkTlds' => config('trypost.platforms.x.defuse_links') ? LinkTlds::all() : [],
         ]);
     }
@@ -235,10 +212,6 @@ class PostController extends Controller
     public function update(UpdatePostRequest $request, Post $post): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('update', $post);
 
@@ -270,10 +243,6 @@ class PostController extends Controller
     public function destroy(Request $request, Post $post): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('delete', $post);
 

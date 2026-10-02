@@ -134,13 +134,15 @@ test('connect is forbidden when both linkedin capabilities are disabled', functi
         ->assertForbidden();
 });
 
-test('connect redirects to workspace creation when there is no current workspace', function () {
-    // The EnsureHasWorkspace middleware guards the connect routes.
+test('connect falls back to the single workspace when none is current', function () {
+    // The EnsureHasWorkspace middleware resolves the Owner's only workspace.
     $this->user->update(['current_workspace_id' => null]);
 
-    $this->actingAs($this->user)
-        ->get(route('app.social.linkedin.connect'))
-        ->assertRedirect(route('app.workspaces.create'));
+    $response = $this->actingAs($this->user)->get(route('app.social.linkedin.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://www.linkedin.com/oauth/v2/authorization')
+        ->and($this->user->fresh()->current_workspace_id)->toBe($this->workspace->id);
 });
 
 test('linkedin callback stores the person and organizations then redirects to the selector', function () {

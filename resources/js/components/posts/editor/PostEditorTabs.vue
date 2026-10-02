@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
-import CommentsTab from '@/components/posts/editor/CommentsTab.vue';
 import PreviewTab from '@/components/posts/editor/PreviewTab.vue';
 import ScheduleTab from '@/components/posts/editor/ScheduleTab.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -66,8 +65,6 @@ const props = defineProps<{
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
     pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     isReadOnly: boolean;
-    authUserId: string;
-    initialHighlightCommentId: string | null;
     postedAt?: string | null;
 }>();
 
@@ -87,20 +84,11 @@ const emit = defineEmits<{
     ): void;
 }>();
 
-const commentsTabRef = ref<InstanceType<typeof CommentsTab> | null>(null);
-
 const previewablePlatforms = computed(() =>
     props.post.post_platforms.filter((pp) =>
         props.selectedPlatformIds.includes(pp.id),
     ),
 );
-
-defineExpose({
-    addCommentFromBroadcast: (comment: any) =>
-        commentsTabRef.value?.addCommentFromBroadcast(comment),
-    registerMentionedUsers: (users: any) =>
-        commentsTabRef.value?.registerMentionedUsers(users),
-});
 </script>
 
 <template>
@@ -113,9 +101,6 @@ defineExpose({
             }}</TabsTrigger>
             <TabsTrigger value="schedule" data-testid="editor-tab-channels">{{
                 $t('posts.edit.tabs.channels')
-            }}</TabsTrigger>
-            <TabsTrigger value="comments">{{
-                $t('posts.edit.tabs.comments')
             }}</TabsTrigger>
         </TabsList>
 
@@ -158,15 +143,6 @@ defineExpose({
                     (id, contentType) =>
                         emit('update:platformContentType', id, contentType)
                 "
-            />
-        </TabsContent>
-
-        <TabsContent value="comments" class="flex-1 overflow-hidden">
-            <CommentsTab
-                ref="commentsTabRef"
-                :post-id="post.id"
-                :current-user-id="authUserId"
-                :highlight-comment-id="initialHighlightCommentId"
             />
         </TabsContent>
     </Tabs>

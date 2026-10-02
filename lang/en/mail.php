@@ -25,13 +25,6 @@ return [
         'button' => 'Reconnect Account',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => ':name mentioned you on TryPost',
-        'title' => ':name mentioned you',
-        'intro' => ':name mentioned you in a post comment.',
-        'button' => 'View comment',
-    ],
-
     'post_at_risk' => [
         'subject' => '{1} :count post is at risk in :workspace|[0,*] :count posts are at risk in :workspace',
         'title' => 'Posts May Fail to Publish',
@@ -74,17 +67,6 @@ return [
         'reason_changed' => 'The platform changed their authentication requirements',
         'reconnect_cta' => 'Please reconnect these accounts to continue scheduling and publishing posts.',
         'button' => 'Reconnect accounts',
-    ],
-
-    'workspace_invite' => [
-        'subject' => 'You\'ve been invited to join :account',
-        'title' => 'You\'ve been invited to join :account',
-        'preview' => 'You\'ve been invited to join :account',
-        'heading' => 'You\'ve been invited!',
-        'intro' => 'You\'ve been invited to collaborate on the <strong>:account</strong> workspace.',
-        'role' => 'You\'ve been invited as <strong>:role</strong>.',
-        'button' => 'Accept Invite',
-        'expiry' => 'This invite expires in 7 days.',
     ],
 
 ];

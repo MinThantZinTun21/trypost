@@ -44,20 +44,6 @@ test('an owner without any subscription reaches the calendar', function () {
         );
 });
 
-test('an owner can create additional workspaces without a plan limit', function () {
-    $owner = User::factory()->create();
-    Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-
-    $this->actingAs($owner)
-        ->post(route('app.workspaces.store'), ['name' => 'Second'])
-        ->assertRedirect(route('app.accounts'));
-
-    expect(Workspace::where('account_id', $owner->account_id)->count())->toBe(2);
-});
-
 test('laravel/cashier is not required by the app', function () {
     $require = json_decode((string) file_get_contents(base_path('composer.json')), true)['require'];
 

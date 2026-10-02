@@ -27,7 +27,7 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
-        $currentWorkspace = $user?->currentWorkspace?->load('media');
+        $currentWorkspace = $user?->resolveCurrentWorkspace();
         $account = $user?->account;
 
         return [
@@ -35,10 +35,7 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $user ? AuthUserResource::make($user) : null,
-                'currentWorkspace' => $currentWorkspace ? AuthWorkspaceResource::make($currentWorkspace, $user) : null,
-                'workspaces' => $user
-                    ? $user->workspaces()->with('media')->get()->map(fn ($ws) => AuthWorkspaceResource::summary($ws))
-                    : [],
+                'currentWorkspace' => $currentWorkspace ? AuthWorkspaceResource::make($currentWorkspace) : null,
                 'account' => $account ? AuthAccountResource::make($account) : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

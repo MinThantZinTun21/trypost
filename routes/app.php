@@ -6,15 +6,12 @@ use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
 use App\Http\Controllers\App\LinkPreviewController;
 use App\Http\Controllers\App\NotificationController;
-use App\Http\Controllers\App\PostCommentController;
 use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\PresenceController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
-use App\Http\Controllers\App\WorkspaceController;
-use App\Http\Controllers\App\WorkspaceInviteController;
 use App\Http\Controllers\Auth\BlueskyController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\Auth\FacebookController;
@@ -33,19 +30,12 @@ use App\Http\Controllers\Auth\YouTubeController;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use Illuminate\Support\Facades\Route;
 
-// Workspace bootstrap (auth only)
+// Home and presence (auth only)
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', function () {
         return redirect()->route('app.calendar');
     })->name('app.home');
-
-    Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
-    Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');
-
-    Route::get('workspace/members/search', [WorkspaceController::class, 'searchMembers'])
-        ->middleware('throttle:60,1')
-        ->name('app.workspace.members.search');
 
     Route::post('presence/heartbeat', [PresenceController::class, 'heartbeat'])
         ->name('app.presence.heartbeat');
@@ -127,17 +117,6 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
         ->middleware('throttle:60,1')
         ->name('app.discord.mentions');
 
-    // Workspaces
-    Route::get('workspaces', [WorkspaceController::class, 'index'])->name('app.workspaces.index');
-    Route::post('workspaces/{workspace}/switch', [WorkspaceController::class, 'switch'])->name('app.workspaces.switch');
-    Route::delete('workspaces/{workspace}', [WorkspaceController::class, 'destroy'])->name('app.workspaces.destroy');
-
-    // Workspace settings
-    Route::get('settings/workspace', [WorkspaceController::class, 'settings'])->name('app.workspace.settings');
-    Route::put('settings/workspace', [WorkspaceController::class, 'updateSettings'])->name('app.workspace.settings.update');
-    Route::post('settings/workspace/logo', [WorkspaceController::class, 'uploadLogo'])->name('app.workspace.upload-logo');
-    Route::delete('settings/workspace/logo', [WorkspaceController::class, 'deleteLogo'])->name('app.workspace.delete-logo');
-
     // Social Accounts
     Route::get('accounts', [SocialController::class, 'index'])->name('app.accounts');
     Route::put('accounts/{account}/toggle', [SocialController::class, 'toggleActive'])->name('app.accounts.toggle');
@@ -156,20 +135,6 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     Route::post('posts/link-preview', LinkPreviewController::class)
         ->middleware('throttle:30,1')
         ->name('app.posts.link-preview');
-
-    // Post Comments
-    Route::get('posts/{post}/comments', [PostCommentController::class, 'index'])->name('app.posts.comments.index');
-    Route::post('posts/{post}/comments', [PostCommentController::class, 'store'])->name('app.posts.comments.store');
-    Route::put('posts/{post}/comments/{comment}', [PostCommentController::class, 'update'])->name('app.posts.comments.update');
-    Route::delete('posts/{post}/comments/{comment}', [PostCommentController::class, 'destroy'])->name('app.posts.comments.destroy');
-    Route::post('posts/{post}/comments/{comment}/react', [PostCommentController::class, 'react'])->name('app.posts.comments.react');
-
-    // Members
-    Route::get('settings/workspace/members', [WorkspaceInviteController::class, 'index'])->name('app.members');
-    Route::post('settings/workspace/members/invites', [WorkspaceInviteController::class, 'store'])->name('app.invites.store');
-    Route::delete('settings/workspace/members/invites/{invite}', [WorkspaceInviteController::class, 'destroy'])->name('app.invites.destroy');
-    Route::delete('settings/workspace/members/{user}', [WorkspaceInviteController::class, 'removeMember'])->name('app.members.remove');
-    Route::put('settings/workspace/members/{user}/role', [WorkspaceInviteController::class, 'updateRole'])->name('app.members.update-role');
 
     // Media uploads (chunked, from the post composer)
     Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');

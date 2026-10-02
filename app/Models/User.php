@@ -98,7 +98,6 @@ class User extends Authenticatable
             NotificationType::PostPublished => $preference->post_published,
             NotificationType::PostFailed, NotificationType::PostPartiallyPublished => $preference->post_failed,
             NotificationType::AccountDisconnected, NotificationType::PostAtRisk => $preference->account_disconnected,
-            NotificationType::MentionedInComment => $preference->mentioned_in_comment ?? true,
             default => true,
         };
     }

@@ -32,29 +32,15 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
-import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
+import UserMenuContent from '@/components/UserMenuContent.vue';
 import { useCreatePost } from '@/composables/useCreatePost';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, calendar } from '@/routes/app';
 import type { NavItem, User } from '@/types';
 
-interface Workspace {
-    id: string;
-    name: string;
-    logo_url: string | null;
-}
-
 const page = usePage();
 const user = computed(() => page.props.auth.user as User);
-const currentWorkspace = computed<Workspace | null>(
-    () => page.props.auth.currentWorkspace as Workspace | null,
-);
-const workspaces = computed<Workspace[]>(
-    () => page.props.auth.workspaces as Workspace[],
-);
+const hasWorkspace = computed(() => page.props.auth.currentWorkspace !== null);
 
-const { canCreatePost, canManageAccounts, canCreateWorkspace } =
-    useWorkspaceRole();
 const { isMobile } = useSidebar();
 const { createPost, creatingPost } = useCreatePost();
 
@@ -95,15 +81,11 @@ const postsNavItems = computed<NavItem[]>(() => [
 ]);
 
 const workspaceNavItems = computed<NavItem[]>(() => [
-    ...(canManageAccounts.value
-        ? [
-              {
-                  title: trans('sidebar.workspace.connections'),
-                  href: accounts.url(),
-                  icon: IconAffiliate,
-              },
-          ]
-        : []),
+    {
+        title: trans('sidebar.workspace.connections'),
+        href: accounts.url(),
+        icon: IconAffiliate,
+    },
 ]);
 </script>
 
@@ -119,11 +101,11 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                                     size="lg"
                                     class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                                     data-test="sidebar-menu-button"
-                                    data-testid="sidebar-workspace-menu"
+                                    data-testid="sidebar-user-menu"
                                 >
                                     <Avatar
-                                        :src="currentWorkspace?.logo_url"
-                                        :name="currentWorkspace?.name ?? '?'"
+                                        :src="user.photo_url"
+                                        :name="user.name"
                                         class="h-8 w-8 shrink-0 rounded-md border-2 border-foreground"
                                         fallback-class="bg-violet-100 text-violet-700 font-bold"
                                     />
@@ -131,10 +113,7 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                                         class="grid min-w-0 flex-1 text-left text-sm leading-tight"
                                     >
                                         <span class="truncate font-semibold">
-                                            {{
-                                                currentWorkspace?.name ??
-                                                $t('sidebar.select_workspace')
-                                            }}
+                                            {{ user.name }}
                                         </span>
                                     </div>
                                     <component
@@ -153,23 +132,18 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                                 :side="isMobile ? 'bottom' : 'right'"
                                 :side-offset="4"
                             >
-                                <WorkspaceMenuContent
-                                    :user="user"
-                                    :current-workspace="currentWorkspace"
-                                    :workspaces="workspaces"
-                                    :can-create-workspace="canCreateWorkspace"
-                                />
+                                <UserMenuContent :user="user" />
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        <NotificationBell v-if="currentWorkspace" />
+                        <NotificationBell v-if="hasWorkspace" />
                     </div>
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarHeader>
 
         <SidebarContent class="gap-px">
-            <div v-if="currentWorkspace && canCreatePost" class="px-2 py-2">
+            <div v-if="hasWorkspace" class="px-2 py-2">
                 <Button
                     class="w-full"
                     :disabled="creatingPost"
@@ -179,14 +153,14 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                 </Button>
             </div>
 
-            <NavMain v-if="currentWorkspace" :items="mainNavItems" />
+            <NavMain v-if="hasWorkspace" :items="mainNavItems" />
             <NavMain
-                v-if="currentWorkspace"
+                v-if="hasWorkspace"
                 :items="postsNavItems"
                 :label="$t('sidebar.groups.posts')"
             />
             <NavMain
-                v-if="currentWorkspace && workspaceNavItems.length"
+                v-if="hasWorkspace"
                 :items="workspaceNavItems"
                 :label="$t('sidebar.groups.workspace')"
             />

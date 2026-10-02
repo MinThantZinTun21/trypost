@@ -17,7 +17,6 @@ import {
     usePostCompliance,
 } from '@/composables/usePostCompliance';
 import { isActivelyPublishing } from '@/composables/usePostStatus';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -90,10 +89,7 @@ const props = defineProps<{
     platformConfigs: Record<string, any>;
     pinterestBoards: Record<string, PinterestBoardsPayload>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
-    authUserId: string;
 }>();
-
-const { canCreatePost } = useWorkspaceRole();
 
 const post = computed(() => props.post);
 const READONLY_STATUSES: readonly string[] = [
@@ -109,9 +105,7 @@ const isPublishing = computed(() =>
     isActivelyPublishing(post.value.status, post.value.post_platforms),
 );
 const isScheduled = computed(() => post.value.status === PostStatus.Scheduled);
-const isLocked = computed(
-    () => isReadOnly.value || isScheduled.value || !canCreatePost.value,
-);
+const isLocked = computed(() => isReadOnly.value || isScheduled.value);
 
 // Content
 const content = ref(post.value.content || '');
@@ -192,24 +186,22 @@ const queryParams =
         : null;
 const initialTabFromQuery = (() => {
     const tab = queryParams?.get('tab');
-    if (['preview', 'schedule', 'comments'].includes(tab ?? '')) {
+    if (['preview', 'schedule'].includes(tab ?? '')) {
         return tab as string;
     }
-    return canCreatePost.value ? 'schedule' : 'comments';
+    return 'schedule';
 })();
-const initialHighlightCommentId = queryParams?.get('comment') ?? null;
 const activeTab = ref(initialTabFromQuery);
 
 // On mobile a single switcher (PostEditorMobileNav) drives which panel shows;
 // 'compose' reveals the composer, the rest reveal the tabs panel. It writes into
 // the shared `activeTab` (mapping 'channels' to the existing 'schedule' tab value)
 // so the tabs panel stays the single source of truth.
-type MobileView = 'compose' | 'channels' | 'preview' | 'comments';
+type MobileView = 'compose' | 'channels' | 'preview';
 const mobileView = ref<MobileView>('compose');
 const mobileViewToTab: Record<Exclude<MobileView, 'compose'>, string> = {
     channels: 'schedule',
     preview: 'preview',
-    comments: 'comments',
 };
 watch(mobileView, (view) => {
     if (view !== 'compose') {
@@ -218,7 +210,6 @@ watch(mobileView, (view) => {
 });
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
-const editorTabsRef = ref<InstanceType<typeof PostEditorTabs> | null>(null);
 
 const snapToCompatibleVariant = (platformId: string) => {
     const pp = post.value.post_platforms.find((p) => p.id === platformId);
@@ -366,14 +357,6 @@ const unschedulePost = () => {
 usePostEcho(post.value.id, '.post.platform.status.updated', () => {
     router.reload({ only: ['post'] });
 });
-
-// Echo: listen for real-time comments
-usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
-    if (e.mentioned_users) {
-        editorTabsRef.value?.registerMentionedUsers(e.mentioned_users);
-    }
-    editorTabsRef.value?.addCommentFromBroadcast(e.comment);
-});
 </script>
 
 <template>
@@ -387,7 +370,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
             <div :class="isScheduled ? 'shrink-0' : 'hidden shrink-0 lg:block'">
                 <PostEditorHeader
                     :post="post"
-                    :can-edit="canCreatePost"
                     :is-saving="isSaving"
                     :show-saved="showSaved"
                     :is-submitting="isSubmitting"
@@ -448,7 +430,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             v-model:media="media"
                             :platform-limits="platformLimits"
                             :media-issues="mediaIssues"
-                            :read-only="!canCreatePost"
                         />
                     </div>
 
@@ -457,7 +438,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                         :class="{ 'hidden lg:block': mobileView === 'compose' }"
                     >
                         <PostEditorTabs
-                            ref="editorTabsRef"
                             v-model:active-tab="activeTab"
                             :post="post"
                             :workspace-id="workspace.id"
@@ -471,10 +451,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             :tiktok-creator-infos="tiktokCreatorInfos"
                             :pinterest-boards="pinterestBoards"
                             :is-read-only="isLocked"
-                            :auth-user-id="authUserId"
-                            :initial-highlight-comment-id="
-                                initialHighlightCommentId
-                            "
                             :posted-at="scheduledDateTime || null"
                             @toggle-platform="togglePlatform"
                             @update:platform-meta="updatePlatformMeta"
@@ -489,7 +465,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
             <PostEditorActionBar
                 :is-read-only="isReadOnly"
                 :is-scheduled="isScheduled"
-                :can-edit="canCreatePost"
                 :is-saving="isSaving"
                 :is-submitting="isSubmitting"
                 :is-post-action-disabled="isPostActionDisabled"

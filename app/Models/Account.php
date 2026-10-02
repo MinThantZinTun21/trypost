@@ -35,9 +35,4 @@ class Account extends Model
     {
         return $this->hasMany(Workspace::class);
     }
-
-    public function invites(): HasMany
-    {
-        return $this->hasMany(Invite::class);
-    }
 }

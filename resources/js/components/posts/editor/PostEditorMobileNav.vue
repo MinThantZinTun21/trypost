@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 import { PostStatus } from '@/types/post';
 
-type MobileView = 'compose' | 'channels' | 'preview' | 'comments';
+type MobileView = 'compose' | 'channels' | 'preview';
 
 const props = defineProps<{
     status: string;
@@ -15,7 +15,6 @@ const items: { key: MobileView; label: string }[] = [
     { key: 'compose', label: 'posts.edit.tabs.compose' },
     { key: 'channels', label: 'posts.edit.tabs.channels' },
     { key: 'preview', label: 'posts.edit.tabs.preview' },
-    { key: 'comments', label: 'posts.edit.tabs.comments' },
 ];
 
 // When not scheduled the header is hidden on mobile and this nav is the top bar,
@@ -26,7 +25,7 @@ const isTopBar = computed(() => props.status !== PostStatus.Scheduled);
 <template>
     <div
         data-testid="editor-mobile-nav"
-        class="flex shrink-0 gap-1 overflow-x-auto border-b-2 border-foreground bg-card py-3 pr-2 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        class="flex shrink-0 [scrollbar-width:none] gap-1 overflow-x-auto border-b-2 border-foreground bg-card py-3 pr-2 lg:hidden [&::-webkit-scrollbar]:hidden"
         :class="isTopBar ? 'pl-16' : 'pl-2'"
     >
         <button
@@ -35,9 +34,11 @@ const isTopBar = computed(() => props.status !== PostStatus.Scheduled);
             type="button"
             :data-testid="`editor-nav-${item.key}`"
             class="inline-flex h-10 shrink-0 items-center rounded-md border-2 px-3 text-sm font-semibold transition-colors"
-            :class="activeView === item.key
-                ? 'border-foreground bg-violet-100 text-foreground'
-                : 'border-transparent text-foreground/60 hover:text-foreground'"
+            :class="
+                activeView === item.key
+                    ? 'border-foreground bg-violet-100 text-foreground'
+                    : 'border-transparent text-foreground/60 hover:text-foreground'
+            "
             @click="activeView = item.key"
         >
             {{ $t(item.label) }}

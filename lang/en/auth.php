@@ -29,20 +29,4 @@ return [
         'submit' => 'Log in',
     ],
 
-    'accept_invite' => [
-        'page_title' => 'Accept Invite',
-        'title' => "You've been invited!",
-        'description' => "You've been invited to join the :workspace workspace.",
-        'workspace' => 'Workspace',
-        'your_role' => 'Your role',
-        'email' => 'Email',
-        'accept' => 'Accept Invite',
-        'decline' => 'Decline Invite',
-        'login_prompt' => 'Log in to accept this invite.',
-        'log_in' => 'Log in',
-        'expired_title' => 'This invite is no longer valid',
-        'expired_description' => 'The workspace for this invite was deleted. Ask the account owner for a new invite if you still need access.',
-        'expired_action' => 'Go to home',
-    ],
-
 ];

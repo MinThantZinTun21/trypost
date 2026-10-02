@@ -77,11 +77,6 @@ class Post extends Model
         return $this->hasMany(PostPlatform::class)->orderBy('id');
     }
 
-    public function comments(): HasMany
-    {
-        return $this->hasMany(PostComment::class);
-    }
-
     public function scopeScheduled(Builder $query): Builder
     {
         return $query->where('status', PostStatus::Scheduled);

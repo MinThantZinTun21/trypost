@@ -227,12 +227,13 @@ test('an unsubscribed account can disconnect without an active subscription', fu
     expect(SocialAccount::find($account->id))->toBeNull();
 });
 
-test('accounts index redirects if no workspace', function () {
+test('accounts index falls back to the single workspace when none is current', function () {
     $this->user->update(['current_workspace_id' => null]);
 
     $response = $this->actingAs($this->user)->get(route('app.accounts'));
 
-    $response->assertRedirect(route('app.workspaces.create'));
+    $response->assertOk();
+    expect($this->user->fresh()->current_workspace_id)->toBe($this->workspace->id);
 });
 
 // Disconnect tests
