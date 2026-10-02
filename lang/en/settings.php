@@ -13,7 +13,7 @@ return [
         ],
         'workspace' => [
             'title' => 'Workspace',
-            'description' => 'Configure your workspace, brand, members, and API keys.',
+            'description' => 'Configure your workspace, brand, and members.',
         ],
         'account' => [
             'title' => 'Account',
@@ -128,8 +128,6 @@ return [
             'workspace' => 'Workspace',
             'brand' => 'Brand',
             'users' => 'Members',
-            'api_keys' => 'API Keys',
-            'mcp' => 'MCP',
         ],
         'title' => 'Workspace settings',
         'logo_heading' => 'Workspace logo',
@@ -334,51 +332,5 @@ return [
         'logo_updated' => 'Logo uploaded successfully!',
         'logo_deleted' => 'Logo removed successfully!',
         'notifications_updated' => 'Notification preferences updated!',
-    ],
-
-    'api_keys' => [
-        'title' => 'API Keys',
-        'page_title' => 'API Keys',
-        'heading' => 'API Keys',
-        'description' => 'Manage API keys for programmatic access to your workspace.',
-        'create' => 'Create API Key',
-        'copy' => 'Copy',
-        'new_token_message' => 'Your new API key has been created. Copy it now — you won\'t be able to see it again.',
-        'table' => [
-            'name' => 'Name',
-            'key' => 'Key',
-            'status' => 'Status',
-            'expires' => 'Expires',
-            'last_used' => 'Last Used',
-            'never' => 'Never',
-        ],
-        'actions' => [
-            'copy_id' => 'Copy API Key ID',
-            'copy_id_success' => 'API Key ID copied to clipboard',
-            'delete' => 'Delete',
-        ],
-        'empty' => [
-            'title' => 'No API keys yet',
-            'description' => 'Create an API key to access your workspace programmatically.',
-        ],
-        'delete_modal' => [
-            'title' => 'Delete API key',
-            'description' => 'Are you sure you want to delete this API key? Any applications using this key will lose access immediately.',
-            'action' => 'Delete API key',
-        ],
-        'create_dialog' => [
-            'title' => 'Create API Key',
-            'description' => 'Create a new API key for programmatic access to your workspace.',
-            'name' => 'Name',
-            'name_placeholder' => 'e.g. Production API Key',
-            'expires' => 'Expiration date (optional)',
-            'expires_placeholder' => 'No expiration',
-            'submit' => 'Create',
-            'cancel' => 'Cancel',
-        ],
-        'flash' => [
-            'created' => 'API key created successfully!',
-            'deleted' => 'API key deleted successfully!',
-        ],
     ],
 ];

@@ -18,7 +18,6 @@ return [
         'labels' => 'Labels',
         'assets' => 'Assets',
         'webhooks' => 'Webhooks',
-        'mcp' => 'MCP',
     ],
     'groups' => [
         'posts' => 'Posts',

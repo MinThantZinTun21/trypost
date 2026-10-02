@@ -38,7 +38,7 @@ test('handle captures post.created with created_via and account group', function
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'created_via' => CreatedVia::Api,
+        'created_via' => CreatedVia::Repurpose,
     ]);
 
     (new TrackPost((string) $post->id))->handle(app(PostHogService::class));
@@ -49,7 +49,7 @@ test('handle captures post.created with created_via and account group', function
             && $job->payload['distinctId'] === (string) $this->user->id
             && $job->payload['properties']['post_id'] === (string) $post->id
             && $job->payload['properties']['workspace_id'] === (string) $this->workspace->id
-            && $job->payload['properties']['created_via'] === CreatedVia::Api->value
+            && $job->payload['properties']['created_via'] === CreatedVia::Repurpose->value
             && $job->payload['properties']['$groups']['account'] === (string) $this->account->id;
     });
 });
@@ -60,7 +60,7 @@ test('handle falls back to account owner when post has no user', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => null,
-        'created_via' => CreatedVia::Mcp,
+        'created_via' => CreatedVia::Web,
     ]);
 
     (new TrackPost((string) $post->id))->handle(app(PostHogService::class));
@@ -68,7 +68,7 @@ test('handle falls back to account owner when post has no user', function () {
     Queue::assertPushed(
         SendEvent::class,
         fn ($job) => $job->payload['distinctId'] === (string) $this->user->id
-            && $job->payload['properties']['created_via'] === CreatedVia::Mcp->value,
+            && $job->payload['properties']['created_via'] === CreatedVia::Web->value,
     );
 });
 

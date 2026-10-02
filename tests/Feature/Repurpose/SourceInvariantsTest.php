@@ -7,22 +7,23 @@ use App\Actions\Repurpose\UpdateRepurpose;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
-use App\Mcp\Servers\TryPostServer;
-use App\Mcp\Tools\Repurpose\CreateRepurposeTool;
-use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
+use App\Enums\UserWorkspace\Role;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
 use App\Support\Repurpose\SourceIsFree;
 use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
-
-    ['plain_token' => $token, 'workspace' => $this->workspace] = createApiTestToken();
-
-    $this->user = $this->workspace->owner;
-    $this->headers = ['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'];
+    $this->user = User::factory()->create();
+    $this->workspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->source = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Instagram]);
     $this->other = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Instagram]);
@@ -37,7 +38,7 @@ function selfDestination(SocialAccount $account): array
     ];
 }
 
-test('the source cannot be a destination of itself on any surface', function () {
+test('the source cannot be a destination of itself in the app', function () {
     $repurpose = Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,
         'source_social_account_id' => $this->source->id,
@@ -49,33 +50,10 @@ test('the source cannot be a destination of itself on any surface', function () 
         ->put(route('app.repurposes.update', $repurpose), $payload)
         ->assertSessionHasErrors(['destinations.0.social_account_id' => __('repurposes.errors.destination_is_source')]);
 
-    $this->withHeaders($this->headers)
-        ->putJson(route('api.repurposes.update', $repurpose), $payload)
-        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
-        ->assertJsonValidationErrors(['destinations.0.social_account_id']);
-
-    $this->withHeaders($this->headers)
-        ->postJson(route('api.repurposes.store'), [
-            'source_social_account_id' => $this->other->id,
-            'destinations' => [selfDestination($this->other)],
-        ])
-        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
-
-    TryPostServer::actingAs($this->user)
-        ->tool(UpdateRepurposeTool::class, ['repurpose_id' => $repurpose->id, ...$payload])
-        ->assertHasErrors();
-
-    TryPostServer::actingAs($this->user)
-        ->tool(CreateRepurposeTool::class, [
-            'source_social_account_id' => $this->other->id,
-            'destinations' => [selfDestination($this->other)],
-        ])
-        ->assertHasErrors();
-
     expect($repurpose->fresh()->destinations)->toBe([]);
 });
 
-test('a source and format already watched is refused on any surface', function () {
+test('a source and format already watched is refused in the app', function () {
     Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,
         'source_social_account_id' => $this->other->id,
@@ -93,23 +71,6 @@ test('a source and format already watched is refused on any surface', function (
     $this->actingAs($this->user)
         ->put(route('app.repurposes.update', $mine), $payload)
         ->assertSessionHasErrors(['source_social_account_id' => __('repurposes.errors.source_already_used')]);
-
-    $this->withHeaders($this->headers)
-        ->putJson(route('api.repurposes.update', $mine), $payload)
-        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
-        ->assertJsonValidationErrors(['source_social_account_id']);
-
-    $this->withHeaders($this->headers)
-        ->postJson(route('api.repurposes.store'), $payload)
-        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
-
-    TryPostServer::actingAs($this->user)
-        ->tool(UpdateRepurposeTool::class, ['repurpose_id' => $mine->id, ...$payload])
-        ->assertHasErrors();
-
-    TryPostServer::actingAs($this->user)
-        ->tool(CreateRepurposeTool::class, $payload)
-        ->assertHasErrors();
 
     expect($mine->fresh()->source_social_account_id)->toBe($this->source->id);
 });

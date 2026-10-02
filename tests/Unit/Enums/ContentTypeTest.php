@@ -65,21 +65,6 @@ test('media rules for frontend expose the full editor rule set keyed by content 
     expect($rules['x_post']['accepts_mov'])->toBeTrue();
 });
 
-test('listing array mirrors media capability fields for api and mcp', function () {
-    $listing = ContentType::PinterestCarousel->toListingArray();
-
-    expect($listing)->toMatchArray([
-        'value' => 'pinterest_carousel',
-        'max_media_count' => 5,
-        'min_media_count' => 2,
-        'requires_media' => true,
-        'accept_images' => true,
-        'accept_videos' => false,
-    ]);
-
-    expect(ContentType::InstagramReel->toListingArray()['accept_images'])->toBeFalse();
-});
-
 test('media rules reuse enum capability helpers', function () {
     $rules = ContentType::InstagramStory->mediaRules();
 

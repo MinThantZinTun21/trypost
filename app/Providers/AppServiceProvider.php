@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Listeners\StripeEventListener;
-use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\AiUsageLog;
 use App\Models\Invite;
@@ -35,16 +34,13 @@ use App\Socialite\LinkedInPageExtendSocialite;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Cashier\Cashier;
@@ -81,7 +77,6 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureMorphMap();
         $this->configurePostHog();
-        $this->configureRateLimiting();
         $this->configureSocialite();
         $this->configureStripeWebhooks();
 
@@ -94,7 +89,6 @@ class AppServiceProvider extends ServiceProvider
     protected function configureMorphMap(): void
     {
         Relation::enforceMorphMap([
-            'accessToken' => AccessToken::class,
             'account' => Account::class,
             'aiUsageLog' => AiUsageLog::class,
             'invite' => Invite::class,
@@ -129,44 +123,6 @@ class AppServiceProvider extends ServiceProvider
         PostHog::init(config('services.posthog.api_key'), [
             'host' => config('services.posthog.host'),
         ]);
-    }
-
-    protected function configureRateLimiting(): void
-    {
-        RateLimiter::for('api', function (Request $request) {
-            if ($this->app->environment('local')) {
-                return Limit::none();
-            }
-
-            return Limit::perMinute(60)->by($request->workspace?->id ?: $request->ip());
-        });
-
-        RateLimiter::for(
-            'mcp-oauth-registration',
-            fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip()),
-        );
-
-        // Signed media uploads (api.uploads.store). MCP hosts share egress IPs
-        // across tenants — key by workspace_id from the signed URL, with a high
-        // IP backstop so one client cannot flood every workspace.
-        RateLimiter::for('signed-uploads', function (Request $request) {
-            $limits = [
-                Limit::perMinute((int) config('trypost.media.signed_upload_per_ip_per_minute'))
-                    ->by("ip:{$request->ip()}"),
-            ];
-
-            $workspaceId = $request->query('workspace_id');
-
-            if (filled($workspaceId)) {
-                array_unshift(
-                    $limits,
-                    Limit::perMinute((int) config('trypost.media.signed_upload_per_workspace_per_minute'))
-                        ->by("workspace:{$workspaceId}"),
-                );
-            }
-
-            return $limits;
-        });
     }
 
     protected function configureStripeWebhooks(): void

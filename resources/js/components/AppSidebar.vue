@@ -12,7 +12,6 @@ import {
     IconHash,
     IconPencil,
     IconPhoto,
-    IconPlugConnected,
     IconRepeat,
     IconSelector,
     IconTag,
@@ -51,7 +50,6 @@ import { accounts, analytics, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
-import { index as mcp } from '@/routes/app/mcp';
 import { index as repurposes } from '@/routes/app/repurposes';
 import { index as signatures } from '@/routes/app/signatures';
 import { index as webhooks } from '@/routes/app/webhooks';
@@ -175,11 +173,6 @@ const workspaceNavItems = computed<NavItem[]>(() => [
               },
           ]
         : []),
-    {
-        title: trans('sidebar.workspace.mcp'),
-        href: mcp.url(),
-        icon: IconPlugConnected,
-    },
 ]);
 </script>
 

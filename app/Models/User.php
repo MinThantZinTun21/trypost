@@ -20,13 +20,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
-use Laravel\Passport\Contracts\OAuthenticatable;
-use Laravel\Passport\HasApiTokens;
 
-class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasAccount, HasApiTokens, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
+    use HasAccount, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
 
     /**
      * @var list<string>

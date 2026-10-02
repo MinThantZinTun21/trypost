@@ -39,8 +39,7 @@ test('execute persists created_via for each entry point', function (CreatedVia $
     expect($post->fresh()->created_via)->toBe($createdVia);
 })->with([
     'web' => CreatedVia::Web,
-    'mcp' => CreatedVia::Mcp,
-    'api' => CreatedVia::Api,
+    'repurpose' => CreatedVia::Repurpose,
 ]);
 
 test('execute leaves created_via null when omitted', function () {

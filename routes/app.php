@@ -3,13 +3,11 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\App\AnalyticsController;
-use App\Http\Controllers\App\ApiKeyController;
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\BillingController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
 use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
-use App\Http\Controllers\App\McpSettingsController;
 use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostAiCreateController;
 use App\Http\Controllers\App\PostAiGenerateController;
@@ -253,15 +251,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('labels', [WorkspaceLabelController::class, 'store'])->name('app.labels.store');
     Route::put('labels/{label}', [WorkspaceLabelController::class, 'update'])->name('app.labels.update');
     Route::delete('labels/{label}', [WorkspaceLabelController::class, 'destroy'])->name('app.labels.destroy');
-
-    // API Keys
-    Route::get('settings/workspace/api-keys', [ApiKeyController::class, 'index'])->name('app.api-keys.index');
-    Route::post('settings/workspace/api-keys', [ApiKeyController::class, 'store'])->name('app.api-keys.store');
-    Route::delete('settings/workspace/api-keys/{tokenId}', [ApiKeyController::class, 'destroy'])->name('app.api-keys.destroy');
-
-    // MCP
-    Route::get('settings/workspace/mcp', [McpSettingsController::class, 'index'])->name('app.mcp.index');
-    Route::delete('settings/workspace/mcp/{client}', [McpSettingsController::class, 'disconnect'])->name('app.mcp.disconnect');
 
     // Repurpose
     Route::get('repurposes', [RepurposeController::class, 'index'])->name('app.repurposes.index');

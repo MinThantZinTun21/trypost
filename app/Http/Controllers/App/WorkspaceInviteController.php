@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\AccessToken\RevokeWorkspaceApiKeys;
 use App\Actions\Invite\CreateInvite;
 use App\Actions\Invite\DeleteInvite;
 use App\Actions\Invite\RemoveMember;
@@ -172,8 +171,6 @@ class WorkspaceInviteController extends Controller
         $workspace->members()->updateExistingPivot($userId, [
             'role' => $role->value,
         ]);
-
-        RevokeWorkspaceApiKeys::forUserUnlessAdmin($userId, $workspace, $role);
 
         session()->flash('flash.banner', __('settings.members.flash.role_updated'));
         session()->flash('flash.bannerStyle', 'success');

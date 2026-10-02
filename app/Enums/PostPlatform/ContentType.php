@@ -192,8 +192,7 @@ enum ContentType: string
      * TikTok's `creator_info` may lower the 10 min ceiling per account; the
      * editor reads it per account and TikTok rejects longer uploads itself.
      *
-     * Single source of truth for web (via Inertia shared props), REST API,
-     * and MCP content-type listings.
+     * Single source of truth for the web editor (via Inertia shared props).
      */
     public function maxVideoDurationSec(): ?int
     {
@@ -390,51 +389,6 @@ enum ContentType: string
             'aspect_ratio_min' => $bounds['min'] ?? null,
             'aspect_ratio_max' => $bounds['max'] ?? null,
             'auto_fits_image' => $this->autoFitsImage(),
-        ];
-    }
-
-    /**
-     * Content-type row for REST / MCP listings (agents + API clients).
-     * Keep in sync with mediaRules() capability fields — do not omit mins.
-     *
-     * @return array{
-     *     value: string,
-     *     label: string,
-     *     description: string,
-     *     max_media_count: int,
-     *     min_media_count: int,
-     *     requires_media: bool,
-     *     accept_images: bool,
-     *     accept_videos: bool,
-     *     accept_documents: bool,
-     *     accepts_gif: bool,
-     *     accepts_mov: bool,
-     *     forbids_mixed_media: bool,
-     *     max_video_duration_sec: int|null,
-     *     max_image_bytes: int|null,
-     *     max_video_bytes: int|null,
-     *     max_document_bytes: int|null
-     * }
-     */
-    public function toListingArray(): array
-    {
-        return [
-            'value' => $this->value,
-            'label' => $this->label(),
-            'description' => $this->description(),
-            'max_media_count' => $this->maxMediaCount(),
-            'min_media_count' => $this->minMediaCount(),
-            'requires_media' => $this->requiresMedia(),
-            'accept_images' => $this->supportsImage(),
-            'accept_videos' => $this->supportsVideo(),
-            'accept_documents' => $this->supportsDocument(),
-            'accepts_gif' => $this->acceptsGif(),
-            'accepts_mov' => $this->acceptsMov(),
-            'forbids_mixed_media' => ! $this->supportsMixedMedia(),
-            'max_video_duration_sec' => $this->maxVideoDurationSec(),
-            'max_image_bytes' => $this->maxImageBytes(),
-            'max_video_bytes' => $this->maxVideoBytes(),
-            'max_document_bytes' => $this->maxDocumentBytes(),
         ];
     }
 

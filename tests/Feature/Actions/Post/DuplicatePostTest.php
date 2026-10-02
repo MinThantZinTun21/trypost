@@ -22,7 +22,7 @@ test('execute clones the post as a draft created via web', function () {
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,
         'content' => 'Original content',
-        'created_via' => CreatedVia::Api,
+        'created_via' => CreatedVia::Repurpose,
         'status' => PostStatus::Published,
     ]);
 

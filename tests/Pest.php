@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
 use App\Enums\UserWorkspace\Role;
-use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
 
@@ -74,60 +71,6 @@ expect()->extend('toBeOne', function () {
 */
 
 /**
- * Issue a real Passport personal access token bound to a workspace and return
- * the plain JWT string. Use the returned token in `Authorization: Bearer ...`
- * to exercise the auth:api + workspace.token middleware stack.
- */
-function passportToken(User $user, Workspace $workspace, array $scopes = []): string
-{
-    $result = $user->createToken('Test', $scopes);
-
-    AccessToken::find($result->token->id)
-        ->forceFill(['workspace_id' => $workspace->id])
-        ->saveQuietly();
-
-    return $result->accessToken;
-}
-
-/**
- * Create a workspace + owner + Passport token suitable for hitting the public
- * API. Drop-in replacement for the legacy `createXApiToken` helpers.
- *
- * @param  array{workspace?: Workspace}  $overrides
- * @return array{plain_token: string, workspace: Workspace, user: User}
- */
-function createApiTestToken(array $overrides = []): array
-{
-    $workspace = data_get($overrides, 'workspace');
-
-    if (! $workspace) {
-        $user = User::factory()->create();
-        $workspace = Workspace::factory()->create([
-            'account_id' => $user->account_id,
-            'user_id' => $user->id,
-        ]);
-        $workspace->members()->attach($user->id, [
-            'role' => Role::Admin->value,
-        ]);
-        $user->update(['current_workspace_id' => $workspace->id]);
-    } else {
-        $user = $workspace->owner ?? User::factory()->create([
-            'account_id' => $workspace->account_id,
-        ]);
-
-        if ($workspace->account && $workspace->account->owner_id !== $user->id) {
-            $workspace->account->update(['owner_id' => $user->id]);
-        }
-    }
-
-    return [
-        'plain_token' => passportToken($user, $workspace),
-        'workspace' => $workspace,
-        'user' => $user,
-    ];
-}
-
-/**
  * Create an account on the Workspace plan with an active subscription on the
  * given Stripe price, plus N workspaces. Used by the billing-cycle tests.
  *
@@ -170,102 +113,6 @@ function subscribeAccount(Account $account): void
         'stripe_status' => 'active',
         'stripe_price' => 'price_123',
     ]);
-}
-
-/**
- * Insert an OAuth client suitable for MCP connection tests.
- */
-function mcpOauthClient(string $name = 'My Agent'): string
-{
-    $id = (string) Str::uuid();
-
-    DB::table('oauth_clients')->insert([
-        'id' => $id,
-        'name' => $name,
-        'secret' => null,
-        'provider' => null,
-        'redirect_uris' => '[]',
-        'grant_types' => json_encode(['authorization_code', 'refresh_token']),
-        'revoked' => false,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    return $id;
-}
-
-/**
- * @return array<string, string>
- */
-function oauthAuthorizeQuery(
-    string $clientId,
-    string $redirectUri = 'https://client.example/callback',
-    string $prompt = 'consent',
-): array {
-    $verifier = Str::random(64);
-    $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
-
-    return [
-        'client_id' => $clientId,
-        'redirect_uri' => $redirectUri,
-        'response_type' => 'code',
-        'scope' => 'mcp:use',
-        'state' => 'test-state',
-        'code_challenge' => $challenge,
-        'code_challenge_method' => 'S256',
-        'prompt' => $prompt,
-    ];
-}
-
-/**
- * Create an active OAuth access token for MCP connection tests.
- *
- * @param  list<string>  $scopes
- */
-function mcpAccessToken(
-    User $user,
-    string $clientId,
-    ?Workspace $workspace = null,
-    array $scopes = ['mcp:use'],
-): AccessToken {
-    $token = new AccessToken;
-    $token->forceFill([
-        'id' => Str::random(80),
-        'user_id' => $user->id,
-        'client_id' => $clientId,
-        'workspace_id' => $workspace?->id,
-        'name' => 'MCP',
-        'scopes' => $scopes,
-        'revoked' => false,
-        'expires_at' => now()->addYear(),
-    ])->save();
-
-    return $token->refresh();
-}
-
-/**
- * Issue a Passport token, attach it to a dedicated MCP OAuth client, and bind
- * it to a workspace — the post-#222 shape used by middleware / MCP endpoint tests.
- *
- * @param  list<string>  $scopes
- * @return array{token: AccessToken, plain_token: string}
- */
-function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:use']): array
-{
-    $result = $user->createToken('MCP', $scopes);
-    $token = AccessToken::query()->findOrFail($result->token->id);
-
-    // Reassign to a dedicated MCP client so we never mutate Passport's shared
-    // personal-access client (which would poison PAT fixtures in the same run).
-    $token->forceFill([
-        'client_id' => mcpOauthClient(),
-        'workspace_id' => $workspace->id,
-    ])->saveQuietly();
-
-    return [
-        'token' => $token->refresh(),
-        'plain_token' => $result->accessToken,
-    ];
 }
 
 /**

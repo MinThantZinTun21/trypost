@@ -41,7 +41,6 @@ return [
     'goals' => [
         'save_time' => 'Save time by posting everywhere at once',
         'ai_content' => 'Generate posts with TryPost AI',
-        'use_mcp' => 'Create posts from Claude, ChatGPT, etc.',
         'plan_calendar' => 'Plan my posts on a calendar',
         'stay_on_brand' => 'Keep every post on brand',
         'grow_audience' => 'Grow my audience and engagement',

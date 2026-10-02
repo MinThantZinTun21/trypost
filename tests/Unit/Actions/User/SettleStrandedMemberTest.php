@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Actions\User\SettleStrandedMember;
 use App\Enums\UserWorkspace\Role;
-use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Media;
 use App\Models\User;
@@ -42,18 +41,6 @@ test('deletes a stranded invitee', function () {
     SettleStrandedMember::execute($member->fresh(), $owner->account);
 
     expect(User::find($member->id))->toBeNull();
-});
-
-test('deletes stranded invitee and revokes their passport tokens', function () {
-    ['owner' => $owner, 'member' => $member] = strandedMemberOnSharedAccount();
-
-    $token = $member->createToken('API Key')->token;
-    expect($token->revoked)->toBeFalse();
-
-    SettleStrandedMember::execute($member->fresh(), $owner->account);
-
-    expect(User::find($member->id))->toBeNull();
-    expect(AccessToken::find($token->id)->revoked)->toBeTrue();
 });
 
 test('deletes stranded invitee avatar media files from storage', function () {

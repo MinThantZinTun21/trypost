@@ -84,31 +84,11 @@ if [ ! -L public/storage ]; then
     php artisan storage:link --force || true
 fi
 
-# 9) Passport keys. Prefer PASSPORT_PRIVATE_KEY / PASSPORT_PUBLIC_KEY from
-# the environment (required for durable / multi-node deploys — storage/oauth-*
-# is not on a persisted volume in compose.prod.yaml). Fall back to generating
-# files under storage/ only for local/dev when those env vars are unset.
-if [ -n "${PASSPORT_PRIVATE_KEY:-}" ] && [ -n "${PASSPORT_PUBLIC_KEY:-}" ]; then
-    echo "[entrypoint] using Passport keys from environment"
-elif [ "${TRYPOST_TARGET:-}" = "production" ] || [ "${APP_ENV:-}" = "production" ]; then
-    echo "[entrypoint] ERROR: PASSPORT_PRIVATE_KEY and PASSPORT_PUBLIC_KEY must be set in production." >&2
-    echo "[entrypoint] Generate once with: php artisan passport:keys --show" >&2
-    exit 1
-elif [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
-    echo "[entrypoint] generating Passport keys (dev fallback)"
-    php artisan passport:keys --force
-fi
-
-# 10) Personal access client for REST API keys. The seeder is idempotent, so
-# fresh self-hosted installs and existing deployments are both safe.
-echo "[entrypoint] ensuring Passport personal access client"
-php artisan db:seed --class='Database\Seeders\PassportSeeder' --force
-
-# 11) Wayfinder TS regen — Vite needs the files before it boots.
+# 9) Wayfinder TS regen — Vite needs the files before it boots.
 echo "[entrypoint] regenerating wayfinder helpers"
 php artisan wayfinder:generate --with-form || true
 
-# 12) Cache strategy: prod = pre-cache; dev = clear.
+# 10) Cache strategy: prod = pre-cache; dev = clear.
 if [ "${TARGET}" = "production" ]; then
     php artisan config:cache
     php artisan route:cache
@@ -121,7 +101,7 @@ else
     php artisan event:clear
 fi
 
-# 13) Permissions. Production php-fpm pool runs as www-data (Alpine default),
+# 11) Permissions. Production php-fpm pool runs as www-data (Alpine default),
 # so storage and bootstrap/cache must be writable by that user — Laravel
 # needs to write session files, view cache, log files, etc.
 if [ "${TARGET}" = "production" ]; then
