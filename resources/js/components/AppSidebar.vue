@@ -11,7 +11,6 @@ import {
     IconHash,
     IconPencil,
     IconPhoto,
-    IconRepeat,
     IconSelector,
     IconTag,
     IconWebhook,
@@ -49,7 +48,6 @@ import { accounts, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
-import { index as repurposes } from '@/routes/app/repurposes';
 import { index as signatures } from '@/routes/app/signatures';
 import { index as webhooks } from '@/routes/app/webhooks';
 import type { NavItem, User } from '@/types';
@@ -74,7 +72,6 @@ const subscriptionPastDue = computed<boolean>(() =>
 
 const {
     canCreatePost,
-    canManageRepurposes,
     canManageAccounts,
     canManageWebhooks,
     canCreateWorkspace,
@@ -89,16 +86,6 @@ const mainNavItems = computed<NavItem[]>(() => [
         href: calendar.url(),
         icon: IconCalendar,
     },
-    ...(canManageRepurposes.value
-        ? [
-              {
-                  title: trans('sidebar.repurposes'),
-                  href: repurposes.url(),
-                  icon: IconRepeat,
-                  badge: trans('common.beta'),
-              },
-          ]
-        : []),
 ]);
 
 const postsNavItems = computed<NavItem[]>(() => [

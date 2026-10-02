@@ -60,11 +60,6 @@ class WorkspacePolicy
         return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
     }
 
-    public function manageRepurposes(User $user, Workspace $workspace): bool
-    {
-        return $this->createPost($user, $workspace);
-    }
-
     public function createPost(User $user, Workspace $workspace): bool
     {
         if ($this->isOwner($user, $workspace)) {

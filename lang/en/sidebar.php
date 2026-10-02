@@ -24,7 +24,6 @@ return [
         'workspace' => 'Workspace',
         'others' => 'Others',
     ],
-    'repurposes' => 'Repurpose',
     'posts' => [
         'calendar' => 'Calendar',
         'all' => 'All',

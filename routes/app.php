@@ -15,7 +15,6 @@ use App\Http\Controllers\App\PostAiReviewController;
 use App\Http\Controllers\App\PostCommentController;
 use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\PresenceController;
-use App\Http\Controllers\App\RepurposeController;
 use App\Http\Controllers\App\Settings\AccountController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
@@ -245,17 +244,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('labels', [WorkspaceLabelController::class, 'store'])->name('app.labels.store');
     Route::put('labels/{label}', [WorkspaceLabelController::class, 'update'])->name('app.labels.update');
     Route::delete('labels/{label}', [WorkspaceLabelController::class, 'destroy'])->name('app.labels.destroy');
-
-    // Repurpose
-    Route::get('repurposes', [RepurposeController::class, 'index'])->name('app.repurposes.index');
-    Route::post('repurposes', [RepurposeController::class, 'store'])->name('app.repurposes.store');
-    Route::get('repurposes/{repurpose}', [RepurposeController::class, 'show'])->name('app.repurposes.show');
-    Route::put('repurposes/{repurpose}', [RepurposeController::class, 'update'])->name('app.repurposes.update');
-    Route::post('repurposes/{repurpose}/activate', [RepurposeController::class, 'activate'])->name('app.repurposes.activate');
-    Route::post('repurposes/{repurpose}/pause', [RepurposeController::class, 'pause'])->name('app.repurposes.pause');
-    Route::post('repurposes/{repurpose}/resume', [RepurposeController::class, 'resume'])->name('app.repurposes.resume');
-    Route::post('repurposes/{repurpose}/disable', [RepurposeController::class, 'disable'])->name('app.repurposes.disable');
-    Route::delete('repurposes/{repurpose}', [RepurposeController::class, 'destroy'])->name('app.repurposes.destroy');
 
     // Webhooks
     Route::get('webhooks', [WebhookController::class, 'index'])->name('app.webhooks.index');
