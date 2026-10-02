@@ -7,8 +7,6 @@ use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
 
-beforeEach(fn () => config()->set('trypost.self_hosted', false));
-
 test('login page loads when google auth is disabled', function () {
     config(['trypost.google_auth_enabled' => false]);
 
@@ -21,22 +19,6 @@ test('login page loads when google auth is enabled', function () {
     config(['trypost.google_auth_enabled' => true]);
 
     $response = $this->get(route('login'));
-
-    $response->assertOk();
-});
-
-test('register page loads when google auth is disabled', function () {
-    config(['trypost.google_auth_enabled' => false]);
-
-    $response = $this->get(route('register'));
-
-    $response->assertOk();
-});
-
-test('register page loads when google auth is enabled', function () {
-    config(['trypost.google_auth_enabled' => true]);
-
-    $response = $this->get(route('register'));
 
     $response->assertOk();
 });
@@ -85,8 +67,7 @@ test('google auth callback route exists', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('register page still shares google auth enabled prop when self_hosted (via pending invite)', function () {
-    config()->set('trypost.self_hosted', true);
+test('register page still shares google auth enabled prop via a pending invite', function () {
     config()->set('trypost.google_auth_enabled', true);
 
     $account = Account::factory()->create();

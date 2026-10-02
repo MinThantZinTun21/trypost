@@ -60,7 +60,7 @@ test('delete workspace falls back to an account workspace the owner is not pivot
     ]);
     // Owner can access via account ownership but is not on the pivot.
 
-    expect(DeleteWorkspace::execute($current))->toBeTrue();
+    DeleteWorkspace::execute($current);
 
     $owner->refresh();
 
@@ -86,7 +86,7 @@ test('delete workspace removes pending invites that only target that workspace',
         'workspaces' => [$workspace->id],
     ]);
 
-    expect(DeleteWorkspace::execute($workspace))->toBeTrue();
+    DeleteWorkspace::execute($workspace);
 
     expect(Invite::find($invite->id))->toBeNull();
 });
@@ -109,7 +109,7 @@ test('delete workspace prunes the deleted workspace id from multi-workspace invi
         'workspaces' => [$first->id, $second->id],
     ]);
 
-    expect(DeleteWorkspace::execute($first))->toBeTrue();
+    DeleteWorkspace::execute($first);
 
     expect($invite->fresh()->workspaces)->toBe([$second->id]);
 });
@@ -135,23 +135,9 @@ test('delete workspace deletes workspace media files and rows', function () {
     $mediaPath = $media->path;
     Storage::assertExists($mediaPath);
 
-    expect(DeleteWorkspace::execute($workspace))->toBeTrue();
+    DeleteWorkspace::execute($workspace);
 
     expect(Media::find($media->id))->toBeNull();
     expect(Workspace::find($workspace->id))->toBeNull();
     Storage::assertMissing($mediaPath);
-});
-
-test('delete workspace returns false when saas blocks the last workspace', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
-
-    expect(DeleteWorkspace::execute($workspace))->toBeFalse();
-    expect(Workspace::find($workspace->id))->not->toBeNull();
 });

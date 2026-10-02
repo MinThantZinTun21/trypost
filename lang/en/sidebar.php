@@ -8,7 +8,6 @@ return [
     'create_workspace' => 'Create workspace',
     'create_post' => 'Create post',
     'my_account' => 'My account',
-    'account_settings' => 'Account & billing',
     'workspace_settings' => 'Workspace settings',
     'log_out' => 'Log out',
     'help' => 'Help',
@@ -37,7 +36,6 @@ return [
     'archive_all' => 'Archive all',
     'no_notifications' => 'No notifications',
     'support' => [
-        'chat' => 'Chat support',
         'docs' => 'Documentation',
         'referral' => 'Earn 30% referral',
         'discord' => 'Discord community',

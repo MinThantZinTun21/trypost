@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Actions\User;
 
 use App\Actions\Workspace\CreateWorkspace;
-use App\Enums\Plan\Slug;
 use App\Enums\PostHog\UserEvent;
 use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
-use App\Models\Plan;
 use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\DB;
@@ -25,18 +23,9 @@ class CreateUser
         $isInviteRegistration = (bool) data_get($data, 'is_invite', false);
 
         $user = DB::transaction(function () use ($data, $attributionParameters, $isInviteRegistration): User {
-            $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
-            $accountAttributes = [
+            $account = Account::create([
                 'name' => data_get($data, 'name')."'s Account",
-                'billing_email' => data_get($data, 'email'),
-            ];
-
-            if (! $requiresCardForTrial) {
-                $accountAttributes['plan_id'] = Plan::where('slug', Slug::Socials)->value('id');
-                $accountAttributes['trial_ends_at'] = now()->addDays(config('cashier.trial_days'));
-            }
-
-            $account = Account::create($accountAttributes);
+            ]);
 
             $user = User::create(array_merge([
                 'name' => data_get($data, 'name'),

@@ -45,7 +45,6 @@ class PostHogService
             if ($account) {
                 $payload['properties']['$groups'] = ['account' => (string) $account->id];
                 $payload['properties']['account_id'] = (string) $account->id;
-                $payload['properties']['plan'] = $account->plan?->name;
             }
 
             $this->logLocally('capture', $payload);

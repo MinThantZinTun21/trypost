@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { ref } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import AuthLayout from '@/layouts/AuthLayout.vue';
-import { switchMethod } from '@/routes/app/workspaces';
+import {
+    create as createWorkspaceRoute,
+    switchMethod,
+} from '@/routes/app/workspaces';
 
 interface Workspace {
     id: string;
@@ -25,12 +25,9 @@ interface Props {
     currentWorkspaceId: string | null;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const { canCreateWorkspace } = useWorkspaceRole();
-const { createOrUpgrade } = useWorkspaceLimit(() => props.workspaces.length);
-
-const upgradeDialogOpen = ref(false);
 
 const switchToWorkspace = (workspace: Workspace): void => {
     router.post(
@@ -43,9 +40,7 @@ const switchToWorkspace = (workspace: Workspace): void => {
 };
 
 const handleCreateWorkspace = (): void => {
-    createOrUpgrade(() => {
-        upgradeDialogOpen.value = true;
-    });
+    router.visit(createWorkspaceRoute.url());
 };
 </script>
 
@@ -107,7 +102,5 @@ const handleCreateWorkspace = (): void => {
         >
             {{ $t('workspaces.create.submit') }}
         </Button>
-
-        <WorkspaceUpgradeDialog v-model:open="upgradeDialogOpen" />
     </AuthLayout>
 </template>

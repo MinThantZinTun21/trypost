@@ -24,39 +24,7 @@ function waitForSidebarTestId(mixed $page, string $testId): void
     JS);
 }
 
-test('account owners see account and workspace settings in the sidebar menu', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $user->account_id,
-    ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    subscribeAccount($user->account);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar'));
-
-    waitForSidebarTestId($page, 'sidebar-workspace-menu');
-
-    $page->assertVisible('@sidebar-workspace-menu')
-        ->click('@sidebar-workspace-menu');
-
-    waitForSidebarTestId($page, 'logout-button');
-
-    $page->assertVisible('@sidebar-menu-my-account')
-        ->assertVisible('@sidebar-menu-account-settings')
-        ->assertVisible('@sidebar-menu-workspace-settings')
-        ->assertVisible('@logout-button');
-});
-
-test('account billing is hidden in the sidebar menu when self-hosted', function () {
-    config(['trypost.self_hosted' => true]);
-
+test('account owners see workspace settings but no account billing in the sidebar menu', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'user_id' => $user->id,
@@ -78,14 +46,12 @@ test('account billing is hidden in the sidebar menu when self-hosted', function 
 
     $page->assertVisible('@sidebar-menu-my-account')
         ->assertMissing('@sidebar-menu-account-settings')
-        ->assertVisible('@sidebar-menu-workspace-settings');
+        ->assertVisible('@sidebar-menu-workspace-settings')
+        ->assertVisible('@logout-button');
 });
 
-test('workspace admins see workspace settings but not account billing', function () {
-    config(['trypost.self_hosted' => false]);
-
+test('workspace admins see workspace settings', function () {
     [
-        'owner' => $owner,
         'member' => $admin,
         'shared_workspaces' => [$workspace],
     ] = strandedMemberOnSharedAccount(
@@ -97,8 +63,6 @@ test('workspace admins see workspace settings but not account billing', function
     $workspace->members()->updateExistingPivot($admin->id, [
         'role' => Role::Admin->value,
     ]);
-
-    subscribeAccount($owner->account);
 
     $this->actingAs($admin->fresh());
 
@@ -117,11 +81,8 @@ test('workspace admins see workspace settings but not account billing', function
         ->assertVisible('@logout-button');
 });
 
-test('workspace members do not see account or workspace settings in the sidebar menu', function () {
-    config(['trypost.self_hosted' => false]);
-
+test('workspace members do not see workspace settings in the sidebar menu', function () {
     [
-        'owner' => $owner,
         'member' => $member,
         'shared_workspaces' => [$workspace],
     ] = strandedMemberOnSharedAccount(
@@ -133,8 +94,6 @@ test('workspace members do not see account or workspace settings in the sidebar 
     $workspace->members()->updateExistingPivot($member->id, [
         'role' => Role::Member->value,
     ]);
-
-    subscribeAccount($owner->account);
 
     $this->actingAs($member->fresh());
 
@@ -153,11 +112,8 @@ test('workspace members do not see account or workspace settings in the sidebar 
         ->assertVisible('@logout-button');
 });
 
-test('workspace viewers do not see account or workspace settings in the sidebar menu', function () {
-    config(['trypost.self_hosted' => false]);
-
+test('workspace viewers do not see workspace settings in the sidebar menu', function () {
     [
-        'owner' => $owner,
         'member' => $viewer,
         'shared_workspaces' => [$workspace],
     ] = strandedMemberOnSharedAccount(
@@ -169,8 +125,6 @@ test('workspace viewers do not see account or workspace settings in the sidebar 
     $workspace->members()->updateExistingPivot($viewer->id, [
         'role' => Role::Viewer->value,
     ]);
-
-    subscribeAccount($owner->account);
 
     $this->actingAs($viewer->fresh());
 

@@ -11,7 +11,6 @@ use Laravel\Socialite\Two\User as SocialiteUser;
 
 test('login page displays the wrong-invite-email error flashed from the oauth callback', function () {
     config([
-        'trypost.self_hosted' => false,
         'trypost.google_auth_enabled' => true,
         'services.google-auth.client_id' => 'test-client-id',
         'services.google-auth.client_secret' => 'test-client-secret',

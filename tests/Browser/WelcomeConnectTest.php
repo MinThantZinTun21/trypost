@@ -6,7 +6,6 @@ use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Enums\UserWorkspace\Role;
-use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -47,101 +46,15 @@ function welcomeOwnerOnConnectStep(): User
     return $user->fresh();
 }
 
-test('connect step shows the grid and keeps continue disabled without a social account', function () {
-    config(['trypost.self_hosted' => false]);
-
+test('the welcome connect step sends an owner straight to the calendar', function () {
     $user = welcomeOwnerOnConnectStep();
 
     $this->actingAs($user);
 
     $page = visit(route('app.welcome.connect'));
 
-    waitForWelcomeTestId($page, 'welcome-connect-continue');
+    waitForWelcomeTestId($page, 'sidebar-workspace-menu');
 
-    $page->assertRoute('app.welcome.connect')
-        ->assertVisible('@welcome-connect-grid')
-        ->assertVisible('@welcome-connect-continue')
-        ->assertDisabled('@welcome-connect-continue')
-        ->assertVisible('@welcome-step-connect')
-        ->assertNoJavaScriptErrors();
-});
-
-test('connect step enables continue when a social account is connected', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $user = welcomeOwnerOnConnectStep();
-    SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $user->current_workspace_id,
-    ]);
-
-    $this->actingAs($user->fresh());
-
-    $page = visit(route('app.welcome.connect'));
-
-    waitForWelcomeTestId($page, 'welcome-connect-continue');
-
-    $page->assertRoute('app.welcome.connect')
-        ->assertVisible('@welcome-connect-grid')
-        ->assertEnabled('@welcome-connect-continue')
-        ->assertNoJavaScriptErrors();
-});
-
-test('connect step can go back to referral', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $user = welcomeOwnerOnConnectStep();
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.welcome.connect'));
-
-    waitForWelcomeTestId($page, 'welcome-back');
-
-    $page->click('@welcome-back');
-
-    waitForWelcomeTestId($page, 'welcome-referral-continue');
-
-    $page->assertRoute('app.welcome.referral-source')
-        ->assertVisible('@welcome-referral-continue')
-        ->assertNoJavaScriptErrors();
-});
-
-test('connect step redirects to persona when prior steps are missing', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $user = User::factory()->create();
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.welcome.connect'));
-
-    $page->assertRoute('app.welcome.persona')
-        ->assertNoJavaScriptErrors();
-});
-
-test('connect step shows the backend error when the account disappears before submitting', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $user = welcomeOwnerOnConnectStep();
-    $account = SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $user->current_workspace_id,
-    ]);
-
-    $this->actingAs($user->fresh());
-
-    $page = visit(route('app.welcome.connect'));
-
-    waitForWelcomeTestId($page, 'welcome-connect-continue');
-
-    $page->assertEnabled('@welcome-connect-continue');
-
-    $account->delete();
-
-    $page->click('@welcome-connect-continue');
-
-    waitForWelcomeTestId($page, 'welcome-connect-error');
-
-    $page->assertVisible('@welcome-connect-error')
-        ->assertSee(trans('welcome.connect.required'))
+    $page->assertRoute('app.calendar')
         ->assertNoJavaScriptErrors();
 });

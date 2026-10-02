@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
-use App\Actions\Account\CancelAccountSubscription;
 use App\Enums\Invite\Result;
 use App\Models\Account;
 use App\Models\Invite;
@@ -65,8 +64,8 @@ class AcceptInvite
         });
 
         // Invite signup leaves an empty personal account shell. Drop it after
-        // commit so Stripe cancel is not held inside the invite lock. Members
-        // never own a non-empty account, so there is nothing else to tear down.
+        // commit. Members never own a non-empty account, so there is nothing
+        // else to tear down.
         if ($result === Result::Accepted && $previousAccountId) {
             $shell = Account::query()
                 ->whereKey($previousAccountId)
@@ -74,7 +73,7 @@ class AcceptInvite
                 ->whereDoesntHave('workspaces')
                 ->first();
 
-            if ($shell && CancelAccountSubscription::execute($shell)) {
+            if ($shell) {
                 $shell->delete();
             }
         }

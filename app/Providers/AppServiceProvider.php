@@ -4,19 +4,15 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Listeners\StripeEventListener;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
 use App\Models\NotificationPreference;
-use App\Models\Plan;
 use App\Models\Post;
 use App\Models\PostComment;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
-use App\Models\Subscription;
-use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
@@ -40,8 +36,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-use Laravel\Cashier\Cashier;
-use Laravel\Cashier\Events\WebhookHandled;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\Records\CacheEvent;
 use Laravel\Socialite\Facades\Socialite;
@@ -75,12 +69,6 @@ class AppServiceProvider extends ServiceProvider
         $this->configureMorphMap();
         $this->configurePostHog();
         $this->configureSocialite();
-        $this->configureStripeWebhooks();
-
-        Cashier::useCustomerModel(Account::class);
-        Cashier::useSubscriptionModel(Subscription::class);
-        Cashier::useSubscriptionItemModel(SubscriptionItem::class);
-        Cashier::keepPastDueSubscriptionsActive();
     }
 
     protected function configureMorphMap(): void
@@ -91,13 +79,10 @@ class AppServiceProvider extends ServiceProvider
             'media' => Media::class,
             'notification' => Notification::class,
             'notificationPreference' => NotificationPreference::class,
-            'plan' => Plan::class,
             'post' => Post::class,
             'postComment' => PostComment::class,
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,
-            'subscription' => Subscription::class,
-            'subscriptionItem' => SubscriptionItem::class,
             'user' => User::class,
             'webhook' => Webhook::class,
             'webhookLog' => WebhookLog::class,
@@ -117,11 +102,6 @@ class AppServiceProvider extends ServiceProvider
         PostHog::init(config('services.posthog.api_key'), [
             'host' => config('services.posthog.host'),
         ]);
-    }
-
-    protected function configureStripeWebhooks(): void
-    {
-        Event::listen(WebhookHandled::class, StripeEventListener::class);
     }
 
     protected function configureSocialite(): void

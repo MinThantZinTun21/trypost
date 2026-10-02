@@ -2,15 +2,8 @@ import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
 import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
-import type { AuthPlan, Features, PlanOption } from '@/types/plan';
 import type { WelcomeSummary } from '@/types/welcome';
 
-export type {
-    AuthPlan,
-    BillingInterval,
-    Features,
-    PlanOption,
-} from '@/types/plan';
 export type {
     WelcomeNetwork,
     WelcomeStep,
@@ -39,17 +32,6 @@ export interface Auth {
     currentWorkspace: Workspace | null;
     workspaces: Workspace[];
     account: AuthAccount | null;
-    plan: AuthPlan | null;
-    hasActiveSubscription: boolean;
-    subscriptionPastDue: boolean;
-}
-
-export interface Usage {
-    workspaceCount: number;
-    socialAccountCount: number;
-    memberCount: number;
-    pendingInviteCount: number;
-    postCount: number;
 }
 
 export interface FlashData {
@@ -84,12 +66,8 @@ export interface SharedData {
     auth: Auth;
     flash: FlashData;
     sidebarOpen: boolean;
-    selfHosted: boolean;
     legal: LegalLinks;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
-    features?: Features | null;
-    usage?: Usage | null;
-    plans?: PlanOption[];
     welcome?: WelcomeSummary;
     [key: string]: unknown;
 }

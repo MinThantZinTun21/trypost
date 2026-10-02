@@ -6,10 +6,6 @@ return [
     'title' => 'What best describes you?',
     'description' => 'Choose the closest match and we\'ll tailor your experience.',
     'continue' => 'Continue',
-    'subscription_required_title' => 'Waiting for the account owner',
-    'subscription_required_description' => 'This account doesn\'t have an active subscription yet. Ask the account owner to finish checkout — you\'ll get full access as soon as it is active.',
-    'subscription_required_owner' => 'Your account owner is :name.',
-    'subscription_required_auto' => 'This page updates automatically — no need to refresh.',
     'progress' => 'Welcome progress',
     'step_of' => 'Step :step of :total',
     'back' => 'Back',
@@ -18,7 +14,6 @@ return [
         'goals' => 'Your goals',
         'referral_source' => 'How you found us',
         'connect' => 'Social networks',
-        'plan' => 'Plan',
     ],
     'preview' => [
         'heading' => 'Your workspace is taking shape.',
@@ -49,8 +44,6 @@ return [
         'just_exploring' => 'Just exploring for now',
         'other' => 'Something else',
     ],
-    'plan_title' => 'Choose your plan',
-    'plan_description' => 'Both plans have the same features. The difference is how many workspaces you get, and you can switch plans whenever you like.',
     'referral_source_title' => 'How did you find us?',
     'referral_source_description' => 'This helps us understand how people discover TryPost.',
     'referral_source' => [
@@ -75,6 +68,5 @@ return [
     'connect' => [
         'title' => 'Connect a social account',
         'description' => 'Choose at least one network where TryPost can publish your content.',
-        'required' => 'Connect at least one social account to continue.',
     ],
 ];

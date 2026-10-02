@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import {
     IconCheck,
-    IconCreditCard,
     IconLogout,
     IconPlus,
     IconSettings,
@@ -17,14 +16,15 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
-import { edit as accountEdit } from '@/routes/app/account';
 import { edit as profileEdit } from '@/routes/app/profile';
 import { settings as workspaceSettings } from '@/routes/app/workspace';
-import { switchMethod } from '@/routes/app/workspaces';
+import {
+    create as createWorkspaceRoute,
+    switchMethod,
+} from '@/routes/app/workspaces';
 import type { User } from '@/types';
 
 interface Workspace {
@@ -40,17 +40,7 @@ const props = defineProps<{
     canCreateWorkspace: boolean;
 }>();
 
-const emit = defineEmits<{
-    upgradeRequired: [];
-}>();
-
-const page = usePage();
-const { canManageBilling, canManageWorkspace } = useWorkspaceRole();
-const { createOrUpgrade } = useWorkspaceLimit(() => props.workspaces.length);
-const selfHosted = computed(() => Boolean(page.props.selfHosted));
-const showAccountSettings = computed(
-    () => canManageBilling.value && !selfHosted.value,
-);
+const { canManageWorkspace } = useWorkspaceRole();
 const showWorkspaceSettings = computed(() => canManageWorkspace.value);
 const switchWorkspace = (workspaceId: string): void => {
     if (workspaceId === props.currentWorkspace?.id) {
@@ -67,7 +57,7 @@ const switchWorkspace = (workspaceId: string): void => {
 };
 
 const handleCreateWorkspace = (): void => {
-    createOrUpgrade(() => emit('upgradeRequired'));
+    router.visit(createWorkspaceRoute.url());
 };
 
 const handleLogout = (): void => {
@@ -94,17 +84,6 @@ const handleLogout = (): void => {
             >
                 <IconUser class="size-4" />
                 {{ $t('sidebar.my_account') }}
-            </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem v-if="showAccountSettings" :as-child="true">
-            <Link
-                class="block w-full cursor-pointer"
-                :href="accountEdit.url()"
-                prefetch
-                data-testid="sidebar-menu-account-settings"
-            >
-                <IconCreditCard class="size-4" />
-                {{ $t('sidebar.account_settings') }}
             </Link>
         </DropdownMenuItem>
         <DropdownMenuItem v-if="showWorkspaceSettings" :as-child="true">

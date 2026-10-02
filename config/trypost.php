@@ -6,18 +6,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Self-Hosted Mode
-    |--------------------------------------------------------------------------
-    |
-    | When enabled, the application runs in self-hosted mode which skips
-    | payment/subscription requirements during welcome.
-    |
-    */
-
-    'self_hosted' => env('SELF_HOSTED', true),
-
-    /*
-    |--------------------------------------------------------------------------
     | Legal pages
     |--------------------------------------------------------------------------
     |
@@ -59,22 +47,6 @@ return [
 
     'security' => [
         'allow_private_network' => (bool) env('TRYPOST_ALLOW_PRIVATE_NETWORK', false),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Billing
-    |--------------------------------------------------------------------------
-    |
-    | Control whether signup requires a card before app access:
-    | - true: no generic trial at signup; access only after Stripe Checkout
-    |   (trialDays and/or first-month coupon come from cashier.* env knobs)
-    | - false: grant generic trial at signup without a card
-    |
-    */
-
-    'billing' => [
-        'require_card_for_trial' => (bool) env('REQUIRE_CARD_FOR_TRIAL', true),
     ],
 
     /*

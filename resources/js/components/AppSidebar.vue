@@ -2,7 +2,6 @@
 import { usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
-    IconAlertTriangle,
     IconCalendar,
     IconChevronRight,
     IconClock,
@@ -16,7 +15,7 @@ import {
     IconWebhook,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import { index as postsIndex } from '@/actions/App/Http/Controllers/App/PostController';
 import NavMain from '@/components/NavMain.vue';
@@ -31,7 +30,6 @@ import {
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
@@ -39,12 +37,10 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
-import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useCreatePost } from '@/composables/useCreatePost';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
-import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as signatures } from '@/routes/app/signatures';
 import { index as webhooks } from '@/routes/app/webhooks';
@@ -64,9 +60,6 @@ const currentWorkspace = computed<Workspace | null>(
 const workspaces = computed<Workspace[]>(
     () => page.props.auth.workspaces as Workspace[],
 );
-const subscriptionPastDue = computed<boolean>(() =>
-    Boolean(page.props.auth.subscriptionPastDue),
-);
 
 const {
     canCreatePost,
@@ -76,8 +69,6 @@ const {
 } = useWorkspaceRole();
 const { isMobile } = useSidebar();
 const { createPost, creatingPost } = useCreatePost();
-
-const workspaceUpgradeDialogOpen = ref(false);
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
@@ -207,9 +198,6 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                                     :current-workspace="currentWorkspace"
                                     :workspaces="workspaces"
                                     :can-create-workspace="canCreateWorkspace"
-                                    @upgrade-required="
-                                        workspaceUpgradeDialogOpen = true
-                                    "
                                 />
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -243,32 +231,5 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                 :label="$t('sidebar.groups.workspace')"
             />
         </SidebarContent>
-        <SidebarFooter>
-            <div
-                v-if="subscriptionPastDue"
-                class="mx-1 mb-1 rounded-md border-2 border-destructive bg-destructive/10 p-3"
-            >
-                <div class="flex items-center gap-2 text-destructive">
-                    <IconAlertTriangle class="size-4 shrink-0" />
-                    <span class="text-sm font-semibold">{{
-                        $t('billing.past_due_notice.title')
-                    }}</span>
-                </div>
-                <p class="mt-1 text-xs text-muted-foreground">
-                    {{ $t('billing.past_due_notice.description') }}
-                </p>
-                <Button
-                    as="a"
-                    :href="portal.url()"
-                    variant="destructive"
-                    size="sm"
-                    class="mt-2 w-full"
-                >
-                    {{ $t('billing.past_due_notice.cta') }}
-                </Button>
-            </div>
-        </SidebarFooter>
-
-        <WorkspaceUpgradeDialog v-model:open="workspaceUpgradeDialogOpen" />
     </Sidebar>
 </template>

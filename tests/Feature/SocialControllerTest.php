@@ -218,8 +218,6 @@ test('a connected instagram-facebook account is still returned so it surfaces un
 });
 
 test('an unsubscribed account can disconnect without an active subscription', function () {
-    config(['trypost.self_hosted' => false]);
-
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
     $response = $this->actingAs($this->user)->delete(route('app.accounts.disconnect', $account));

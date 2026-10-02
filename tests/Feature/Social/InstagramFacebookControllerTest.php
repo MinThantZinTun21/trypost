@@ -363,8 +363,6 @@ test('instagram-facebook callback fails without connecting when accounts paginat
 });
 
 test('instagram-facebook select expires the pending session after a successful pick', function () {
-    config()->set('trypost.self_hosted', true);
-
     session([
         'social_connect_workspace' => $this->workspace->id,
         'instagram_facebook_oauth' => [

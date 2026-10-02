@@ -51,12 +51,5 @@ class SyncUser implements ShouldQueue
                 ...$attribution,
             ],
         ]);
-
-        if ($user->account_id) {
-            SyncAccountUsage::dispatch(
-                $user->account_id,
-                $user->current_workspace_id ? $user->current_workspace_id : null,
-            );
-        }
     }
 }

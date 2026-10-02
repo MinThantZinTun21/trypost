@@ -8,8 +8,6 @@ use App\Models\User;
 use App\Models\Workspace;
 
 beforeEach(function () {
-    config(['trypost.self_hosted' => false]);
-
     $this->account = Account::factory()->create();
     $this->user = User::factory()->create([
         'account_id' => $this->account->id,

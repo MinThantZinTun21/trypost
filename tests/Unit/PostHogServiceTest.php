@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
-use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
@@ -120,20 +119,19 @@ test('capture auto-attaches account groups when account is supplied', function (
     Queue::fake();
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
 
-    $plan = Plan::query()->where('slug', 'workspace')->first();
-    $account = Account::factory()->create(['plan_id' => $plan?->id]);
+    $account = Account::factory()->create();
 
     $service = new PostHogService;
-    $service->capture('user-123', 'subscription.created', ['stripe_status' => 'active'], $account);
+    $service->capture('user-123', 'post.created', ['platform' => 'x'], $account);
 
-    Queue::assertPushed(SendEvent::class, function ($job) use ($account, $plan) {
+    Queue::assertPushed(SendEvent::class, function ($job) use ($account) {
         $payload = $job->payload;
 
-        return $payload['event'] === 'subscription.created'
+        return $payload['event'] === 'post.created'
             && $payload['properties']['$groups']['account'] === (string) $account->id
             && $payload['properties']['account_id'] === (string) $account->id
-            && $payload['properties']['plan'] === $plan?->name
-            && $payload['properties']['stripe_status'] === 'active';
+            && ! array_key_exists('plan', $payload['properties'])
+            && $payload['properties']['platform'] === 'x';
     });
 });
 
@@ -257,7 +255,7 @@ test('isEnabled requires both enabled and api key', function () {
 
 // ========================================
 // shouldTrack: the gate used by call sites that pre-check before ever
-// reaching capture()/identify() (CreateUser, StripeEventListener, and the
+// reaching capture()/identify() (CreateUser and the
 // individual PostHog job handle() methods). Must never let a disabled,
 // non-local (i.e. production) install actually track — that's the exact
 // self-hosted/production contract isEnabled() already guarantees. It only

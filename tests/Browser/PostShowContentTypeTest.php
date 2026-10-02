@@ -40,8 +40,6 @@ test('the post page tags the format only where the platform offered a choice', f
     $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    subscribeAccount($user->account);
-
     $post = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,

@@ -208,8 +208,6 @@ test('google business callback fails when no locations are found', function () {
 });
 
 test('google business callback connects a second location on the same network', function () {
-    config()->set('trypost.self_hosted', false);
-
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::GoogleBusiness,

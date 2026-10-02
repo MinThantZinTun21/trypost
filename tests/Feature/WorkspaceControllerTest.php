@@ -58,9 +58,7 @@ test('create workspace shows form for user with no workspaces', function () {
     );
 });
 
-test('create workspace shows form when user already has workspace in self-hosted mode', function () {
-    config(['trypost.self_hosted' => true]);
-
+test('create workspace shows form when user already has workspace', function () {
     $response = $this->actingAs($this->user)->get(route('app.workspaces.create'));
 
     $response->assertOk();
@@ -93,9 +91,7 @@ test('store workspace creates first workspace', function () {
     ]);
 });
 
-test('store workspace creates second workspace in self-hosted mode', function () {
-    config(['trypost.self_hosted' => true]);
-
+test('store workspace creates second workspace', function () {
     $response = $this->actingAs($this->user)->post(route('app.workspaces.store'), [
         'name' => 'Second Workspace',
     ]);
@@ -229,47 +225,7 @@ test('workspace settings shows the workspace settings page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Workspace', false)
         ->has('workspace')
-        ->where('isOnlyWorkspace', false)
         ->where('otherMemberCount', 0)
-    );
-});
-
-test('workspace settings marks only workspace in saas mode', function () {
-    config(['trypost.self_hosted' => false]);
-    $this->user->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-
-    $response = $this->actingAs($this->user)->get(route('app.workspace.settings'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->where('isOnlyWorkspace', true)
-    );
-});
-
-test('workspace settings does not mark only workspace when account has more than one', function () {
-    config(['trypost.self_hosted' => false]);
-    $this->user->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-
-    Workspace::factory()->create([
-        'account_id' => $this->user->account_id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $response = $this->actingAs($this->user)->get(route('app.workspace.settings'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->where('isOnlyWorkspace', false)
     );
 });
 
@@ -390,12 +346,6 @@ test('upload workspace logo requires authorization', function () {
     $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
     $otherWorkspace->members()->attach($otherUser->id, ['role' => Role::Member->value]);
     $otherUser->update(['current_workspace_id' => $otherWorkspace->id]);
-    $otherUser->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
 
     // otherUser is account owner of their own account/workspace, so policy 'update' passes for their own workspace.
     // Switch their current workspace to the original $this->workspace (which they don't own) to trigger forbidden.
@@ -437,12 +387,6 @@ test('delete workspace logo requires authorization', function () {
     $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
     $otherWorkspace->members()->attach($otherUser->id, ['role' => Role::Member->value]);
     $otherUser->update(['current_workspace_id' => $otherWorkspace->id]);
-    $otherUser->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
 
     $otherUser->update(['current_workspace_id' => $this->workspace->id]);
 
@@ -495,24 +439,7 @@ test('destroy workspace reassigns current to another joined workspace', function
     expect($this->user->current_workspace_id)->toBe($other->id);
 });
 
-test('destroy workspace is blocked when it is the only workspace', function () {
-    config(['trypost.self_hosted' => false]);
-    $this->user->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-    $workspaceId = $this->workspace->id;
-
-    $response = $this->actingAs($this->user)->delete(route('app.workspaces.destroy', $this->workspace));
-
-    $response->assertSessionHas('flash.error', __('workspaces.cannot_delete_last'));
-    expect(Workspace::find($workspaceId))->not->toBeNull();
-});
-
-test('destroy workspace allows deleting the only workspace in self-hosted mode', function () {
-    config(['trypost.self_hosted' => true]);
+test('destroy workspace allows deleting the only workspace', function () {
     $workspaceId = $this->workspace->id;
 
     $response = $this->actingAs($this->user)->delete(route('app.workspaces.destroy', $this->workspace));
@@ -528,12 +455,6 @@ test('destroy workspace returns 403 for non-owner', function () {
     $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
     $otherWorkspace->members()->attach($otherUser->id, ['role' => Role::Member->value]);
     $otherUser->update(['current_workspace_id' => $otherWorkspace->id]);
-    $otherUser->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
 
     $response = $this->actingAs($otherUser)->delete(route('app.workspaces.destroy', $this->workspace));
 
@@ -581,13 +502,6 @@ test('store persists the workspace name and redirects to /accounts', function ()
     $user = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $user->id]);
 
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-
     $response = $this->actingAs($user)->post(route('app.workspaces.store'), [
         'name' => 'Acme Inc',
     ]);
@@ -603,13 +517,6 @@ test('store redirects additional workspace to /accounts', function () {
     $user = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $user->id]);
 
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-
     // First workspace already exists
     $existing = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
     $existing->members()->attach($user->id, ['role' => Role::Member->value]);
@@ -620,24 +527,4 @@ test('store redirects additional workspace to /accounts', function () {
 
     $response->assertRedirect(route('app.accounts'));
     expect(Workspace::where('account_id', $account->id)->count())->toBe(2);
-});
-
-test('store blocks a second workspace without an active subscription', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $account = Account::factory()->create();
-    $user = User::factory()->create(['account_id' => $account->id]);
-    $account->update(['owner_id' => $user->id]);
-
-    // The account already owns one workspace and has no subscription, so a
-    // direct POST must not bootstrap a second (billable) workspace.
-    $existing = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
-    $existing->members()->attach($user->id, ['role' => Role::Member->value]);
-
-    $response = $this->actingAs($user)->post(route('app.workspaces.store'), [
-        'name' => 'Second Workspace',
-    ]);
-
-    $response->assertRedirect(route('app.billing.index'));
-    expect(Workspace::where('account_id', $account->id)->count())->toBe(1);
 });

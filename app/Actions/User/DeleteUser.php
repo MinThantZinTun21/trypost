@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\User;
 
-use App\Actions\Account\CancelAccountSubscription;
 use App\Actions\Auth\LogoutAndInvalidateSession;
 use App\Actions\Workspace\PurgeWorkspace;
 use App\Models\Account;
@@ -18,20 +17,12 @@ class DeleteUser
 {
     /**
      * Permanently delete the authenticated user and, when they own the
-     * account, the shared account (after Stripe cancel).
-     *
-     * @return bool false when Stripe cancel failed — nothing local was deleted
+     * account, the shared account.
      */
-    public static function execute(User $user, Request $request): bool
+    public static function execute(User $user, Request $request): void
     {
         $account = $user->account;
         $isOwner = $user->isAccountOwner();
-
-        // Stripe cancel must succeed before any local teardown. Members own no
-        // account (closed-account model), so only the owner's account matters.
-        if ($isOwner && $account && ! CancelAccountSubscription::execute($account)) {
-            return false;
-        }
 
         $settlement = DB::transaction(function () use ($user, $account, $isOwner): StrandedSettlement {
             $user->update(['current_workspace_id' => null]);
@@ -57,8 +48,6 @@ class DeleteUser
         // remember token via save(), which fails if the user was already deleted.
         LogoutAndInvalidateSession::execute($request);
         $user->delete();
-
-        return true;
     }
 
     /**
@@ -101,7 +90,6 @@ class DeleteUser
         $owner->update(['account_id' => null]);
 
         if (Account::query()->whereKey($account->id)->exists()) {
-            $account->subscriptions()->delete();
             $account->delete();
         }
 

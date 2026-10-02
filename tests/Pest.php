@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\Plan\Slug;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
-use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,51 +67,6 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
-
-/**
- * Create an account on the Workspace plan with an active subscription on the
- * given Stripe price, plus N workspaces. Used by the billing-cycle tests.
- *
- * @param  array<string, mixed>  $subscriptionAttributes
- */
-function billingAccount(string $price, array $subscriptionAttributes = [], int $workspaces = 1): Account
-{
-    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
-    $plan->update([
-        'stripe_monthly_price_id' => 'price_month',
-        'stripe_yearly_price_id' => 'price_year',
-    ]);
-
-    $account = Account::factory()->create([
-        'plan_id' => $plan->id,
-        'trial_ends_at' => null,
-    ]);
-
-    $account->subscriptions()->create(array_merge([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => $price,
-        'quantity' => $workspaces,
-    ], $subscriptionAttributes));
-
-    Workspace::factory()->count($workspaces)->create(['account_id' => $account->id]);
-
-    return $account->refresh();
-}
-
-/**
- * Attach an active default subscription to the given account.
- */
-function subscribeAccount(Account $account): void
-{
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-}
 
 /**
  * Move a member onto a shared account (stranded-member / invitee fixture).

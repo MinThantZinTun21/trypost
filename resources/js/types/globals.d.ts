@@ -3,9 +3,6 @@ import { AppPageProps } from '@/types/index';
 declare global {
     interface Window {
         dataLayer: Record<string, unknown>[];
-        $crisp?: {
-            push: (command: unknown[]) => void;
-        };
     }
 }
 

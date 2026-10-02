@@ -13,10 +13,6 @@ class EnsureRegistrationEnabled
 {
     public function handle(Request $request, Closure $next): mixed
     {
-        if (! config('trypost.self_hosted')) {
-            return $next($request);
-        }
-
         // `query` covers the GET form; `input` covers the invite field posted
         // with the registration form (a hidden input, not a query param).
         $inviteId = $request->query('invite') ?? $request->input('invite') ?? $request->session()->get('pending_invite_id');

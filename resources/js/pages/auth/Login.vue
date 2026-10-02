@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { Form, Head, usePage } from '@inertiajs/vue3';
+import { Form, Head } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 import LegalLinks from '@/components/auth/LegalLinks.vue';
 import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -20,7 +19,6 @@ import {
 } from '@/components/ui/tooltip';
 import { usePageErrors } from '@/composables/usePageErrors';
 import AuthBase from '@/layouts/AuthLayout.vue';
-import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
@@ -33,8 +31,6 @@ defineProps<{
 
 const showPassword = ref(false);
 
-const page = usePage();
-const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
 const pageErrors = usePageErrors();
 </script>
 
@@ -177,19 +173,6 @@ const pageErrors = usePageErrors();
                         <Spinner v-if="processing" />
                         {{ $t('auth.login.submit') }}
                     </Button>
-                </div>
-
-                <div
-                    v-if="!isSelfHosted"
-                    class="text-center text-sm text-muted-foreground"
-                >
-                    {{ $t('auth.login.no_account') }}
-                    <TextLink
-                        :href="register()"
-                        :tabindex="5"
-                        data-testid="login-sign-up-link"
-                        >{{ $t('auth.login.sign_up') }}</TextLink
-                    >
                 </div>
             </Form>
 

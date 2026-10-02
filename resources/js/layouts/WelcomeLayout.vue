@@ -10,7 +10,6 @@ import {
     connect as connectRoute,
     goals as goalsRoute,
     persona as personaRoute,
-    plan as planRoute,
     referralSource as referralSourceRoute,
 } from '@/routes/app/welcome';
 import type { SharedData, WelcomeStep } from '@/types';
@@ -50,7 +49,6 @@ const steps = [
     { key: 'goals', route: goalsRoute() },
     { key: 'referral_source', route: referralSourceRoute() },
     { key: 'connect', route: connectRoute() },
-    { key: 'plan', route: planRoute() },
 ] as const;
 
 const currentIndex = computed(() =>

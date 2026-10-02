@@ -12,8 +12,6 @@ use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
     Mail::fake();
-    config(['trypost.self_hosted' => true]);
-
     $this->account = Account::factory()->create();
     $this->user = User::factory()->create([
         'account_id' => $this->account->id,

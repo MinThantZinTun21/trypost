@@ -7,11 +7,9 @@ namespace App\Actions\Workspace;
 use App\Actions\User\ReassignCurrentWorkspace;
 use App\Actions\User\SettleStrandedMember;
 use App\Actions\User\StrandedSettlement;
-use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\Workspace;
-use App\Services\PostHogService;
 use Illuminate\Support\Facades\DB;
 
 class DeleteWorkspace
@@ -20,29 +18,18 @@ class DeleteWorkspace
      * Delete a workspace and settle stranded members (delete invitees who
      * lost their last membership on the account).
      *
-     * Returns false when SaaS mode blocks deleting the account's last workspace.
-     * The account row is locked so concurrent deletes cannot race past that guard.
+     * The account row is locked so concurrent deletes on the same account
+     * are serialized.
      */
-    public static function execute(Workspace $workspace): bool
+    public static function execute(Workspace $workspace): void
     {
         $account = $workspace->account;
-        $accountId = (string) $workspace->account_id;
-        $deleted = false;
         $settlement = StrandedSettlement::none();
 
-        DB::transaction(function () use ($workspace, $account, &$deleted, &$settlement): void {
-            // Serialize deletes per account so the last-workspace SaaS guard
-            // cannot race with a concurrent delete of the sibling workspace.
+        DB::transaction(function () use ($workspace, $account, &$settlement): void {
+            // Serialize deletes per account.
             if ($account?->id) {
                 Account::query()->whereKey($account->id)->lockForUpdate()->first();
-            }
-
-            $workspaceCount = Workspace::query()
-                ->where('account_id', $workspace->account_id)
-                ->count();
-
-            if (! config('trypost.self_hosted') && $workspaceCount <= 1) {
-                return;
             }
 
             ReassignCurrentWorkspace::awayFromWorkspace(
@@ -68,21 +55,9 @@ class DeleteWorkspace
                     ),
                 );
             }
-
-            $deleted = true;
         });
 
-        if (! $deleted) {
-            return false;
-        }
-
         $settlement->flush();
-
-        if (PostHogService::isEnabled()) {
-            SyncAccountUsage::dispatch($accountId, null);
-        }
-
-        return true;
     }
 
     private static function pruneInvitesForWorkspace(Workspace $workspace): void

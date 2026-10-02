@@ -3,12 +3,9 @@
 declare(strict_types=1);
 
 use App\Jobs\PostHog\SendEvent;
-use App\Jobs\PostHog\SyncAccountUsage;
 use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
-use App\Models\Plan;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -16,9 +13,7 @@ use Illuminate\Support\Str;
 beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
 
-    $this->account = Account::factory()->create([
-        'plan_id' => Plan::query()->where('slug', 'workspace')->first()?->id,
-    ]);
+    $this->account = Account::factory()->create();
     $this->user = User::factory()->create(['account_id' => $this->account->id]);
     $this->account->update(['owner_id' => $this->user->id]);
 });
@@ -51,7 +46,6 @@ test('handle still identifies the user in the local environment even when PostHo
 
     // The identify() call still runs (and logs locally), but since PostHog
     // remains disabled, it must not queue an actual SendEvent to it.
-    Queue::assertPushed(SyncAccountUsage::class);
     Queue::assertNotPushed(SendEvent::class);
 });
 
@@ -121,34 +115,6 @@ test('handle omits attribution properties when none are set', function () {
             && ! array_key_exists('ttclid', $setOnce)
             && ! array_key_exists('rdt_cid', $setOnce)
             && ! array_key_exists('epik', $setOnce);
-    });
-});
-
-test('handle dispatches SyncAccountUsage with the user account id', function () {
-    Queue::fake();
-
-    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
-
-    Queue::assertPushed(SyncAccountUsage::class, function ($job) {
-        return $job->accountId === (string) $this->account->id
-            && $job->workspaceId === null;
-    });
-});
-
-test('handle dispatches SyncAccountUsage with the current workspace when set', function () {
-    $workspace = Workspace::factory()->create([
-        'account_id' => $this->account->id,
-        'user_id' => $this->user->id,
-    ]);
-    $this->user->update(['current_workspace_id' => $workspace->id]);
-
-    Queue::fake();
-
-    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
-
-    Queue::assertPushed(SyncAccountUsage::class, function ($job) use ($workspace) {
-        return $job->accountId === (string) $this->account->id
-            && $job->workspaceId === (string) $workspace->id;
     });
 });
 

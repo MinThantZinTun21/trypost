@@ -63,44 +63,26 @@ class WorkspaceController extends Controller
 
         $user = $request->user();
 
-        if ($redirect = $this->denyAdditionalWorkspace($user, redirectWhenAtLimit: false)) {
-            return $redirect;
-        }
+        $this->denyInviteeWorkspace($user);
 
         return Inertia::render('workspaces/Create');
     }
 
-    private function denyAdditionalWorkspace(User $user, bool $redirectWhenAtLimit = true): ?RedirectResponse
+    /**
+     * Invitee signup shells must stay empty until the invite is accepted.
+     */
+    private function denyInviteeWorkspace(User $user): void
     {
-        // Invitee signup shells must stay empty until accept — otherwise they become billable.
         if (Invite::query()->where('email', $user->email)->whereNull('accepted_at')->exists()) {
-            abort(403);
+            abort(SymfonyResponse::HTTP_FORBIDDEN);
         }
-
-        if (config('trypost.self_hosted') || $user->ownedWorkspacesCount() === 0) {
-            return null;
-        }
-
-        if (! $user->account?->hasActiveSubscription()) {
-            return redirect()->route('app.billing.index')
-                ->with('flash.error', __('workspaces.subscription_required'));
-        }
-
-        if ($redirectWhenAtLimit && ! $user->account->canCreateWorkspace()) {
-            return redirect()->route('app.workspaces.create')
-                ->with('flash.error', __('workspaces.limit_reached'));
-        }
-
-        return null;
     }
 
     public function store(StoreWorkspaceRequest $request): RedirectResponse
     {
         $user = $request->user();
 
-        if ($redirect = $this->denyAdditionalWorkspace($user)) {
-            return $redirect;
-        }
+        $this->denyInviteeWorkspace($user);
 
         CreateWorkspace::execute($user, $request->validated());
 
@@ -136,8 +118,6 @@ class WorkspaceController extends Controller
 
         return Inertia::render('settings/workspace/Workspace', [
             'workspace' => $workspace,
-            'isOnlyWorkspace' => ! config('trypost.self_hosted')
-                && $workspace->account->workspaces()->count() <= 1,
             'otherMemberCount' => $workspace->members()
                 ->where('users.id', '!=', $user->id)
                 ->whereDoesntHave(
@@ -199,13 +179,11 @@ class WorkspaceController extends Controller
     {
         $this->authorize('delete', $workspace);
 
-        if (! DeleteWorkspace::execute($workspace)) {
-            return back()->with('flash.error', __('workspaces.cannot_delete_last'));
-        }
+        DeleteWorkspace::execute($workspace);
 
         $request->user()->refresh();
 
-        // No current left (self-hosted last delete / no fallback) — go to create
+        // No current left (last delete / no fallback) — go to create
         // so EnsureHasWorkspace cannot bounce and drop the flash.
         if (! $request->user()->current_workspace_id) {
             return redirect()->route('app.workspaces.create')

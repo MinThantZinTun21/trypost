@@ -15,10 +15,6 @@ return [
             'title' => 'Workspace',
             'description' => 'Configure your workspace, brand, and members.',
         ],
-        'account' => [
-            'title' => 'Account',
-            'description' => 'Manage your account info, usage, and billing.',
-        ],
     ],
 
     'nav' => [
@@ -27,7 +23,6 @@ return [
         'workspace' => 'Workspace',
         'members' => 'Members',
         'notifications' => 'Notifications',
-        'billing' => 'Billing',
     ],
 
     'notifications' => [
@@ -141,17 +136,12 @@ return [
         'danger_description' => 'Irreversible actions.',
         'delete_warning' => 'Warning',
         'delete_title' => 'Delete this workspace',
-        'delete_description' => 'Permanently deletes this workspace and everything in it — posts, connected accounts, and media. You will be charged for one fewer workspace.',
-        'delete_description_self_hosted' => 'Permanently deletes this workspace, its posts, connected accounts, and media.',
-        'delete_only_description' => 'You cannot delete your only workspace. Cancel your subscription in billing to stop paying, or delete your account in Authentication settings to cancel billing and permanently remove everything.',
-        'delete_go_to_billing' => 'Go to billing',
-        'delete_go_to_delete_account' => 'Delete account',
+        'delete_description' => 'Permanently deletes this workspace, its posts, connected accounts, and media.',
         'delete_members_warning' => '{1}:count other member will lose access. Members without another TryPost workspace are permanently deleted.|[2,*]:count other members will lose access. Members without another TryPost workspace are permanently deleted.',
         'delete_action' => 'Delete workspace',
         'delete_cancel' => 'Cancel',
         'delete_confirm_title' => 'Delete workspace?',
-        'delete_confirm_description' => 'This permanently deletes the workspace and all of its data. Your billing will update to reflect one fewer workspace.',
-        'delete_confirm_description_self_hosted' => 'This permanently deletes the workspace and all of its data.',
+        'delete_confirm_description' => 'This permanently deletes the workspace and all of its data.',
     ],
 
     'members' => [
@@ -222,29 +212,12 @@ return [
         ],
     ],
 
-    'account' => [
-        'tabs' => [
-            'account' => 'Account',
-            'billing' => 'Billing',
-        ],
-        'title' => 'Account Settings',
-        'description' => 'Manage your account name and billing email',
-        'name' => 'Account Name',
-        'name_placeholder' => 'My Company',
-        'billing_email' => 'Billing Email',
-        'billing_email_placeholder' => 'billing@company.com',
-        'billing_email_hint' => 'This email will be used for invoices and billing communications from Stripe.',
-        'submit' => 'Save',
-    ],
-
     'flash' => [
-        'account_updated' => 'Account updated successfully!',
         'profile_updated' => 'Profile updated successfully!',
         'password_updated' => 'Password updated successfully!',
         'workspace_updated' => 'Settings updated successfully!',
         'photo_updated' => 'Photo updated successfully!',
         'photo_deleted' => 'Photo removed successfully!',
-        'delete_failed_billing' => 'We could not cancel your subscription with the billing provider. Nothing was deleted. Please try again or contact support.',
         'logo_updated' => 'Logo uploaded successfully!',
         'logo_deleted' => 'Logo removed successfully!',
         'notifications_updated' => 'Notification preferences updated!',

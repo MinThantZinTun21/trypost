@@ -68,12 +68,7 @@ class ProfileController extends Controller
 
     public function destroy(ProfileDeleteRequest $request): RedirectResponse
     {
-        if (! DeleteUser::execute($request->user(), $request)) {
-            session()->flash('flash.banner', __('settings.flash.delete_failed_billing'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return to_route('app.profile.edit');
-        }
+        DeleteUser::execute($request->user(), $request);
 
         return redirect('/');
     }

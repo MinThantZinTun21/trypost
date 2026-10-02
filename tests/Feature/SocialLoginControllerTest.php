@@ -11,7 +11,6 @@ use Laravel\Socialite\Two\User as SocialiteUser;
 
 beforeEach(function () {
     config([
-        'trypost.self_hosted' => false,
         'trypost.google_auth_enabled' => true,
         'trypost.github_auth_enabled' => true,
         'services.google-auth.client_id' => 'test-client-id',
@@ -47,61 +46,6 @@ test('google callback logs in existing user by email', function () {
     $response = $this->get(route('auth.google.callback'));
 
     $response->assertRedirect(route('app.home'));
-    $this->assertAuthenticatedAs($user);
-});
-
-test('google callback creates new user when email does not exist', function () {
-    $socialiteUser = new SocialiteUser;
-    $socialiteUser->map([
-        'id' => '789',
-        'name' => 'New User',
-        'email' => 'new@example.com',
-    ]);
-
-    Socialite::shouldReceive('driver')
-        ->with('google-auth')
-        ->andReturn($driver = Mockery::mock());
-    $driver->shouldReceive('user')->andReturn($socialiteUser);
-
-    $response = $this->get(route('auth.google.callback'));
-
-    $response->assertRedirect(route('app.welcome'));
-
-    $user = User::where('email', 'new@example.com')->first();
-    expect($user)->not->toBeNull();
-    expect($user->name)->toBe('New User');
-    expect($user->email_verified_at)->not->toBeNull();
-    expect($user->account_id)->not->toBeNull();
-    expect($user->workspaces()->count())->toBe(1);
-    expect($user->workspaces()->first()->name)->toBe("New User's Workspace");
-    expect($user->current_workspace_id)->toBe($user->workspaces()->first()->id);
-    $this->assertAuthenticatedAs($user);
-});
-
-test('github callback creates new user with a default workspace', function () {
-    $socialiteUser = new SocialiteUser;
-    $socialiteUser->map([
-        'id' => '987',
-        'name' => 'New Dev',
-        'email' => 'newdev@example.com',
-    ]);
-
-    Socialite::shouldReceive('driver')
-        ->with('github')
-        ->andReturn($driver = Mockery::mock());
-    $driver->shouldReceive('user')->andReturn($socialiteUser);
-
-    $response = $this->get(route('auth.github.callback'));
-
-    $response->assertRedirect(route('app.welcome'));
-
-    $user = User::where('email', 'newdev@example.com')->first();
-    expect($user)->not->toBeNull();
-    expect($user->github_id)->toBe('987');
-    expect($user->name)->toBe('New Dev');
-    expect($user->workspaces()->count())->toBe(1);
-    expect($user->workspaces()->first()->name)->toBe("New Dev's Workspace");
-    expect($user->current_workspace_id)->toBe($user->workspaces()->first()->id);
     $this->assertAuthenticatedAs($user);
 });
 
@@ -380,11 +324,11 @@ test('a stale invite id from an aborted oauth attempt does not leak into a later
 
     $response = $this->get(route('auth.google.callback'));
 
-    $response->assertRedirect(route('app.welcome'));
+    // Registration requires an invite, so the stale one must not be reused.
+    $response->assertNotFound();
 
-    $user = User::where('email', 'unrelated@example.com')->first();
-    expect($user)->not->toBeNull();
-    expect($user->workspaces()->count())->toBe(1);
+    expect(User::where('email', 'unrelated@example.com')->exists())->toBeFalse()
+        ->and($invite->fresh())->not->toBeNull();
 });
 
 // ========================================
@@ -392,8 +336,6 @@ test('a stale invite id from an aborted oauth attempt does not leak into a later
 // ========================================
 
 test('google registration 404s in self-hosted mode without an invite param', function () {
-    config()->set('trypost.self_hosted', true);
-
     $socialiteUser = new SocialiteUser;
     $socialiteUser->map([
         'id' => 'g-no-invite',
@@ -412,8 +354,6 @@ test('google registration 404s in self-hosted mode without an invite param', fun
 });
 
 test('google registration succeeds in self-hosted mode with an invite param', function () {
-    config()->set('trypost.self_hosted', true);
-
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
     $inviterAccount->update(['owner_id' => $inviter->id]);
@@ -449,8 +389,6 @@ test('google registration succeeds in self-hosted mode with an invite param', fu
 });
 
 test('google login for an existing user is never blocked by the self-hosted gate', function () {
-    config()->set('trypost.self_hosted', true);
-
     $user = User::factory()->create(['email' => 'existing-self-hosted@example.com']);
 
     $socialiteUser = new SocialiteUser;
@@ -472,8 +410,6 @@ test('google login for an existing user is never blocked by the self-hosted gate
 });
 
 test('github registration 404s in self-hosted mode without an invite param', function () {
-    config()->set('trypost.self_hosted', true);
-
     $socialiteUser = new SocialiteUser;
     $socialiteUser->map([
         'id' => 'gh-no-invite',
@@ -492,8 +428,6 @@ test('github registration 404s in self-hosted mode without an invite param', fun
 });
 
 test('github registration succeeds in self-hosted mode with an invite param', function () {
-    config()->set('trypost.self_hosted', true);
-
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
     $inviterAccount->update(['owner_id' => $inviter->id]);
@@ -529,8 +463,6 @@ test('github registration succeeds in self-hosted mode with an invite param', fu
 });
 
 test('github login for an existing user is never blocked by the self-hosted gate', function () {
-    config()->set('trypost.self_hosted', true);
-
     $user = User::factory()->create(['email' => 'gh-existing-self-hosted@example.com']);
 
     $socialiteUser = new SocialiteUser;

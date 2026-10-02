@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-import { uploadLogo, deleteLogo } from '@/routes/app/workspace';
+import { deleteLogo, uploadLogo } from '@/routes/app/workspace';
 
 interface Workspace {
     id: string;
@@ -22,11 +22,10 @@ interface Workspace {
 
 defineProps<{
     workspace: Workspace;
-    isOnlyWorkspace: boolean;
     otherMemberCount: number;
 }>();
 
-const { canManageBilling } = useWorkspaceRole();
+const { isOwner } = useWorkspaceRole();
 </script>
 
 <template>
@@ -60,7 +59,9 @@ const { canManageBilling } = useWorkspaceRole();
                 class="space-y-6"
             >
                 <div class="grid gap-2">
-                    <Label for="name">{{ $t('settings.workspace.name') }}</Label>
+                    <Label for="name">{{
+                        $t('settings.workspace.name')
+                    }}</Label>
                     <Input
                         id="name"
                         name="name"
@@ -70,16 +71,17 @@ const { canManageBilling } = useWorkspaceRole();
                     <InputError :message="errors.name" />
                 </div>
 
-                <Button :disabled="processing">{{ $t('settings.workspace.save') }}</Button>
+                <Button :disabled="processing">{{
+                    $t('settings.workspace.save')
+                }}</Button>
             </Form>
         </div>
 
-        <template v-if="canManageBilling">
+        <template v-if="isOwner">
             <Separator />
 
             <DeleteWorkspace
                 :workspace="workspace"
-                :is-only-workspace="isOnlyWorkspace"
                 :other-member-count="otherMemberCount"
             />
         </template>

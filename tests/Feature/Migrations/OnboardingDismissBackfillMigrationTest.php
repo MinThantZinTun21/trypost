@@ -15,24 +15,16 @@ beforeEach(function () {
     };
 });
 
-test('completes every open account regardless of subscription or hosting mode', function () {
+test('completes every open account', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
-    $open = User::factory()->create();
-    $subscribed = User::factory()->create();
-    subscribeAccount($subscribed->account);
-
-    config(['trypost.self_hosted' => true]);
-    $selfHosted = User::factory()->create();
-
-    expect($open->account->subscriptions()->exists())->toBeFalse()
-        ->and($selfHosted->account->subscriptions()->exists())->toBeFalse();
+    $first = User::factory()->create();
+    $second = User::factory()->create();
 
     ($this->runBackfill)();
 
-    expect($open->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue()
-        ->and($subscribed->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue()
-        ->and($selfHosted->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+    expect($first->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue()
+        ->and($second->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
 test('does not overwrite already completed or dismissed accounts', function () {

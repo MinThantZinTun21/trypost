@@ -16,7 +16,6 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
 
 beforeEach(function () {
-    config()->set('trypost.self_hosted', false);
     $this->workspace = Workspace::factory()->create();
 });
 

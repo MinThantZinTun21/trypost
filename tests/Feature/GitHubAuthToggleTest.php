@@ -7,8 +7,6 @@ use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
 
-beforeEach(fn () => config()->set('trypost.self_hosted', false));
-
 test('login page shares github auth enabled prop as false when disabled', function () {
     config(['trypost.github_auth_enabled' => false]);
 
@@ -24,17 +22,6 @@ test('login page shares github auth enabled prop as true when enabled', function
     config(['trypost.github_auth_enabled' => true]);
 
     $response = $this->get(route('login'));
-
-    $response->assertOk();
-
-    $page = $response->original->getData()['page'];
-    expect($page['props']['githubAuthEnabled'])->toBeTrue();
-});
-
-test('register page shares github auth enabled prop', function () {
-    config(['trypost.github_auth_enabled' => true]);
-
-    $response = $this->get(route('register'));
 
     $response->assertOk();
 
@@ -67,8 +54,7 @@ test('github auth callback route exists', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('register page still shares github auth enabled prop when self_hosted (via pending invite)', function () {
-    config()->set('trypost.self_hosted', true);
+test('register page still shares github auth enabled prop via a pending invite', function () {
     config()->set('trypost.github_auth_enabled', true);
 
     $account = Account::factory()->create();

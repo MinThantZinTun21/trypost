@@ -4,24 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\Billing\StartSubscriptionCheckout;
-use App\Enums\Billing\Interval;
-use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
-use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Http\Requests\App\Welcome\StoreWelcomeConnectRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
-use App\Http\Requests\App\Welcome\StoreWelcomePlanRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
-use App\Http\Resources\App\PlanResource;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Http\Resources\App\WelcomeSummaryResource;
-use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -192,76 +185,13 @@ class WelcomeController extends Controller
             report($e);
         }
 
-        return redirect()->route('app.welcome.plan');
-    }
-
-    public function plan(Request $request): InertiaResponse|RedirectResponse
-    {
-        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true, requireConnect: true)) {
-            return $redirect;
-        }
-
-        return Inertia::render('welcome/Plan', [
-            'plans' => PlanResource::collection(
-                Plan::active()->orderBy('sort')->get(),
-            )->resolve(),
-            'welcome' => WelcomeSummaryResource::make($request->user()),
-        ]);
-    }
-
-    public function storePlan(
-        StoreWelcomePlanRequest $request,
-        StartSubscriptionCheckout $checkout,
-        PostHogService $postHog,
-    ): Response|RedirectResponse {
-        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true, requireConnect: true)) {
-            return $redirect;
-        }
-
-        $user = $request->user();
-        $plan = Plan::active()->findOrFail($request->validated('plan_id'));
-        $priceId = Interval::Monthly->priceIdFor($plan);
-
-        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
-
-        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
-
-        try {
-            $postHog->capture(
-                $user->id,
-                CheckoutEvent::Started->value,
-                ['plan_name' => $plan->name, 'interval' => Interval::Monthly->value],
-                $user->account,
-            );
-        } catch (Throwable $e) {
-            report($e);
-        }
-
-        return $response;
-    }
-
-    public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse
-    {
-        $user = $request->user();
-
-        if ($user->account?->hasAppAccess()) {
-            return redirect()->route('app.calendar');
-        }
-
-        if ($user->isAccountOwner()) {
-            return redirect()->route('app.welcome.persona');
-        }
-
-        return Inertia::render('welcome/SubscriptionRequired', [
-            'ownerName' => $user->account?->owner?->name,
-        ]);
+        return redirect()->route('app.calendar');
     }
 
     private function redirectIfStepIncomplete(
         Request $request,
         bool $requireGoals = false,
         bool $requireReferral = false,
-        bool $requireConnect = false,
     ): ?RedirectResponse {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
@@ -281,33 +211,15 @@ class WelcomeController extends Controller
             return redirect()->route('app.welcome.referral-source');
         }
 
-        if ($requireConnect && ! $user->currentWorkspace?->socialAccounts()
-            ->where('status', Status::Connected)
-            ->exists()
-        ) {
-            return redirect()->route('app.welcome.connect');
-        }
-
         return null;
     }
 
+    /**
+     * Every Owner has app access (there is no billing gate), so the onboarding
+     * steps are never shown and always send the user to the calendar.
+     */
     private function redirectIfUnavailable(Request $request): ?RedirectResponse
     {
-        $user = $request->user();
-
-        // Match EnsureAccountReady — generic-trial (no-card) users already have
-        // app access and must not be sent through Stripe checkout again.
-        // Self-hosted always has app access, so welcome/checkout is skipped too.
-        if ($user->account?->hasAppAccess()) {
-            return redirect()->route('app.calendar');
-        }
-
-        // Members can't check out — hold them on a dedicated screen instead of
-        // walking an ICP flow they can never finish.
-        if (! $user->isAccountOwner()) {
-            return redirect()->route('app.welcome.subscription-required');
-        }
-
-        return null;
+        return redirect()->route('app.calendar');
     }
 }

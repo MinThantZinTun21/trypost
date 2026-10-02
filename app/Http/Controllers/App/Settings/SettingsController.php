@@ -33,7 +33,6 @@ class SettingsController extends Controller
             'permissions' => [
                 'canManageProfile' => true,
                 'canManageWorkspace' => $canManageWorkspace,
-                'canManageAccount' => $user?->isAccountOwner() && ! config('trypost.self_hosted'),
             ],
         ]);
     }

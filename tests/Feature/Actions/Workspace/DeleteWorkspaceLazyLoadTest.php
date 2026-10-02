@@ -29,7 +29,7 @@ test('delete workspace does not lazy load account while reassigning current work
     $current->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $current->id]);
 
-    expect(DeleteWorkspace::execute($current))->toBeTrue();
+    DeleteWorkspace::execute($current);
 
     $owner->refresh();
 

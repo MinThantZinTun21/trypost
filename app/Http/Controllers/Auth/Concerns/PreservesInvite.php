@@ -26,14 +26,14 @@ trait PreservesInvite
     }
 
     /**
-     * Mirrors the registration.enabled middleware: self-hosted requires a
-     * real invite to register.
+     * Mirrors the registration.enabled middleware: registering requires a
+     * real invite.
      */
-    private function resolveInviteForRegistration(): ?Invite
+    private function resolveInviteForRegistration(): Invite
     {
         $invite = Invite::fromId($this->retrieveInvite());
 
-        if ((bool) config('trypost.self_hosted') && ! $invite) {
+        if (! $invite) {
             throw new NotFoundHttpException;
         }
 

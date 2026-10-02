@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\App\AssetController;
-use App\Http\Controllers\App\BillingController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
 use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
@@ -11,7 +10,6 @@ use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostCommentController;
 use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\PresenceController;
-use App\Http\Controllers\App\Settings\AccountController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\ProfileController;
@@ -38,18 +36,16 @@ use App\Http\Controllers\Auth\ThreadsController;
 use App\Http\Controllers\Auth\TikTokController;
 use App\Http\Controllers\Auth\XController;
 use App\Http\Controllers\Auth\YouTubeController;
-use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use Illuminate\Support\Facades\Route;
 
-// Subscription selection (requires auth but not subscription)
+// Onboarding and workspace bootstrap (auth only)
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', function () {
         return redirect()->route('app.calendar');
     })->name('app.home');
 
-    Route::get('subscribe', [BillingController::class, 'subscribe'])->name('app.subscribe');
     Route::get('welcome', fn () => redirect()->route('app.welcome.persona'))->name('app.welcome');
     Route::get('welcome/persona', [WelcomeController::class, 'persona'])->name('app.welcome.persona');
     Route::post('welcome/persona', [WelcomeController::class, 'storePersona'])->name('app.welcome.persona.store');
@@ -63,12 +59,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('welcome/connect', [WelcomeController::class, 'storeConnect'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.connect.store');
-    Route::get('welcome/plan', [WelcomeController::class, 'plan'])->name('app.welcome.plan');
-    Route::post('welcome/plan', [WelcomeController::class, 'storePlan'])
-        ->middleware('throttle:6,1')
-        ->name('app.welcome.plan.store');
-    Route::get('welcome/subscription-required', [WelcomeController::class, 'subscriptionRequired'])->name('app.welcome.subscription-required');
-    Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');
@@ -84,9 +74,8 @@ Route::middleware(['auth'])->group(function () {
 // Social Connect routes
 Route::middleware(['auth'])->group(function () {
     // Starting a connection reads the user's current workspace, so these require
-    // one — during onboarding they redirect to workspace creation. Disconnecting
-    // lives here too (and not behind EnsureAccountReady) so it works before a
-    // subscription exists; the controller still authorizes workspace ownership.
+    // one — during onboarding they redirect to workspace creation. The
+    // disconnect controller still authorizes workspace ownership.
     Route::middleware(EnsureHasWorkspace::class)->group(function () {
         Route::get('connect/linkedin', [LinkedInController::class, 'connect'])->name('app.social.linkedin.connect');
         Route::get('connect/x', [XController::class, 'connect'])->name('app.social.x.connect');
@@ -147,8 +136,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('accounts/google-business/select', [GoogleBusinessController::class, 'select'])->name('app.social.google-business.select');
 });
 
-// Routes that require account access and a current workspace
-Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
+// Routes that require a current workspace
+Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     // Discord — live lookups for the composer (channel picker + mention autocomplete).
     // Throttled because they proxy the shared bot's (rate-limited) Discord API.
     Route::get('discord/accounts/{account}/channels', [AppDiscordController::class, 'channels'])
@@ -236,19 +225,9 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret'])->name('app.webhooks.rotate-secret');
     Route::post('webhooks/{webhook}/logs/{webhookLog}/replay', [WebhookController::class, 'replay'])->name('app.webhooks.replay');
     Route::delete('webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('app.webhooks.destroy');
-
-    // Account Settings
-    Route::get('settings/account', [AccountController::class, 'edit'])->name('app.account.edit');
-    Route::put('settings/account', [AccountController::class, 'update'])->name('app.account.update');
-
-    // Billing
-    Route::get('settings/account/billing', [BillingController::class, 'index'])->name('app.billing.index');
-    Route::get('settings/account/billing/portal', [BillingController::class, 'portal'])->name('app.billing.portal');
-    Route::post('settings/account/billing/change-plan', [BillingController::class, 'changePlan'])->name('app.billing.change-plan');
-
 });
 
-// Notifications (auth only, no subscription required)
+// Notifications (auth only)
 Route::middleware(['auth'])->group(function () {
     Route::get('notifications', [NotificationController::class, 'index'])->name('app.notifications.index');
     Route::put('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('app.notifications.read');

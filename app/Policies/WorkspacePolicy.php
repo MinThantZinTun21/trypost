@@ -74,11 +74,6 @@ class WorkspacePolicy
         return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
     }
 
-    public function manageBilling(User $user, Workspace $workspace): bool
-    {
-        return $this->isOwner($user, $workspace);
-    }
-
     private function isOwner(User $user, Workspace $workspace): bool
     {
         return $workspace->account_id === $user->account_id && $user->isAccountOwner();

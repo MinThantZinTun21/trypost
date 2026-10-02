@@ -19,7 +19,6 @@ return [
 
     'flash' => [
         'welcome' => 'Welcome to TryPost!',
-        'welcome_trial' => 'Welcome to TryPost! Your trial has started.',
     ],
 
     'legal' => 'By continuing, you agree to our <a href=":terms_url" target="_blank">Terms of Service</a> and <a href=":privacy_url" target="_blank">Privacy Policy</a>.',
@@ -68,8 +67,6 @@ return [
         'forgot_password' => 'Forgot password?',
         'remember_me' => 'Remember me',
         'submit' => 'Log in',
-        'no_account' => "Don't have an account?",
-        'sign_up' => 'Sign up',
     ],
 
     'register' => [

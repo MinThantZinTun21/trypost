@@ -31,12 +31,6 @@ function seedChunkedUploadWorkspace(): void
     ]);
     test()->workspace->members()->attach(test()->user->id, ['role' => Role::Member->value]);
     test()->user->update(['current_workspace_id' => test()->workspace->id]);
-    test()->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
 }
 
 function fakeMp4Bytes(): string

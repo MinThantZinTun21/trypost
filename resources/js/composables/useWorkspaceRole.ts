@@ -34,7 +34,6 @@ export const useWorkspaceRole = () => {
         canManageWebhooks: isAdminOrAbove,
         canManageTeam: isAdminOrAbove,
         canManageWorkspace: isAdminOrAbove,
-        canManageBilling: isOwner,
         canCreateWorkspace: isOwner,
     };
 };

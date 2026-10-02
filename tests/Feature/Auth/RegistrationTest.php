@@ -7,8 +7,6 @@ use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
 
-beforeEach(fn () => config()->set('trypost.self_hosted', false));
-
 function createTestInvite(string $email): Invite
 {
     $account = Account::factory()->create();
@@ -26,52 +24,6 @@ function createTestInvite(string $email): Invite
         'workspaces' => [$workspace->id],
     ]);
 }
-
-test('registration screen can be rendered', function () {
-    $response = $this->get(route('register'));
-
-    $response->assertOk();
-});
-
-test('new users can register', function () {
-    $response = $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'Password123!',
-    ]);
-
-    $response->assertSessionHasNoErrors();
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('app.welcome', absolute: false));
-});
-
-test('new users get a default workspace on registration', function () {
-    $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'Password123!',
-    ]);
-
-    $user = User::where('email', 'test@example.com')->first();
-
-    expect($user)->not->toBeNull();
-    expect($user->account_id)->not->toBeNull();
-    expect($user->workspaces()->count())->toBe(1);
-    expect($user->workspaces()->first()->name)->toBe("Test User's Workspace");
-    expect($user->current_workspace_id)->toBe($user->workspaces()->first()->id);
-});
-
-test('new users do not have verified email by default', function () {
-    $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'Password123!',
-    ]);
-
-    $user = User::where('email', 'test@example.com')->first();
-
-    expect($user->email_verified_at)->toBeNull();
-});
 
 test('new users registering via invite have verified email automatically', function () {
     $account = Account::factory()->create();
@@ -100,17 +52,13 @@ test('new users registering via invite have verified email automatically', funct
     expect($user->email_verified_at)->not->toBeNull();
 });
 
-test('register page returns 404 when self_hosted and no pending invite in session', function () {
-    config()->set('trypost.self_hosted', true);
-
+test('register page returns 404 without a pending invite in session', function () {
     $response = $this->get(route('register'));
 
     $response->assertNotFound();
 });
 
-test('register POST returns 404 when self_hosted and no pending invite in session', function () {
-    config()->set('trypost.self_hosted', true);
-
+test('register POST returns 404 without a pending invite in session', function () {
     $response = $this->post(route('register.store'), [
         'name' => 'Test User',
         'email' => 'test@example.com',
@@ -121,8 +69,7 @@ test('register POST returns 404 when self_hosted and no pending invite in sessio
     expect(User::where('email', 'test@example.com')->exists())->toBeFalse();
 });
 
-test('register page renders when self_hosted but session has pending invite', function () {
-    config()->set('trypost.self_hosted', true);
+test('register page renders when session has pending invite', function () {
     $invite = createTestInvite('invitee@example.com');
 
     $response = $this
@@ -132,8 +79,7 @@ test('register page renders when self_hosted but session has pending invite', fu
     $response->assertOk();
 });
 
-test('register page renders when self_hosted with invite query param and persists it to session', function () {
-    config()->set('trypost.self_hosted', true);
+test('register page renders with invite query param and persists it to session', function () {
     $invite = createTestInvite('invitee@example.com');
 
     $response = $this->get(route('register', ['invite' => $invite->id]));
@@ -143,7 +89,6 @@ test('register page renders when self_hosted with invite query param and persist
 });
 
 test('signup clears pending_invite_id from session', function () {
-    config()->set('trypost.self_hosted', true);
     $invite = createTestInvite('invitee@example.com');
 
     $this->withSession(['pending_invite_id' => $invite->id])
@@ -157,8 +102,7 @@ test('signup clears pending_invite_id from session', function () {
     expect(User::where('email', 'invitee@example.com')->exists())->toBeTrue();
 });
 
-test('register POST passes when self_hosted with invite query param even without prior session', function () {
-    config()->set('trypost.self_hosted', true);
+test('register POST passes with invite query param even without prior session', function () {
     $invite = createTestInvite('invitee@example.com');
 
     $response = $this->post(route('register.store', ['invite' => $invite->id]), [
@@ -169,21 +113,4 @@ test('register POST passes when self_hosted with invite query param even without
 
     $response->assertSessionHasNoErrors();
     expect(User::where('email', 'invitee@example.com')->exists())->toBeTrue();
-});
-
-test('register works normally when not self_hosted even with pending invite in session', function () {
-    config()->set('trypost.self_hosted', false);
-
-    $response = $this
-        ->withSession(['pending_invite_id' => 'invite-abc'])
-        ->post(route('register.store'), [
-            'name' => 'Invitee',
-            'email' => 'invitee@example.com',
-            'password' => 'Password123!',
-        ]);
-
-    $response->assertSessionHasNoErrors();
-    expect(User::where('email', 'invitee@example.com')->exists())->toBeTrue();
-    // Cleared regardless of mode, since signup consumes the marker.
-    expect(session('pending_invite_id'))->toBeNull();
 });

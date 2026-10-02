@@ -10,9 +10,6 @@ interface FlashData {
  * pushes are no-ops when GTM isn't configured (the array still exists in
  * memory; nothing reads it). Self-hosted instances without GTM_ID set
  * incur zero error noise.
- *
- * Billing is account-scoped (not workspace-scoped) in trypost, so the
- * plan/subscription fields are emitted under `account_*` keys.
  */
 export const initializeDataLayer = (
     auth: Auth | undefined,
@@ -48,9 +45,6 @@ export const initializeDataLayer = (
             account_id: auth.account.id,
             account_name: auth.account.name,
             account_created_at: auth.account.created_at,
-            account_plan: auth.plan?.name ?? null,
-            account_plan_slug: auth.plan?.slug ?? null,
-            account_subscribed: Boolean(auth.hasActiveSubscription),
         });
     }
 

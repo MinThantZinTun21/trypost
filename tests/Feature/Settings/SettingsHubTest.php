@@ -10,9 +10,7 @@ test('settings hub requires authentication', function () {
     $this->get(route('app.settings'))->assertRedirect(route('login'));
 });
 
-test('account owner with admin workspace role sees all three cards', function () {
-    config()->set('trypost.self_hosted', false);
-
+test('account owner with admin workspace role sees profile and workspace cards', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
@@ -24,7 +22,6 @@ test('account owner with admin workspace role sees all three cards', function ()
             ->component('settings/Index')
             ->where('permissions.canManageProfile', true)
             ->where('permissions.canManageWorkspace', true)
-            ->where('permissions.canManageAccount', true)
         );
 });
 
@@ -41,7 +38,6 @@ test('plain workspace member only sees profile card', function () {
         ->assertInertia(fn ($page) => $page
             ->where('permissions.canManageProfile', true)
             ->where('permissions.canManageWorkspace', false)
-            ->where('permissions.canManageAccount', false)
         );
 });
 
@@ -58,13 +54,10 @@ test('workspace admin who is not account owner sees profile and workspace only',
         ->assertInertia(fn ($page) => $page
             ->where('permissions.canManageProfile', true)
             ->where('permissions.canManageWorkspace', true)
-            ->where('permissions.canManageAccount', false)
         );
 });
 
-test('account card is hidden when self hosted', function () {
-    config()->set('trypost.self_hosted', true);
-
+test('settings hub does not expose an account card', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $user->update(['current_workspace_id' => $workspace->id]);
@@ -72,6 +65,6 @@ test('account card is hidden when self hosted', function () {
     $this->actingAs($user)->get(route('app.settings'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('permissions.canManageAccount', false)
+            ->missing('permissions.canManageAccount')
         );
 });

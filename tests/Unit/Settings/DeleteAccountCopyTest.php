@@ -29,14 +29,6 @@ test('workspace delete members warning describes conditional permanent deletion'
         ->not->toContain('personal account');
 });
 
-test('account delete billing failure flash says nothing was deleted', function () {
-    $flash = __('settings.flash.delete_failed_billing');
-
-    expect($flash)
-        ->toContain('Nothing was deleted')
-        ->not->toContain('already removed');
-});
-
 test('account delete warning mentions invited members are permanently deleted', function () {
     expect(__('settings.delete_account.warning_message'))
         ->toContain('invited members')

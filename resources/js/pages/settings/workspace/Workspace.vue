@@ -16,7 +16,6 @@ interface Workspace {
 
 defineProps<{
     workspace: Workspace;
-    isOnlyWorkspace: boolean;
     otherMemberCount: number;
 }>();
 
@@ -37,7 +36,6 @@ const tabs = useWorkspaceSettingsTabs();
 
             <WorkspaceTab
                 :workspace="workspace"
-                :is-only-workspace="isOnlyWorkspace"
                 :other-member-count="otherMemberCount"
             />
         </div>
