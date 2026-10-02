@@ -10,7 +10,6 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Social\InstagramAnalytics;
 use App\Services\Social\InstagramPublisher;
 use Illuminate\Support\Facades\Http;
 
@@ -191,35 +190,7 @@ test('instagram facebook does not refresh token', function () {
     expect($this->instagramFacebookAccount->token_expires_at)->toBeNull();
 });
 
-test('analytics service supports instagram facebook', function () {
-    Http::fake([
-        'https://graph.facebook.com/*' => Http::response([
-            'data' => [],
-        ], 200),
-    ]);
-
-    $analytics = app(InstagramAnalytics::class);
-    $metrics = $analytics->getMetrics($this->instagramFacebookAccount);
-
-    expect($metrics)->toBeArray();
-
-    Http::assertSent(function ($request) {
-        return str_contains($request->url(), 'graph.facebook.com');
-    });
-});
-
 test('instagram facebook platform is included in all queues', function () {
     $queues = Platform::allQueues();
     expect($queues)->toContain('social-instagram-facebook');
-});
-
-test('instagram facebook is in supported analytics platforms', function () {
-    Http::fake([
-        'https://graph.facebook.com/*' => Http::response(['data' => []], 200),
-    ]);
-
-    $analytics = app(InstagramAnalytics::class);
-    $metrics = $analytics->getMetrics($this->instagramFacebookAccount);
-
-    expect($metrics)->toBeArray();
 });

@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PublishPost;
@@ -18,7 +17,6 @@ use App\Models\WorkspaceLabel;
 use App\Support\LinkTlds;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
@@ -1031,229 +1029,6 @@ test('update post can sync multiple labels', function () {
     expect($post->labels->pluck('id')->toArray())->toEqualCanonicalizing([$label2->id, $label3->id]);
 });
 
-test('platform metrics returns unsupported when post not published', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'status' => Status::Pending,
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJson(['unsupported' => true, 'reason' => 'not_published']);
-});
-
-test('platform metrics returns 404 for post in another workspace', function () {
-    $otherWorkspace = Workspace::factory()->create();
-    $otherPost = Post::factory()->create(['workspace_id' => $otherWorkspace->id]);
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $otherPost->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $otherPost->id, 'postPlatform' => $pp->id]))
-        ->assertNotFound();
-});
-
-test('platform metrics returns 404 when post platform belongs to different post', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $otherPost = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $otherPost->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]))
-        ->assertNotFound();
-});
-
-test('platform metrics dispatches X analytics for X platform', function () {
-    $xAccount = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::X,
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $xAccount->id,
-        'platform' => Platform::X,
-        'status' => Status::Published,
-        'platform_post_id' => '1234567890',
-    ]);
-
-    Http::fake([
-        'https://api.x.com/2/tweets/1234567890*' => Http::response([
-            'data' => [
-                'public_metrics' => [
-                    'impression_count' => 500,
-                    'like_count' => 42,
-                    'retweet_count' => 7,
-                    'reply_count' => 3,
-                    'quote_count' => 1,
-                    'bookmark_count' => 4,
-                ],
-            ],
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJsonFragment(['label' => 'Impressions', 'value' => 500]);
-    $response->assertJsonFragment(['label' => 'Likes', 'value' => 42]);
-});
-
-test('platform metrics dispatches TikTok analytics for TikTok platform', function () {
-    $tiktokAccount = SocialAccount::factory()->tiktok()->create([
-        'workspace_id' => $this->workspace->id,
-        'username' => 'tiktoker',
-        'token_expires_at' => now()->addDays(1),
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->tiktok()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $tiktokAccount->id,
-        'platform' => Platform::TikTok,
-        'status' => Status::Published,
-        'platform_post_id' => '7685359243088103444',
-    ]);
-
-    $api = config('trypost.platforms.tiktok.api');
-
-    Http::fake([
-        $api.'/video/query/*' => Http::response([
-            'data' => [
-                'videos' => [[
-                    'id' => '7685359243088103444',
-                    'view_count' => 220,
-                    'like_count' => 11,
-                    'comment_count' => 2,
-                    'share_count' => 1,
-                ]],
-            ],
-            'error' => ['code' => 'ok'],
-        ]),
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJsonFragment(['label' => 'Views', 'value' => 220]);
-    $response->assertJsonFragment(['label' => 'Likes', 'value' => 11]);
-});
-
-test('platform metrics dispatches LinkedIn analytics for LinkedIn platform', function () {
-    $linkedinAccount = SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addDay(),
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $linkedinAccount->id,
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
-        'status' => Status::Published,
-        'platform_post_id' => 'urn:li:share:7503082467755646976',
-    ]);
-
-    $api = config('trypost.platforms.linkedin.api');
-
-    Http::fake([
-        "{$api}/v2/socialActions/*" => Http::response([
-            'likesSummary' => ['totalLikes' => 1],
-            'commentsSummary' => ['aggregatedTotalComments' => 0],
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJsonFragment(['label' => 'Likes', 'value' => 1]);
-    $response->assertJsonFragment(['label' => 'Comments', 'value' => 0]);
-});
-
-test('platform metrics dispatches LinkedIn Page analytics for LinkedIn Page platform', function () {
-    $pageAccount = SocialAccount::factory()->linkedinPage()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addDay(),
-        'platform_user_id' => '99920311',
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $pageAccount->id,
-        'platform' => Platform::LinkedInPage,
-        'content_type' => ContentType::LinkedInPagePost,
-        'status' => Status::Published,
-        'platform_post_id' => 'urn:li:ugcPost:7504988143797075969',
-    ]);
-
-    $api = config('trypost.platforms.linkedin-page.api');
-
-    Http::fake([
-        "{$api}/rest/organizationalEntityShareStatistics*" => Http::response([
-            'elements' => [[
-                'totalShareStatistics' => [
-                    'impressionCount' => 99,
-                    'clickCount' => 14,
-                    'likeCount' => 0,
-                    'commentCount' => 0,
-                    'shareCount' => 0,
-                ],
-            ]],
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJsonFragment(['label' => 'Impressions', 'value' => 99]);
-    $response->assertJsonFragment(['label' => 'Clicks', 'value' => 14]);
-});
-
 test('show page renders for non-editable posts', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -1660,3 +1435,19 @@ test('the editor receives the tld list only while x link defusing is on', functi
     'enabled' => [true, true],
     'disabled' => [false, false],
 ]);
+
+test('analytics page and post metrics endpoint no longer exist', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $postPlatform = PostPlatform::factory()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->actingAs($this->user)->get('/analytics')->assertNotFound();
+    $this->actingAs($this->user)
+        ->getJson("/posts/{$post->id}/platforms/{$postPlatform->id}/metrics")
+        ->assertNotFound();
+});

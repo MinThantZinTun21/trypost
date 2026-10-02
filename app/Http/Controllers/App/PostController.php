@@ -22,13 +22,10 @@ use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\PostResource;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Post;
-use App\Models\PostPlatform;
-use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokCreatorInfo;
 use App\Support\LinkTlds;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -195,17 +192,6 @@ class PostController extends Controller
         ]);
 
         return Inertia::location(route('app.posts.edit', $post));
-    }
-
-    public function platformMetrics(Request $request, Post $post, PostPlatform $postPlatform): JsonResponse
-    {
-        $this->authorize('view', $post);
-
-        if ($postPlatform->post_id !== $post->id) {
-            abort(404);
-        }
-
-        return response()->json(app(PostMetricsFetcher::class)->forPlatform($postPlatform));
     }
 
     public function show(Request $request, Post $post): Response|RedirectResponse

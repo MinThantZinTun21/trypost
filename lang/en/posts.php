@@ -357,10 +357,6 @@ return [
         'scheduled_for' => 'Scheduled for :date',
         'draft' => 'Draft',
         'status_pending' => 'Pending',
-        'metrics' => 'Metrics',
-        'metrics_loading' => 'Loading metrics…',
-        'metrics_unavailable' => 'Metrics unavailable for this platform yet.',
-        'metrics_empty' => 'No metrics returned.',
         'pending_review' => 'Google is reviewing this post. We will update it when the review finishes.',
     ],
 

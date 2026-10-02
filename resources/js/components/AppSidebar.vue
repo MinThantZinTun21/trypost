@@ -4,7 +4,6 @@ import {
     IconAffiliate,
     IconAlertTriangle,
     IconCalendar,
-    IconChartBar,
     IconChevronRight,
     IconClock,
     IconFileCheck,
@@ -46,7 +45,7 @@ import {
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-import { accounts, analytics, calendar } from '@/routes/app';
+import { accounts, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
@@ -89,11 +88,6 @@ const mainNavItems = computed<NavItem[]>(() => [
         title: trans('sidebar.posts.calendar'),
         href: calendar.url(),
         icon: IconCalendar,
-    },
-    {
-        title: trans('sidebar.analytics'),
-        href: analytics.url(),
-        icon: IconChartBar,
     },
     ...(canManageRepurposes.value
         ? [

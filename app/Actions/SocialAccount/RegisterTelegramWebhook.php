@@ -32,7 +32,7 @@ class RegisterTelegramWebhook
         $response = Http::post(TelegramApi::endpoint('setWebhook'), [
             'url' => $url,
             'secret_token' => $secret,
-            'allowed_updates' => ['message', 'channel_post', 'message_reaction_count'],
+            'allowed_updates' => ['message', 'channel_post'],
         ]);
 
         if (! $response->successful() || data_get($response->json(), 'ok') !== true) {

@@ -25,7 +25,7 @@ test('it registers the webhook with the url, secret and allowed updates', functi
         return str_contains($request->url(), '/botTESTTOKEN/setWebhook')
             && $request['url'] === route('telegram.webhook')
             && $request['secret_token'] === 'shh-secret'
-            && $request['allowed_updates'] === ['message', 'channel_post', 'message_reaction_count'];
+            && $request['allowed_updates'] === ['message', 'channel_post'];
     });
 });
 

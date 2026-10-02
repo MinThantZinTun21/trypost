@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Webhooks;
 
 use App\Actions\SocialAccount\ConnectTelegramChannel;
-use App\Actions\SocialAccount\StoreTelegramReactions;
 use App\Http\Controllers\Controller;
 use App\Models\Workspace;
 use App\Services\Social\Telegram\TelegramConnectCode;
@@ -30,12 +29,6 @@ class TelegramWebhookController extends Controller
         );
 
         $update = $request->all();
-
-        if (is_array($reactionUpdate = data_get($update, 'message_reaction_count'))) {
-            StoreTelegramReactions::execute($reactionUpdate);
-
-            return response()->noContent();
-        }
 
         $chat = data_get($update, 'message.chat') ?? data_get($update, 'channel_post.chat');
         $text = data_get($update, 'message.text') ?? data_get($update, 'channel_post.text');

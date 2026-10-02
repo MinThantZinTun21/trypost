@@ -19,14 +19,6 @@ export const formatNumber = (value: number): string => {
     return value.toLocaleString('en-US');
 };
 
-export const formatNumberCompact = (value: number): string => {
-    return new Intl.NumberFormat('en-US', {
-        notation: 'compact',
-        compactDisplay: 'short',
-        maximumFractionDigits: 1,
-    }).format(value);
-};
-
 export const formatMoney = (cents: number): string => {
     const dollars = cents / 100;
     return dollars.toLocaleString('en-US', {
