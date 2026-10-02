@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Brand;
+namespace App\Services\Http;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;

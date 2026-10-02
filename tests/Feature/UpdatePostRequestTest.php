@@ -814,21 +814,17 @@ test('scheduling across multiple platforms enforces the strictest content-length
     expect(session('errors')->get('content')[0])->toContain('Threads');
 });
 
-test('draft save accepts media source metadata for ai regeneration', function () {
+test('draft save accepts media source metadata', function () {
     $payload = [
         [
-            'id' => 'media-ai-keep-meta',
-            'path' => 'ai-images/generated.webp',
-            'url' => 'https://example.com/ai-images/generated.webp',
+            'id' => 'media-keep-meta',
+            'path' => 'medias/photo.jpg',
+            'url' => 'https://example.com/medias/photo.jpg',
             'type' => 'image',
-            'mime_type' => 'image/webp',
-            'source' => 'ai',
+            'mime_type' => 'image/jpeg',
+            'source' => 'unsplash',
             'source_meta' => [
-                'title' => 'Fix ECP typo',
-                'body' => 'Body copy',
-                'keywords' => ['marketing', 'automation'],
-                'width' => 1080,
-                'height' => 1350,
+                'photo_id' => 'abc123',
             ],
         ],
     ];
@@ -843,8 +839,26 @@ test('draft save accepts media source metadata for ai regeneration', function ()
     $response->assertSessionDoesntHaveErrors();
 
     $this->post->refresh();
-    expect(data_get($this->post->media, '0.source'))->toBe('ai');
-    expect(data_get($this->post->media, '0.source_meta.title'))->toBe('Fix ECP typo');
+    expect(data_get($this->post->media, '0.source'))->toBe('unsplash');
+    expect(data_get($this->post->media, '0.source_meta.photo_id'))->toBe('abc123');
+});
+
+test('draft save rejects the removed ai media source', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'media' => [[
+                'id' => 'media-ai',
+                'path' => 'ai-images/generated.webp',
+                'url' => 'https://example.com/ai-images/generated.webp',
+                'type' => 'image',
+                'mime_type' => 'image/webp',
+                'source' => 'ai',
+            ]],
+            'platforms' => [],
+        ]);
+
+    $response->assertSessionHasErrors('media.0.source');
 });
 
 test('instagram_carousel is rejected as a content_type — carousel is a feed post with multiple images', function () {

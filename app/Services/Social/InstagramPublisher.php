@@ -146,7 +146,7 @@ class InstagramPublisher
         if ($isVideo) {
             $params['video_url'] = $media->url;
         } else {
-            $dimensions = ContentType::InstagramStory->aiImageDimensions();
+            $dimensions = ContentType::InstagramStory->imageDimensions();
             $params['image_url'] = $this->fitImageToCanvas($media->url, data_get($dimensions, 'width'), data_get($dimensions, 'height'));
         }
 

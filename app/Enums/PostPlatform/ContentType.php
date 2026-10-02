@@ -59,12 +59,6 @@ enum ContentType: string
     // Google Business Profile
     case GoogleBusinessPost = 'google_business_post';
 
-    /**
-     * AI generation format for an Instagram carousel. Not a content type —
-     * carousel posts are persisted as InstagramFeed.
-     */
-    public const CAROUSEL_FORMAT = 'instagram_carousel';
-
     public function label(): string
     {
         return match ($this) {
@@ -117,12 +111,11 @@ enum ContentType: string
     }
 
     /**
-     * Image dimensions used by the AI generator for this format.
-     * Single source of truth — `TemplateImageGenerator` reads from here.
+     * Target image dimensions for this format.
      *
      * @return array{width: int, height: int}
      */
-    public function aiImageDimensions(): array
+    public function imageDimensions(): array
     {
         return match ($this) {
             // Vertical 4:5 (Instagram preferred portrait, Threads mirrors it)
@@ -522,29 +515,6 @@ enum ContentType: string
             self::GoogleBusinessPost => false,
             default => true,
         };
-    }
-
-    /**
-     * Content types that the AI generator currently supports. Reels/stories/
-     * videos are excluded because the AI flow only produces text + images.
-     *
-     * @return array<self>
-     */
-    public static function aiSupported(): array
-    {
-        return [
-            self::InstagramFeed,
-            self::InstagramStory,
-            self::LinkedInPost,
-            self::LinkedInPagePost,
-            self::XPost,
-            self::ThreadsPost,
-            self::BlueskyPost,
-            self::MastodonPost,
-            self::FacebookPost,
-            self::PinterestPin,
-            self::PinterestCarousel,
-        ];
     }
 
     /**

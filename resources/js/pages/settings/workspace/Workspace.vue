@@ -12,10 +12,6 @@ interface Workspace {
     name: string;
     has_logo: boolean;
     logo_url: string | null;
-    brand_website: string | null;
-    brand_description: string | null;
-    brand_voice_traits: string[] | null;
-    content_language: string;
 }
 
 defineProps<{

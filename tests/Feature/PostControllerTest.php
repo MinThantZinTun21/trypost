@@ -18,6 +18,7 @@ use App\Support\LinkTlds;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     $this->user = User::factory()->create([]);
@@ -229,38 +230,43 @@ test('calendar does not include unscheduled drafts', function () {
 });
 
 // Create tests
-test('create requires authentication', function () {
-    $response = $this->get(route('app.posts.create'));
-
-    $response->assertRedirect(route('login'));
+test('the old wizard route is gone', function () {
+    expect(Route::has('app.posts.create'))->toBeFalse();
 });
 
-test('create renders the wizard page', function () {
-    $response = $this->actingAs($this->user)->get(route('app.posts.create'));
+test('new post creates a draft and lands on the editor with no AI', function () {
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'));
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('posts/Create', false)
-        ->where('date', null)
-        ->has('socialAccounts', 1)
-        ->where('socialAccounts.0.id', $this->socialAccount->id)
-    );
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect($post->status)->toBe(PostStatus::Draft);
+
+    $response->assertRedirect(route('app.posts.edit', $post));
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.edit', $post))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Edit', false)
+            ->where('post.id', $post->id)
+            ->missing('templates')
+            ->missing('aiEnabled')
+        );
 });
 
-test('create forwards date query param to the page', function () {
-    $response = $this->actingAs($this->user)->get(route('app.posts.create', ['date' => '2026-06-01']));
+test('new post from a calendar day creates a draft on that day and lands on the editor', function () {
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'), ['date' => '2026-06-15']);
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('posts/Create', false)
-        ->where('date', '2026-06-01')
-    );
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect($post->status)->toBe(PostStatus::Draft);
+    expect($post->scheduled_at->utc()->format('Y-m-d'))->toBe('2026-06-15');
+
+    $response->assertRedirect(route('app.posts.edit', $post));
 });
 
-test('create redirects to workspaces.create when user has no workspace', function () {
+test('new post redirects to workspaces.create when user has no workspace', function () {
     $newUser = User::factory()->create();
 
-    $response = $this->actingAs($newUser)->get(route('app.posts.create'));
+    $response = $this->actingAs($newUser)->post(route('app.posts.store'));
 
     $response->assertRedirect(route('app.workspaces.create'));
 });

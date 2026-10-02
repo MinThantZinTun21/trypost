@@ -15,7 +15,7 @@ use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;

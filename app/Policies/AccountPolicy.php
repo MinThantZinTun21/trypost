@@ -21,19 +21,6 @@ class AccountPolicy
         return $user->id === $account->owner_id;
     }
 
-    public function useAi(User $user, Account $account): Response
-    {
-        if (config('trypost.self_hosted')) {
-            return Response::allow();
-        }
-
-        if (! $account->hasAppAccess()) {
-            return Response::deny(__('billing.flash.subscription_required'));
-        }
-
-        return Response::allow();
-    }
-
     public function swapPlan(User $user, Account $account, Plan $target): Response
     {
         if ($user->id !== $account->owner_id) {

@@ -8,11 +8,8 @@ import {
     IconHash,
     IconLibraryPhoto,
     IconMoodSmile,
-    IconRefresh,
-    IconSparkles,
     IconTrash,
     IconVideo,
-    IconWriting,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref } from 'vue';
@@ -22,13 +19,31 @@ import AltTextDialog from '@/components/posts/editor/AltTextDialog.vue';
 import EmojiPicker from '@/components/posts/EmojiPicker.vue';
 import MediaPickerDialog from '@/components/posts/MediaPickerDialog.vue';
 import SignaturesModal from '@/components/posts/SignaturesModal.vue';
-import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
+import {
+    Popover,
+    PopoverAnchor,
+    PopoverContent,
+} from '@/components/ui/popover';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+    getPlatformLabel,
+    getPlatformLogo,
+} from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
-import { classify, isDocument, isImage, isVideo, MediaType } from '@/lib/mediaType';
+import {
+    classify,
+    isDocument,
+    isImage,
+    isVideo,
+    MediaType,
+} from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
 interface Signature {
@@ -52,11 +67,9 @@ const props = withDefaults(
         signatures: Signature[];
         platformLimits: PlatformLimit[];
         mediaIssues: Record<string, MediaIssue[]>;
-        allowAiRegenerate?: boolean;
         readOnly?: boolean;
     }>(),
     {
-        allowAiRegenerate: true,
         readOnly: false,
     },
 );
@@ -64,14 +77,10 @@ const props = withDefaults(
 const content = defineModel<string>('content', { required: true });
 const media = defineModel<MediaItem[]>('media', { required: true });
 
-const emit = defineEmits<{
-    (e: 'open-ai-generate'): void;
-    (e: 'open-ai-review'): void;
-    (e: 'open-ai-regenerate-image', mediaId: string): void;
-}>();
-
 const emojiOpen = ref(false);
-const mediaPickerDialog = ref<InstanceType<typeof MediaPickerDialog> | null>(null);
+const mediaPickerDialog = ref<InstanceType<typeof MediaPickerDialog> | null>(
+    null,
+);
 const signaturesModal = ref<InstanceType<typeof SignaturesModal> | null>(null);
 
 const dragMediaIndex = ref<number | null>(null);
@@ -106,7 +115,8 @@ const limitsWithUsage = computed(() =>
 
 const limitClass = (state: string): string => {
     if (state === 'over') return 'border-foreground bg-rose-100 text-rose-700';
-    if (state === 'warn') return 'border-foreground bg-amber-100 text-amber-800';
+    if (state === 'warn')
+        return 'border-foreground bg-amber-100 text-amber-800';
     return 'border-foreground bg-card text-foreground';
 };
 
@@ -121,7 +131,11 @@ const smallestLimit = computed(() => {
     const draftLength = content.value.length;
 
     return Math.min(
-        ...props.platformLimits.map((p) => p.maxLength + (draftLength - contentFor(content.value, p.platform).length)),
+        ...props.platformLimits.map(
+            (p) =>
+                p.maxLength +
+                (draftLength - contentFor(content.value, p.platform).length),
+        ),
     );
 });
 
@@ -201,7 +215,7 @@ const GRID_COLS = 4;
 const onMediaKeydown = async (event: KeyboardEvent, index: number) => {
     if (props.readOnly) return;
     if (media.value.length < 2) return;
-    if (! event.altKey) return;
+    if (!event.altKey) return;
 
     const deltas: Record<string, number> = {
         ArrowLeft: -1,
@@ -221,13 +235,15 @@ const onMediaKeydown = async (event: KeyboardEvent, index: number) => {
     mediaThumbRefs.value[target]?.focus();
 };
 
-const issueLabel = (reason: string): string => trans(`posts.form.warnings.${reason}`);
-const canRegenerateWithAi = (item: MediaItem): boolean => props.allowAiRegenerate && item.source === 'ai';
+const issueLabel = (reason: string): string =>
+    trans(`posts.form.warnings.${reason}`);
 
 const altDialogOpen = ref(false);
 const altDialogIndex = ref<number | null>(null);
 const altDialogItem = computed<MediaItem | null>(() =>
-    altDialogIndex.value !== null ? (media.value[altDialogIndex.value] ?? null) : null,
+    altDialogIndex.value !== null
+        ? (media.value[altDialogIndex.value] ?? null)
+        : null,
 );
 
 const openAltText = (index: number) => {
@@ -242,7 +258,10 @@ const onAltTextSave = (alt: string): void => {
     const trimmed = alt.trim();
     next[altDialogIndex.value] = {
         ...next[altDialogIndex.value],
-        meta: { ...(next[altDialogIndex.value].meta ?? {}), alt_text: trimmed || undefined },
+        meta: {
+            ...(next[altDialogIndex.value].meta ?? {}),
+            alt_text: trimmed || undefined,
+        },
     };
     media.value = next;
 };
@@ -257,12 +276,19 @@ const onAltTextSave = (alt: string): void => {
                     <div
                         v-for="(item, index) in media"
                         :key="item.id"
-                        :ref="(el) => { if (el) mediaThumbRefs[index] = el as HTMLElement; }"
+                        :ref="
+                            (el) => {
+                                if (el)
+                                    mediaThumbRefs[index] = el as HTMLElement;
+                            }
+                        "
                         data-testid="media-thumbnail"
-                        class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border-2 border-foreground bg-muted shadow-2xs transition-all focus:outline-none focus:ring-2 focus:ring-foreground focus:ring-offset-2"
+                        class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border-2 border-foreground bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
                         :class="[
                             dragMediaIndex === index ? 'opacity-40' : '',
-                            dragOverIndex === index && dragMediaIndex !== index ? 'ring-2 ring-foreground ring-offset-2' : '',
+                            dragOverIndex === index && dragMediaIndex !== index
+                                ? 'ring-2 ring-foreground ring-offset-2'
+                                : '',
                             mediaIssues[item.id] ? '!border-rose-500' : '',
                         ]"
                         tabindex="0"
@@ -285,7 +311,10 @@ const onAltTextSave = (alt: string): void => {
                             class="flex h-full w-full flex-col items-center justify-center gap-1 bg-rose-50 p-2 text-center"
                         >
                             <IconFileTypePdf class="size-7 text-rose-600" />
-                            <span class="line-clamp-2 break-all text-[10px] font-medium text-foreground/70">{{ item.original_filename || 'PDF' }}</span>
+                            <span
+                                class="line-clamp-2 text-[10px] font-medium break-all text-foreground/70"
+                                >{{ item.original_filename || 'PDF' }}</span
+                            >
                         </div>
                         <img
                             v-else
@@ -295,9 +324,13 @@ const onAltTextSave = (alt: string): void => {
                             loading="lazy"
                         />
 
-                        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                        <div
+                            class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"
+                        />
 
-                        <div class="pointer-events-none absolute inset-x-1.5 bottom-1.5 flex flex-col items-start gap-1 text-[10px] font-medium text-white">
+                        <div
+                            class="pointer-events-none absolute inset-x-1.5 bottom-1.5 flex flex-col items-start gap-1 text-[10px] font-medium text-white"
+                        >
                             <span
                                 v-if="isVideo(item) && item.meta?.duration"
                                 class="inline-flex items-center gap-0.5 rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
@@ -314,29 +347,68 @@ const onAltTextSave = (alt: string): void => {
                             </span>
                         </div>
 
-                        <TooltipProvider v-if="mediaIssues[item.id]" :delay-duration="100">
+                        <TooltipProvider
+                            v-if="mediaIssues[item.id]"
+                            :delay-duration="100"
+                        >
                             <Tooltip>
                                 <TooltipTrigger as-child>
-                                    <span class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center gap-0.5 rounded-full border-2 border-foreground bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700 shadow-2xs">
+                                    <span
+                                        class="absolute right-1.5 bottom-1.5 inline-flex h-5 items-center gap-0.5 rounded-full border-2 border-foreground bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700 shadow-2xs"
+                                    >
                                         <IconAlertTriangle class="size-2.5" />
                                         {{ mediaIssues[item.id].length }}
                                     </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <ul class="space-y-1 text-xs">
-                                        <li v-for="iss in mediaIssues[item.id]" :key="iss.platform" class="flex items-center gap-1.5">
-                                            <img :src="getPlatformLogo(iss.platform)" :alt="iss.platform" class="size-3 object-contain" />
-                                            <span class="font-medium">{{ getPlatformLabel(iss.platform) }}:</span>
-                                            <span class="opacity-80">{{ issueLabel(iss.reason) }}</span>
+                                        <li
+                                            v-for="iss in mediaIssues[item.id]"
+                                            :key="iss.platform"
+                                            class="flex items-center gap-1.5"
+                                        >
+                                            <img
+                                                :src="
+                                                    getPlatformLogo(
+                                                        iss.platform,
+                                                    )
+                                                "
+                                                :alt="iss.platform"
+                                                class="size-3 object-contain"
+                                            />
+                                            <span class="font-medium"
+                                                >{{
+                                                    getPlatformLabel(
+                                                        iss.platform,
+                                                    )
+                                                }}:</span
+                                            >
+                                            <span class="opacity-80">{{
+                                                issueLabel(iss.reason)
+                                            }}</span>
                                             <a
-                                                :href="mediaLimitsDocsUrl(iss.platform)"
+                                                :href="
+                                                    mediaLimitsDocsUrl(
+                                                        iss.platform,
+                                                    )
+                                                "
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 class="inline-flex shrink-0 opacity-80 hover:opacity-100"
-                                                :title="$t('posts.edit.compliance.media_limits_docs')"
-                                                :aria-label="$t('posts.edit.compliance.media_limits_docs')"
+                                                :title="
+                                                    $t(
+                                                        'posts.edit.compliance.media_limits_docs',
+                                                    )
+                                                "
+                                                :aria-label="
+                                                    $t(
+                                                        'posts.edit.compliance.media_limits_docs',
+                                                    )
+                                                "
                                             >
-                                                <IconExternalLink class="size-3" />
+                                                <IconExternalLink
+                                                    class="size-3"
+                                                />
                                             </a>
                                         </li>
                                     </ul>
@@ -346,27 +418,17 @@ const onAltTextSave = (alt: string): void => {
 
                         <span
                             v-if="media.length > 1 && !readOnly"
-                            class="absolute left-1.5 top-1.5 inline-flex size-6 cursor-grab items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs lg:opacity-0 transition-opacity lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            class="absolute top-1.5 left-1.5 inline-flex size-6 cursor-grab items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                         >
                             <IconGripVertical class="size-3.5" />
                         </span>
-
-                        <button
-                            v-if="canRegenerateWithAi(item)"
-                            type="button"
-                            class="absolute bottom-1.5 left-1.5 inline-flex h-6 cursor-pointer items-center gap-1 rounded-md border-2 border-foreground bg-card px-1.5 text-[10px] font-semibold text-foreground opacity-100 shadow-2xs lg:opacity-0 transition-all hover:bg-violet-100 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
-                            @click.stop="emit('open-ai-regenerate-image', item.id)"
-                        >
-                            <IconRefresh class="size-3" />
-                            {{ $t('posts.ai.image_regenerate.button') }}
-                        </button>
 
                         <button
                             v-if="!readOnly && isImage(item)"
                             type="button"
                             :title="$t('posts.edit.alt_text.edit')"
                             :aria-label="$t('posts.edit.alt_text.edit')"
-                            class="absolute right-9 top-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs lg:opacity-0 transition-all hover:bg-violet-100 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            class="absolute top-1.5 right-9 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-violet-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                             data-testid="alt-text-button"
                             @click.stop="openAltText(index)"
                         >
@@ -376,7 +438,7 @@ const onAltTextSave = (alt: string): void => {
                         <button
                             v-if="!readOnly"
                             type="button"
-                            class="absolute right-1.5 top-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs lg:opacity-0 transition-all hover:bg-rose-100 hover:text-rose-700 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            class="absolute top-1.5 right-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-rose-100 hover:text-rose-700 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                             data-testid="media-remove"
                             @click.stop="removeMedia(item.id)"
                         >
@@ -391,7 +453,10 @@ const onAltTextSave = (alt: string): void => {
                         @click="mediaPickerDialog?.open()"
                     >
                         <IconLibraryPhoto class="size-5" />
-                        <span class="text-[10px] font-bold uppercase tracking-widest">{{ $t('posts.edit.add') }}</span>
+                        <span
+                            class="text-[10px] font-bold tracking-widest uppercase"
+                            >{{ $t('posts.edit.add') }}</span
+                        >
                     </button>
                 </div>
             </div>
@@ -411,7 +476,9 @@ const onAltTextSave = (alt: string): void => {
                                         <IconMoodSmile class="size-4" />
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent>{{ $t('posts.edit.emoji_picker.search') }}</TooltipContent>
+                                <TooltipContent>{{
+                                    $t('posts.edit.emoji_picker.search')
+                                }}</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </PopoverAnchor>
@@ -431,40 +498,11 @@ const onAltTextSave = (alt: string): void => {
                                 <IconHash class="size-4" />
                             </button>
                         </TooltipTrigger>
-                        <TooltipContent>{{ $t('posts.edit.signatures') }}</TooltipContent>
+                        <TooltipContent>{{
+                            $t('posts.edit.signatures')
+                        }}</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger as-child>
-                            <button
-                                type="button"
-                                class="inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:-translate-y-0.5 hover:bg-violet-100 hover:shadow-sm"
-                                @click="emit('open-ai-generate')"
-                            >
-                                <IconSparkles class="size-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>{{ $t('posts.ai.generate.button_tooltip') }}</TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger as-child>
-                            <button
-                                type="button"
-                                class="inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:-translate-y-0.5 hover:bg-violet-100 hover:shadow-sm"
-                                @click="emit('open-ai-review')"
-                            >
-                                <IconWriting class="size-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>{{ $t('posts.ai.review.button_tooltip') }}</TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-
             </div>
 
             <!-- Per-platform counters (below menu, above textarea) -->
@@ -472,21 +510,38 @@ const onAltTextSave = (alt: string): void => {
                 v-if="limitsWithUsage.length > 0"
                 class="mb-4 flex flex-wrap items-center gap-2"
             >
-                <TooltipProvider v-for="limit in limitsWithUsage" :key="limit.platform" :delay-duration="200">
+                <TooltipProvider
+                    v-for="limit in limitsWithUsage"
+                    :key="limit.platform"
+                    :delay-duration="200"
+                >
                     <Tooltip>
                         <TooltipTrigger as-child>
                             <span
                                 :data-testid="`content-counter-${limit.platform}`"
-                                class="inline-flex items-center gap-1.5 rounded-full border-2 px-2 py-1 text-[11px] font-bold leading-none tabular-nums shadow-2xs transition-colors"
+                                class="inline-flex items-center gap-1.5 rounded-full border-2 px-2 py-1 text-[11px] leading-none font-bold tabular-nums shadow-2xs transition-colors"
                                 :class="limitClass(limit.state)"
                             >
-                                <span class="inline-flex size-3.5 shrink-0 items-center justify-center overflow-hidden rounded-full">
-                                    <img :src="getPlatformLogo(limit.platform)" :alt="limit.platform" class="size-full object-cover" />
+                                <span
+                                    class="inline-flex size-3.5 shrink-0 items-center justify-center overflow-hidden rounded-full"
+                                >
+                                    <img
+                                        :src="getPlatformLogo(limit.platform)"
+                                        :alt="limit.platform"
+                                        class="size-full object-cover"
+                                    />
                                 </span>
-                                <span>{{ limit.used }}<span class="opacity-60">/{{ limit.maxLength }}</span></span>
+                                <span
+                                    >{{ limit.used
+                                    }}<span class="opacity-60"
+                                        >/{{ limit.maxLength }}</span
+                                    ></span
+                                >
                             </span>
                         </TooltipTrigger>
-                        <TooltipContent>{{ getPlatformLabel(limit.platform) }}</TooltipContent>
+                        <TooltipContent>{{
+                            getPlatformLabel(limit.platform)
+                        }}</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
             </div>
@@ -498,24 +553,39 @@ const onAltTextSave = (alt: string): void => {
                 <div
                     v-if="overflowParts.overflow"
                     aria-hidden="true"
-                    class="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words p-0 font-sans text-base leading-[1.7] text-transparent"
+                    class="pointer-events-none absolute inset-0 p-0 font-sans text-base leading-[1.7] break-words whitespace-pre-wrap text-transparent"
                 >
-                    <span>{{ overflowParts.fits }}</span><span class="rounded-sm bg-rose-100 text-rose-700">{{ overflowParts.overflow }}</span>
+                    <span>{{ overflowParts.fits }}</span
+                    ><span class="rounded-sm bg-rose-100 text-rose-700">{{
+                        overflowParts.overflow
+                    }}</span>
                 </div>
                 <textarea
                     v-model="content"
                     :readonly="readOnly"
-                    :placeholder="readOnly ? '' : $t('posts.edit.caption_placeholder')"
+                    :placeholder="
+                        readOnly ? '' : $t('posts.edit.caption_placeholder')
+                    "
                     class="relative block w-full resize-none border-0 bg-transparent p-0 font-sans text-base leading-[1.7] shadow-none outline-none placeholder:text-foreground/40"
-                    style="min-height: 280px; field-sizing: content;"
+                    style="min-height: 280px; field-sizing: content"
                 />
             </div>
-
         </div>
 
-        <SignaturesModal ref="signaturesModal" :signatures="signatures" @select="appendSignature" />
-        <MediaPickerDialog ref="mediaPickerDialog" @select="addMediaFromGallery" />
+        <SignaturesModal
+            ref="signaturesModal"
+            :signatures="signatures"
+            @select="appendSignature"
+        />
+        <MediaPickerDialog
+            ref="mediaPickerDialog"
+            @select="addMediaFromGallery"
+        />
         <ImagePreviewDialog ref="lightbox" />
-        <AltTextDialog v-model:open="altDialogOpen" :media-item="altDialogItem" @save="onAltTextSave" />
+        <AltTextDialog
+            v-model:open="altDialogOpen"
+            :media-item="altDialogItem"
+            @save="onAltTextSave"
+        />
     </div>
 </template>

@@ -10,7 +10,6 @@ use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\Workspace\ContentLanguage;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Models\PostPlatform;
@@ -121,11 +120,9 @@ class GoogleBusinessPublisher
     private function payload(PostPlatform $postPlatform): array
     {
         $topicType = TopicType::fromMeta(data_get($postPlatform->meta, 'topic_type'));
-        $language = ContentLanguage::tryFrom((string) $postPlatform->post->workspace->content_language)
-            ?? ContentLanguage::DEFAULT;
 
         return [
-            'languageCode' => $language->bcp47(),
+            'languageCode' => 'en',
             'summary' => $postPlatform->post->content
                 ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, Platform::GoogleBusiness)
                 : '',

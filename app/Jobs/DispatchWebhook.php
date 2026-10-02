@@ -9,7 +9,7 @@ use App\Events\Webhook\LogUpdated;
 use App\Mail\WebhookPausedMail;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use App\Services\WebhookService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id, 'content_language' => 'en']);
+    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
 
     $this->socialAccount = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $this->workspace->id,
@@ -179,15 +179,6 @@ test('a blank offer title throws with the offer-title message', function () {
         ->toThrow(GoogleBusinessPublishException::class, __('posts.form.google_business.offer_title_required'));
 
     Http::assertNothingSent();
-});
-
-test('a chinese workspace sends a regional language code', function () {
-    $this->workspace->update(['content_language' => 'zh']);
-    fakeLocalPostCreate();
-
-    $this->publisher->publish($this->postPlatform->fresh());
-
-    Http::assertSent(fn ($request) => data_get($request->data(), 'languageCode') === 'zh-CN');
 });
 
 test('a blank event title throws instead of publishing an untitled event', function () {

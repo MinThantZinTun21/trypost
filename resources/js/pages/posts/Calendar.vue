@@ -12,6 +12,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useCreatePost } from '@/composables/useCreatePost';
 import {
     getPlatformLabel,
     getPlatformLogo,
@@ -21,11 +22,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar } from '@/routes/app';
-import {
-    create as createPost,
-    edit as editPost,
-    show as showPost,
-} from '@/routes/app/posts';
+import { edit as editPost, show as showPost } from '@/routes/app/posts';
 import { PostStatus } from '@/types/post';
 
 interface PostPlatform {
@@ -68,9 +65,8 @@ const props = defineProps<Props>();
 // Mobile detection
 const isMobile = ref(false);
 const { canCreatePost } = useWorkspaceRole();
+const { createPost, creatingPost } = useCreatePost();
 
-const createPostUrl = (isoDate: string | null = null) =>
-    isoDate ? createPost.url({ query: { date: isoDate } }) : createPost.url();
 const checkMobile = () => {
     isMobile.value = window.innerWidth < 1024;
 };
@@ -337,15 +333,13 @@ const formatTime = (scheduledAt: string): string => {
                         />
                     </div>
                 </div>
-                <Link
+                <Button
                     v-if="canCreatePost"
-                    :href="createPost.url()"
-                    class="block"
+                    class="w-full"
+                    :disabled="creatingPost"
+                    @click="createPost()"
+                    >{{ $t('calendar.new_post') }}</Button
                 >
-                    <Button class="w-full">{{
-                        $t('calendar.new_post')
-                    }}</Button>
-                </Link>
             </header>
 
             <!-- Desktop header: nav · title · view switcher + new post -->
@@ -388,9 +382,12 @@ const formatTime = (scheduledAt: string): string => {
                         </TabsList>
                     </Tabs>
 
-                    <Link v-if="canCreatePost" :href="createPost.url()">
-                        <Button>{{ $t('calendar.new_post') }}</Button>
-                    </Link>
+                    <Button
+                        v-if="canCreatePost"
+                        :disabled="creatingPost"
+                        @click="createPost()"
+                        >{{ $t('calendar.new_post') }}</Button
+                    >
                 </div>
             </header>
 
@@ -569,13 +566,15 @@ const formatTime = (scheduledAt: string): string => {
                     <!-- Day Content -->
                     <div class="flex-1 space-y-2 overflow-y-auto p-2">
                         <!-- Add Post Button -->
-                        <Link
+                        <button
                             v-if="canCreatePost"
-                            :href="createPostUrl(day.format('YYYY-MM-DD'))"
-                            class="flex w-full items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground"
+                            type="button"
+                            :disabled="creatingPost"
+                            class="flex w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground"
+                            @click="createPost(day.format('YYYY-MM-DD'))"
                         >
                             <IconPlus class="size-4" />
-                        </Link>
+                        </button>
 
                         <!-- Posts -->
                         <Link
@@ -728,18 +727,20 @@ const formatTime = (scheduledAt: string): string => {
                                 >
                                     {{ day.format('D') }}
                                 </span>
-                                <Link
+                                <button
                                     v-if="canCreatePost"
-                                    :href="
-                                        createPostUrl(day.format('YYYY-MM-DD'))
+                                    type="button"
+                                    :disabled="creatingPost"
+                                    class="inline-flex size-6 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all group-hover:opacity-100 hover:rotate-90 hover:bg-violet-100 focus:opacity-100"
+                                    @click="
+                                        createPost(day.format('YYYY-MM-DD'))
                                     "
-                                    class="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all group-hover:opacity-100 hover:rotate-90 hover:bg-violet-100 focus:opacity-100"
                                 >
                                     <IconPlus
                                         class="size-3.5"
                                         stroke-width="3"
                                     />
-                                </Link>
+                                </button>
                             </div>
 
                             <!-- Posts -->

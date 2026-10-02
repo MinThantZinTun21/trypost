@@ -1,8 +1,13 @@
 import type { MediaType } from '@/lib/mediaType';
 
-export type MediaSource = 'ai' | 'unsplash' | 'giphy';
+export type MediaSource = 'unsplash' | 'giphy';
 
-export type SourceMetaValue = string | number | boolean | null | SourceMetaValue[];
+export type SourceMetaValue =
+    | string
+    | number
+    | boolean
+    | null
+    | SourceMetaValue[];
 
 export interface MediaItem {
     id: string;

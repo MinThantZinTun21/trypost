@@ -6,7 +6,6 @@ namespace App\Providers;
 
 use App\Listeners\StripeEventListener;
 use App\Models\Account;
-use App\Models\AiUsageLog;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
@@ -88,7 +87,6 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'account' => Account::class,
-            'aiUsageLog' => AiUsageLog::class,
             'invite' => Invite::class,
             'media' => Media::class,
             'notification' => Notification::class,

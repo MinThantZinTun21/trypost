@@ -9,7 +9,7 @@ use App\Http\Requests\App\Asset\StoreAssetRequest;
 use App\Http\Requests\App\Asset\StoreChunkedAssetRequest;
 use App\Http\Resources\App\MediaResource;
 use App\Models\Media;
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use App\Services\Media\ChunkedAssetReceiver;
 use App\Services\UnsplashService;
 use Illuminate\Http\JsonResponse;

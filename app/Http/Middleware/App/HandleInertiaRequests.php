@@ -60,7 +60,6 @@ class HandleInertiaRequests extends Middleware
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
             'locale' => app()->getLocale(),
-            'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
             'selfHosted' => $isSelfHosted,
             'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => SocialAuthProvider::GitHub->isEnabled(),

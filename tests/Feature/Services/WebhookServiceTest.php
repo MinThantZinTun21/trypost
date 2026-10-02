@@ -202,7 +202,7 @@ test('postPayload matches the published webhook example', function () {
                 'url' => 'https://cdn.example.com/medias/9f2c-clip.mp4',
                 'mime_type' => 'video/mp4',
                 'original_filename' => 'clip.mp4',
-                'source' => Source::Ai->value,
+                'source' => Source::Giphy->value,
                 'source_meta' => null,
                 'meta' => [
                     'width' => 1080,
@@ -319,7 +319,7 @@ test('postPayload matches the published webhook example', function () {
                 'type' => 'video',
                 'mime_type' => 'video/mp4',
                 'original_filename' => 'clip.mp4',
-                'source' => 'ai',
+                'source' => 'giphy',
                 'source_meta' => null,
                 'meta' => [
                     'width' => 1080,
