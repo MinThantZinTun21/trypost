@@ -8,9 +8,13 @@ import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 
 import { initializeDataLayer } from './datalayer';
-import { bootLocale, i18nConfig, syncLocale } from './language';
+import { bootLocale, i18nConfig } from './language';
 import { syncContentTypeMediaRules } from './lib/contentTypeMediaRules';
-import { capturePageview, initializePostHog, syncPostHogContext } from './posthog';
+import {
+    capturePageview,
+    initializePostHog,
+    syncPostHogContext,
+} from './posthog';
 import type { Auth } from './types';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
@@ -45,13 +49,6 @@ createInertiaApp({
         syncPostHogContext(props.initialPage);
         syncContentTypeMediaRules(props.initialPage);
         capturePageview();
-
-        // `success`, not `navigate`: switching language answers with `back()`,
-        // which keeps the same URL, so Inertia updates the props without
-        // reporting a navigation.
-        router.on('success', (event) => {
-            syncLocale(event.detail.page.props);
-        });
 
         router.on('navigate', (event) => {
             syncPostHogContext(event.detail.page);

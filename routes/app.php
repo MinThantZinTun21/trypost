@@ -311,7 +311,6 @@ Route::middleware(['auth'])->group(function () {
     Route::put('settings/profile', [ProfileController::class, 'update'])->name('app.profile.update');
     Route::post('settings/profile/photo', [ProfileController::class, 'uploadPhoto'])->name('app.profile.upload-photo');
     Route::delete('settings/profile/photo', [ProfileController::class, 'deletePhoto'])->name('app.profile.delete-photo');
-    Route::put('settings/language', [ProfileController::class, 'updateLanguage'])->name('app.profile.language');
 });
 
 Route::middleware(['auth'])->group(function () {

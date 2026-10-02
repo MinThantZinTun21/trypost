@@ -8,10 +8,7 @@ use App\Actions\User\DeleteUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
-use App\Http\Requests\App\Settings\UpdateLanguageRequest;
 use App\Http\Requests\App\Settings\UploadPhotoRequest;
-use App\Jobs\PostHog\SyncUser;
-use App\Services\PostHogService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,17 +62,6 @@ class ProfileController extends Controller
 
         session()->flash('flash.banner', __('settings.flash.photo_deleted'));
         session()->flash('flash.bannerStyle', 'success');
-
-        return back();
-    }
-
-    public function updateLanguage(UpdateLanguageRequest $request): RedirectResponse
-    {
-        $request->user()->update(['locale' => $request->validated('locale')]);
-
-        if (PostHogService::shouldTrack()) {
-            SyncUser::dispatch((string) $request->user()->id);
-        }
 
         return back();
     }

@@ -3,7 +3,6 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { IconArrowLeft } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import Toast from '@/components/Toast.vue';
 import { Button } from '@/components/ui/button';
 import WelcomeWorkspacePreview from '@/components/welcome/WelcomeWorkspacePreview.vue';
@@ -116,8 +115,6 @@ const alignCenter = computed(() => props.centered || summary.value === null);
                     </ol>
                 </nav>
                 <span v-else />
-
-                <LocaleSwitcher />
             </header>
 
             <main
@@ -144,7 +141,9 @@ const alignCenter = computed(() => props.centered || summary.value === null);
                             v-if="description"
                             :class="[
                                 'text-base text-pretty text-muted-foreground',
-                                alignCenter ? 'mx-auto max-w-xl' : 'max-w-prose',
+                                alignCenter
+                                    ? 'mx-auto max-w-xl'
+                                    : 'max-w-prose',
                             ]"
                         >
                             {{ description }}

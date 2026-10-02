@@ -5,7 +5,12 @@ import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
 import type { AuthPlan, Features, PlanOption } from '@/types/plan';
 import type { WelcomeSummary } from '@/types/welcome';
 
-export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
+export type {
+    AuthPlan,
+    BillingInterval,
+    Features,
+    PlanOption,
+} from '@/types/plan';
 export type {
     WelcomeNetwork,
     WelcomeStep,
@@ -121,13 +126,6 @@ export interface PinterestBoard {
 export interface PinterestBoardsPayload {
     boards: PinterestBoard[];
     truncated: boolean;
-}
-
-export interface Language {
-    code: string;
-    name: string;
-    dir: string;
-    flag: string;
 }
 
 export interface ContentLanguageOption {

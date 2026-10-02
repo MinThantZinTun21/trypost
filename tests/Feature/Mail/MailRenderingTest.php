@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
-use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role;
 use App\Mail\WorkspaceConnectionsDisconnected;
 use App\Mail\WorkspaceInvite;
@@ -17,7 +16,7 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Notification as BaseNotification;
 use Illuminate\Support\Facades\Mail;
 
-test('the workspace invite renders in the requested locale', function () {
+test('the workspace invite renders the account and role', function () {
     $account = Account::factory()->create(['name' => 'Acme Co']);
     $invite = Invite::factory()->create([
         'account_id' => $account->id,
@@ -25,11 +24,11 @@ test('the workspace invite renders in the requested locale', function () {
         'role' => Role::Member,
     ]);
 
-    $mailable = (new WorkspaceInvite($invite))->locale(Locale::PortugueseBrazil->value);
+    $mailable = new WorkspaceInvite($invite);
 
-    $mailable->assertHasSubject(__('mail.workspace_invite.subject', ['account' => 'Acme Co'], 'pt-BR'));
-    $mailable->assertSeeInHtml(__('mail.workspace_invite.heading', [], 'pt-BR'));
-    $mailable->assertSeeInHtml(__('mail.workspace_invite.expiry', [], 'pt-BR'));
+    $mailable->assertHasSubject(__('mail.workspace_invite.subject', ['account' => 'Acme Co']));
+    $mailable->assertSeeInHtml(__('mail.workspace_invite.heading'));
+    $mailable->assertSeeInHtml(__('mail.workspace_invite.expiry'));
     $mailable->assertSeeInHtml('Acme Co');
     $mailable->assertSeeInHtml(Role::Member->label());
 });
@@ -49,18 +48,16 @@ test('the disconnected-connections digest renders every account and reason', fun
         ]),
     );
 
-    $mailable = (new WorkspaceConnectionsDisconnected($workspace, $accounts))
-        ->locale(Locale::German->value);
+    $mailable = new WorkspaceConnectionsDisconnected($workspace, $accounts);
 
     $mailable->assertHasSubject(trans_choice(
         'mail.workspace_connections_disconnected.subject',
         2,
         ['count' => 2, 'workspace' => 'Acme Workspace'],
-        'de',
     ));
 
-    $mailable->assertSeeInHtml(__('mail.workspace_connections_disconnected.heading', [], 'de'));
-    $mailable->assertSeeInHtml(__('mail.workspace_connections_disconnected.reason_revoked', [], 'de'));
+    $mailable->assertSeeInHtml(__('mail.workspace_connections_disconnected.heading'));
+    $mailable->assertSeeInHtml(__('mail.workspace_connections_disconnected.reason_revoked'));
     $mailable->assertSeeInHtml('Acme Workspace');
 
     foreach ($accounts as $account) {
@@ -79,21 +76,19 @@ function sentNotificationHtml(User $user, BaseNotification $notification): strin
     return (string) $message->getOriginalMessage()->getHtmlBody();
 }
 
-test('the verification email is sent in the user locale', function () {
-    $user = User::factory()->create(['locale' => Locale::Spanish]);
+test('the verification email renders the translated copy', function () {
+    $user = User::factory()->create();
 
     expect(sentNotificationHtml($user, new VerifyEmail))
-        ->toContain(__('mail.email_verification.body', [], 'es'))
-        ->toContain(__('mail.email_verification.button', [], 'es'))
-        ->toContain(__('mail.layout.team', [], 'es'))
-        ->not->toContain(__('mail.email_verification.body', [], 'en'));
+        ->toContain(__('mail.email_verification.body'))
+        ->toContain(__('mail.email_verification.button'))
+        ->toContain(__('mail.layout.team'));
 });
 
-test('the password reset email is sent in the user locale', function () {
-    $user = User::factory()->create(['locale' => Locale::Japanese]);
+test('the password reset email renders the translated copy', function () {
+    $user = User::factory()->create();
 
     expect(sentNotificationHtml($user, new ResetPassword('token-123')))
-        ->toContain(__('mail.password_reset.body', [], 'ja'))
-        ->toContain(__('mail.password_reset.expiry', [], 'ja'))
-        ->not->toContain(__('mail.password_reset.body', [], 'en'));
+        ->toContain(__('mail.password_reset.body'))
+        ->toContain(__('mail.password_reset.expiry'));
 });

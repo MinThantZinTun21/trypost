@@ -6,7 +6,6 @@ namespace App\Http\Middleware\App;
 
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\User\Locale;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
@@ -61,7 +60,6 @@ class HandleInertiaRequests extends Middleware
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
             'locale' => app()->getLocale(),
-            'languages' => Locale::options(),
             'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
             'selfHosted' => $isSelfHosted,
             'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),

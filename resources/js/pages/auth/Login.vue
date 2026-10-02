@@ -18,7 +18,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useGuestLocale } from '@/composables/useGuestLocale';
 import { usePageErrors } from '@/composables/usePageErrors';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { register } from '@/routes';
@@ -31,8 +30,6 @@ defineProps<{
     invite?: string | null;
     devLogin?: { email: string; password: string } | null;
 }>();
-
-const { chosen } = useGuestLocale();
 
 const showPassword = ref(false);
 
@@ -64,8 +61,6 @@ const pageErrors = usePageErrors();
                 v-slot="{ errors, processing }"
                 class="flex flex-col gap-6"
             >
-                <input type="hidden" name="locale" :value="chosen ?? ''" />
-
                 <input
                     v-if="invite"
                     type="hidden"

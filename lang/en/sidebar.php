@@ -20,7 +20,6 @@ return [
         'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
-    'language' => 'Language: :name',
     'groups' => [
         'posts' => 'Posts',
         'workspace' => 'Workspace',

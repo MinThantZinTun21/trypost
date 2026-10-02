@@ -25,7 +25,6 @@ class CreateInvite
         ]);
 
         Mail::to($invite->email)
-            ->locale($inviter->preferredLocale())
             ->send(new WorkspaceInviteMail($invite));
 
         return $invite;

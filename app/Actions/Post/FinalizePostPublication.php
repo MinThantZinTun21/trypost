@@ -99,17 +99,16 @@ class FinalizePostPublication
         }
 
         $type = $successful ? Type::PostPublished : Type::PostFailed;
-        $locale = $owner->preferredLocale();
 
         SendNotification::dispatch(
             user: $owner,
             workspaceId: $post->workspace_id,
             type: $type,
             channel: Channel::Both,
-            title: __("notifications.{$type->value}.title", [], $locale),
+            title: __("notifications.{$type->value}.title"),
             body: __("notifications.{$type->value}.body", [
                 'platforms' => $platforms->map->notificationLabel()->implode(', '),
-            ], $locale),
+            ]),
             data: ['post_id' => $post->id],
             mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
         );

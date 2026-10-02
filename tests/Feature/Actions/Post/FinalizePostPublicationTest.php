@@ -6,7 +6,6 @@ use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Notification\Type;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
-use App\Enums\User\Locale;
 use App\Jobs\SendNotification;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -17,11 +16,10 @@ use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     Queue::fake();
-    app()->setLocale(Locale::DEFAULT->value);
 });
 
-test('published notification uses the owner locale', function () {
-    $owner = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
+test('published notification is sent to the owner', function () {
+    $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $account = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $workspace->id,
@@ -40,19 +38,18 @@ test('published notification uses the owner locale', function () {
 
     app(FinalizePostPublication::class)->handle($post);
 
-    Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($owner, $post) {
-        $locale = $owner->preferredLocale();
+    Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
         $platforms = 'Facebook Page (@inbox)';
 
         return $job->type === Type::PostPublished
-            && $job->title === __('notifications.post_published.title', [], $locale)
-            && $job->body === __('notifications.post_published.body', ['platforms' => $platforms], $locale)
+            && $job->title === __('notifications.post_published.title')
+            && $job->body === __('notifications.post_published.body', ['platforms' => $platforms])
             && data_get($job->data, 'post_id') === $post->id;
     });
 });
 
-test('failed notification uses the owner locale', function () {
-    $owner = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
+test('failed notification is sent to the owner', function () {
+    $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $account = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $workspace->id,
@@ -71,13 +68,12 @@ test('failed notification uses the owner locale', function () {
 
     app(FinalizePostPublication::class)->handle($post);
 
-    Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($owner, $post) {
-        $locale = $owner->preferredLocale();
+    Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
         $platforms = 'Facebook Page (@inbox)';
 
         return $job->type === Type::PostFailed
-            && $job->title === __('notifications.post_failed.title', [], $locale)
-            && $job->body === __('notifications.post_failed.body', ['platforms' => $platforms], $locale)
+            && $job->title === __('notifications.post_failed.title')
+            && $job->body === __('notifications.post_failed.body', ['platforms' => $platforms])
             && data_get($job->data, 'post_id') === $post->id;
     });
 });

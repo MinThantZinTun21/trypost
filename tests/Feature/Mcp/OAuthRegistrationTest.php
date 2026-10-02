@@ -169,16 +169,6 @@ test('mcp oauth consent page is available for workspace viewers', function () {
         ->and(class_exists(EnsureCanAuthorizeMcp::class))->toBeFalse();
 });
 
-test('mcp oauth consent page uses the active locale', function () {
-    app()->setLocale('pt-BR');
-
-    expect(__('mcp.authorize.heading', ['client' => 'Claude']))->toBe('Autorizar Claude')
-        ->and(__('mcp.authorize.logged_in_as'))->toBe('Conectado como:')
-        ->and(__('mcp.authorize.workspace_scope'))->toBe('Esta conexão terá acesso somente ao workspace selecionado.')
-        ->and(__('mcp.authorize.approve'))->toBe('Autorizar')
-        ->and(__('mcp.authorize.cancel'))->toBe('Cancelar');
-});
-
 test('mcp oauth consent page lists every workspace the user can access', function () {
     $account = Account::factory()->create();
     $user = User::factory()->create(['account_id' => $account->id]);
@@ -309,7 +299,6 @@ test('post-login redirect to authorize renders inertia instead of raw oauth json
     $login = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
-        'locale' => 'en',
     ]);
 
     $login->assertRedirect();

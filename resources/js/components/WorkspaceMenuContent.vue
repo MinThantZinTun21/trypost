@@ -3,7 +3,6 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     IconCheck,
     IconCreditCard,
-    IconLanguage,
     IconLogout,
     IconPlus,
     IconSettings,
@@ -11,17 +10,12 @@ import {
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
 import { Avatar } from '@/components/ui/avatar';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
-    DropdownMenuPortal,
     DropdownMenuSeparator,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
@@ -31,7 +25,7 @@ import { edit as accountEdit } from '@/routes/app/account';
 import { edit as profileEdit } from '@/routes/app/profile';
 import { settings as workspaceSettings } from '@/routes/app/workspace';
 import { switchMethod } from '@/routes/app/workspaces';
-import type { Language, User } from '@/types';
+import type { User } from '@/types';
 
 interface Workspace {
     id: string;
@@ -58,17 +52,6 @@ const showAccountSettings = computed(
     () => canManageBilling.value && !selfHosted.value,
 );
 const showWorkspaceSettings = computed(() => canManageWorkspace.value);
-const languages = computed<Language[]>(
-    () => page.props.languages as Language[],
-);
-const currentLanguage = computed(() =>
-    languages.value?.find((language) => language.code === page.props.locale),
-);
-
-const switchLanguage = (code: string): void => {
-    router.put(updateLanguage.url(), { locale: code });
-};
-
 const switchWorkspace = (workspaceId: string): void => {
     if (workspaceId === props.currentWorkspace?.id) {
         return;
@@ -135,54 +118,6 @@ const handleLogout = (): void => {
                 {{ $t('sidebar.workspace_settings') }}
             </Link>
         </DropdownMenuItem>
-    </DropdownMenuGroup>
-
-    <DropdownMenuSeparator />
-
-    <DropdownMenuGroup>
-        <DropdownMenuSub v-if="languages && languages.length > 1">
-            <DropdownMenuSubTrigger data-testid="sidebar-language-trigger">
-                <img
-                    v-if="currentLanguage"
-                    :src="currentLanguage.flag"
-                    :alt="currentLanguage.name"
-                    class="h-3.5 w-5 shrink-0 rounded-xs object-cover ring-1 ring-border"
-                />
-                <IconLanguage v-else />
-                {{
-                    $t('sidebar.language', {
-                        name: currentLanguage?.name ?? 'English',
-                    })
-                }}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                    <DropdownMenuItem
-                        v-for="language in languages"
-                        :key="language.code"
-                        :class="
-                            language.code === currentLanguage?.code
-                                ? 'bg-accent'
-                                : ''
-                        "
-                        :data-testid="`sidebar-language-${language.code}`"
-                        @click="switchLanguage(language.code)"
-                    >
-                        <img
-                            :src="language.flag"
-                            :alt="language.name"
-                            class="h-3.5 w-5 shrink-0 rounded-xs object-cover ring-1 ring-border"
-                        />
-                        {{ language.name }}
-                        <IconCheck
-                            v-if="language.code === currentLanguage?.code"
-                            class="ms-auto size-4 shrink-0 text-foreground"
-                            stroke-width="2.5"
-                        />
-                    </DropdownMenuItem>
-                </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-        </DropdownMenuSub>
     </DropdownMenuGroup>
 
     <DropdownMenuSeparator />
