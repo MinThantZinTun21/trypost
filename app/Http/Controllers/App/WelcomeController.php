@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
@@ -15,13 +14,11 @@ use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Http\Resources\App\WelcomeSummaryResource;
-use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 class WelcomeController extends Controller
 {
@@ -40,7 +37,7 @@ class WelcomeController extends Controller
         ]);
     }
 
-    public function storePersona(StoreWelcomePersonaRequest $request, PostHogService $postHog): RedirectResponse
+    public function storePersona(StoreWelcomePersonaRequest $request): RedirectResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
@@ -50,16 +47,6 @@ class WelcomeController extends Controller
         $persona = (string) $request->validated('persona');
 
         $user->update(['persona' => $persona]);
-
-        $postHog->identify($user->id, [
-            'persona' => $persona,
-        ]);
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::Persona->value,
-            ['persona' => $persona],
-            $user->account,
-        );
 
         return redirect()->route('app.welcome.goals');
     }
@@ -79,7 +66,7 @@ class WelcomeController extends Controller
         ]);
     }
 
-    public function storeGoals(StoreWelcomeGoalsRequest $request, PostHogService $postHog): RedirectResponse
+    public function storeGoals(StoreWelcomeGoalsRequest $request): RedirectResponse
     {
         if ($redirect = $this->redirectIfStepIncomplete($request)) {
             return $redirect;
@@ -89,16 +76,6 @@ class WelcomeController extends Controller
         $goals = array_values($request->validated('goals'));
 
         $user->update(['goals' => $goals]);
-
-        $postHog->identify($user->id, [
-            'goals' => $goals,
-        ]);
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::Goals->value,
-            ['goals' => $goals],
-            $user->account,
-        );
 
         return redirect()->route('app.welcome.referral-source');
     }
@@ -118,10 +95,8 @@ class WelcomeController extends Controller
         ]);
     }
 
-    public function storeReferralSource(
-        StoreWelcomeReferralSourceRequest $request,
-        PostHogService $postHog,
-    ): RedirectResponse {
+    public function storeReferralSource(StoreWelcomeReferralSourceRequest $request): RedirectResponse
+    {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
         }
@@ -130,16 +105,6 @@ class WelcomeController extends Controller
         $referralSource = (string) $request->validated('referral_source');
 
         $user->update(['referral_source' => $referralSource]);
-
-        $postHog->identify($user->id, [
-            'referral_source' => $referralSource,
-        ]);
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::Referral->value,
-            ['referral_source' => $referralSource],
-            $user->account,
-        );
 
         return redirect()->route('app.welcome.connect');
     }
@@ -164,26 +129,13 @@ class WelcomeController extends Controller
         ]);
     }
 
-    public function storeConnect(StoreWelcomeConnectRequest $request, PostHogService $postHog): RedirectResponse
+    public function storeConnect(StoreWelcomeConnectRequest $request): RedirectResponse
     {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
             return $redirect;
         }
 
         abort_unless($request->user()->currentWorkspace !== null, Response::HTTP_NOT_FOUND);
-
-        $user = $request->user();
-
-        try {
-            $postHog->capture(
-                $user->id,
-                WelcomeEvent::Connect->value,
-                ['platforms' => $request->connectedPlatforms()],
-                $user->account,
-            );
-        } catch (Throwable $e) {
-            report($e);
-        }
 
         return redirect()->route('app.calendar');
     }

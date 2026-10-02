@@ -15,10 +15,6 @@
             "env": {
                 "SITE_PATH": "/Users/paulocastellano/Code/trypost"
             }
-        },
-        "nightwatch": {
-            "type": "http",
-            "url": "https://nightwatch.laravel.com/mcp"
         }
     }
 }

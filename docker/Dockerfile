@@ -93,7 +93,7 @@ RUN composer install \
 #
 # Vite inlines VITE_* values into the JS bundle at build time. Pass them
 # as build args (--build-arg VITE_REVERB_APP_KEY=...) so the bundle reaches
-# the browser with the correct Reverb/PostHog config. Runtime env vars on
+# the browser with the correct Reverb config. Runtime env vars on
 # the container have no effect on the already-compiled bundle.
 # ----------------------------------------------------------------------------
 FROM composer-deps AS asset-build
@@ -106,9 +106,6 @@ ARG VITE_REVERB_APP_KEY=
 ARG VITE_REVERB_HOST=localhost
 ARG VITE_REVERB_PORT=8080
 ARG VITE_REVERB_SCHEME=http
-ARG VITE_POSTHOG_ENABLED=false
-ARG VITE_POSTHOG_API_KEY=
-ARG VITE_POSTHOG_HOST=https://us.i.posthog.com
 
 # Stub PHP envs so artisan can boot (overridden at runtime).
 ENV APP_KEY=base64:c3R1Yi13YXlmaW5kZXItZ2VuLWtleS1mb3ItYnVpbGRpbmctYXNzZXRzMA== \
@@ -119,10 +116,7 @@ ENV APP_KEY=base64:c3R1Yi13YXlmaW5kZXItZ2VuLWtleS1mb3ItYnVpbGRpbmctYXNzZXRzMA== 
     VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY} \
     VITE_REVERB_HOST=${VITE_REVERB_HOST} \
     VITE_REVERB_PORT=${VITE_REVERB_PORT} \
-    VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME} \
-    VITE_POSTHOG_ENABLED=${VITE_POSTHOG_ENABLED} \
-    VITE_POSTHOG_API_KEY=${VITE_POSTHOG_API_KEY} \
-    VITE_POSTHOG_HOST=${VITE_POSTHOG_HOST}
+    VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}
 
 COPY --from=composer-deps /var/www/html/vendor ./vendor
 COPY . .
@@ -196,7 +190,7 @@ COPY --from=asset-build /var/www/html /var/www/html
 # Replace the dev-equipped vendor/ with production-only deps. composer-deps-prod
 # is built independently and is much smaller (no phpunit, no debugbar, no pail,
 # no pint). Also wipe bootstrap/cache/*.php — package:discover ran with dev
-# deps and recorded providers (Pail, Telescope etc) that no longer exist;
+# deps and recorded providers (Pail etc) that no longer exist;
 # Laravel rediscovers cleanly at first boot.
 RUN rm -rf /var/www/html/vendor /var/www/html/bootstrap/cache/*.php
 COPY --from=composer-deps-prod /var/www/html/vendor /var/www/html/vendor

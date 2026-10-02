@@ -6,9 +6,8 @@ namespace App\Support;
 
 /**
  * UTM parameters and ad click IDs captured before signup (query string ->
- * session -> persisted on the users row), shared by
- * App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters (capture)
- * and App\Jobs\PostHog\SyncUser (forwarding to PostHog).
+ * session -> persisted on the users row), read by
+ * App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters.
  */
 final class AttributionKeys
 {

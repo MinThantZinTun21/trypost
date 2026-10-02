@@ -108,8 +108,8 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             // time; this job can take real wall-clock time working through
             // a workspace, so re-check fresh (paused/deleted since then
             // shouldn't burn an API call or warn about it). Keep workspace
-            // eager-loaded — SocialAccountObserver reads it when
-            // markAsTokenExpired() below updates the account (#255).
+            // eager-loaded — markAsTokenExpired() below reads it to notify
+            // the workspace owner (#255).
             $account = SocialAccount::active()->with('workspace')->find($account->id);
 
             if (! $account) {
@@ -333,9 +333,8 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                     ->whereBetween('scheduled_at', [now(), now()->addHour()]);
             })
             // socialAccount.workspace is eager-loaded even though this job
-            // never reads it directly — SocialAccountObserver::syncUsage()
-            // (fired by the ->update() calls below via markAsTokenExpired())
-            // reads $account->workspace. Without this eager load every
+            // never reads it directly — markAsTokenExpired() below reads
+            // $account->workspace to notify the owner. Without this eager load every
             // account in the batch triggers its own extra query there.
             ->with(['socialAccount.workspace', 'post'])
             ->get();

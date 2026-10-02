@@ -510,7 +510,7 @@ test('chunked upload rejects a request with no X-Upload-Id header', function () 
     $response->assertJsonValidationErrors('upload_id');
 });
 
-// ─── Concurrent duplicate uploads (regression for Nightwatch #23) ─
+// ─── Concurrent duplicate uploads (regression for production error #23) ─
 //
 // Same user, same filename, same total size, in flight at the same time —
 // e.g. the media picker dialog is closed mid-upload and reopened, then the
@@ -572,7 +572,7 @@ test('a second attempt completing does not corrupt or crash an in-flight sibling
 
     // A1: attempt A's own final chunk. Pre-fix the cache key is now gone, so
     // this throws RuntimeException("Chunked cloud upload session expired or
-    // missing.") — the exact Nightwatch #23 crash.
+    // missing.") — the exact production error #23 crash.
     $doneA = postChunkedAsset('clip.mp4', str_repeat('a', 50), ChunkedCloudUploader::MIN_PART_BYTES, $total, uploadId: $attemptA);
 
     $doneA->assertSuccessful();

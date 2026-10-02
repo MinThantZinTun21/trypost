@@ -1,11 +1,5 @@
 import { AppPageProps } from '@/types/index';
 
-declare global {
-    interface Window {
-        dataLayer: Record<string, unknown>[];
-    }
-}
-
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {
     interface ImportMetaEnv {

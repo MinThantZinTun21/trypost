@@ -219,7 +219,7 @@ test('publish keeps the vetted user message from a publish exception', function 
     expect($this->postPlatform->error_message)->toBe('LinkedIn rejected this post.');
 });
 
-test('publish reports caught publish exceptions so Nightwatch sees them', function (LinkedInPublishException $exception) {
+test('publish reports caught publish exceptions so the exception handler sees them', function (LinkedInPublishException $exception) {
     Event::fake();
     Exceptions::fake();
 
@@ -248,7 +248,7 @@ test('publish reports caught publish exceptions so Nightwatch sees them', functi
     ),
 ]);
 
-test('publish reports unexpected errors so Nightwatch sees them', function () {
+test('publish reports unexpected errors so the exception handler sees them', function () {
     Event::fake();
     Exceptions::fake();
 
@@ -265,7 +265,7 @@ test('publish reports unexpected errors so Nightwatch sees them', function () {
     expect($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.');
 });
 
-test('publish reports token expiry so Nightwatch sees it', function () {
+test('publish reports token expiry so the exception handler sees it', function () {
     Event::fake();
     Exceptions::fake();
     Mail::fake();
@@ -319,7 +319,7 @@ test('publish does not report a platform-unavailable retry', function () {
     expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying);
 });
 
-test('publish log includes media so Nightwatch can tell a CDN miss from an API rejection', function () {
+test('publish log includes media so logs can tell a CDN miss from an API rejection', function () {
     Exceptions::fake();
 
     $this->post->update([

@@ -289,9 +289,9 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Caught publish failures never reach Nightwatch unless we report() them.
-     * report() feeds Exceptions; the structured log carries post/platform ids
-     * Nightwatch's exception record does not. In-flight retries stay warnings.
+     * Caught publish failures never reach the exception handler unless we
+     * report() them. The structured log carries the post/platform ids an
+     * exception report does not. In-flight retries stay warnings.
      *
      * @param  array<string, mixed>  $context
      */
@@ -312,7 +312,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Nightwatch's exception record is class/message/stack only. The
+     * An exception report is class/message/stack only. The
      * structured log needs the media the platform tried to pull so a
      * CDN miss can be told from an API rejection.
      *

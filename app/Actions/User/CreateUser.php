@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\User;
 
 use App\Actions\Workspace\CreateWorkspace;
-use App\Enums\PostHog\UserEvent;
-use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\User;
-use App\Services\PostHogService;
 use Illuminate\Support\Facades\DB;
 
 class CreateUser
@@ -22,7 +19,7 @@ class CreateUser
     {
         $isInviteRegistration = (bool) data_get($data, 'is_invite', false);
 
-        $user = DB::transaction(function () use ($data, $attributionParameters, $isInviteRegistration): User {
+        return DB::transaction(function () use ($data, $attributionParameters, $isInviteRegistration): User {
             $account = Account::create([
                 'name' => data_get($data, 'name')."'s Account",
             ]);
@@ -46,26 +43,5 @@ class CreateUser
 
             return $user;
         });
-
-        if (PostHogService::shouldTrack()) {
-            SyncUser::dispatch((string) $user->id);
-
-            if (! $isInviteRegistration) {
-                $authProvider = match (true) {
-                    (bool) $user->google_id => 'google',
-                    (bool) $user->github_id => 'github',
-                    default => 'email',
-                };
-
-                app(PostHogService::class)->capture(
-                    (string) $user->id,
-                    UserEvent::SignedUp->value,
-                    ['auth_provider' => $authProvider],
-                    $user->account,
-                );
-            }
-        }
-
-        return $user;
     }
 }

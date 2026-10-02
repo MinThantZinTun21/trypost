@@ -17,7 +17,6 @@ import {
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-import posthog from '@/posthog';
 import { logout } from '@/routes';
 import { edit as profileEdit } from '@/routes/app/profile';
 import { settings as workspaceSettings } from '@/routes/app/workspace';
@@ -61,7 +60,6 @@ const handleCreateWorkspace = (): void => {
 };
 
 const handleLogout = (): void => {
-    posthog.reset();
     router.flushAll();
 };
 </script>

@@ -5,8 +5,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        @include('partials.gtm')
-
         {{-- Inline page-paint background. Matches `--background` so the
              first paint doesn't flash white before CSS loads. --}}
         <style>
@@ -31,7 +29,6 @@
         @inertiaHead
     </head>
     <body class="font-sans antialiased">
-        @include('partials.gtm-noscript')
         @inertia
     </body>
 </html>

@@ -40,13 +40,11 @@
         "laravel/boost": "^2.5",
         "laravel/framework": "^13.0",
         "laravel/horizon": "^5.45",
-        "laravel/nightwatch": "^1.22",
         "laravel/reverb": "^1.0",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.9",
         "league/flysystem-aws-s3-v3": "^3.0",
-        "posthog/posthog-php": "^4.1",
         "predis/predis": "^3.3",
         "sendkit/sendkit-laravel": "^1.1",
         "socialiteproviders/facebook": "^4.1",
@@ -63,7 +61,6 @@
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
         "laravel/sail": "*",
-        "laravel/telescope": "^5.19",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^5.0",
@@ -138,9 +135,7 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": [
-                "laravel/telescope"
-            ]
+            "dont-discover": []
         }
     },
     "config": {

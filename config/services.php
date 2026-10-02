@@ -126,14 +126,4 @@ return [
         'redirect' => env('GOOGLE_BUSINESS_CLIENT_REDIRECT'),
     ],
 
-    'gtm' => [
-        'id' => env('GTM_ID'),
-    ],
-
-    'posthog' => [
-        'enabled' => (bool) env('POSTHOG_ENABLED', false),
-        'api_key' => env('POSTHOG_API_KEY'),
-        'host' => env('POSTHOG_HOST', 'https://us.i.posthog.com'),
-    ],
-
 ];

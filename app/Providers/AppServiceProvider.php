@@ -16,7 +16,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvite;
-use App\Services\PostHogService;
 use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
@@ -32,11 +31,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-use Laravel\Nightwatch\Facades\Nightwatch;
-use Laravel\Nightwatch\Records\CacheEvent;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
-use PostHog\PostHog;
 use SocialiteProviders\Facebook\FacebookExtendSocialite;
 use SocialiteProviders\LinkedIn\LinkedInExtendSocialite;
 use SocialiteProviders\Manager\SocialiteWasCalled;
@@ -46,24 +42,12 @@ use SocialiteProviders\TikTok\TikTokExtendSocialite;
 class AppServiceProvider extends ServiceProvider
 {
     /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        if ($this->app->environment('local') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
-            $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
-            $this->app->register(TelescopeServiceProvider::class);
-        }
-    }
-
-    /**
      * Bootstrap any application services.
      */
     public function boot(): void
     {
         $this->configureDefaults();
         $this->configureMorphMap();
-        $this->configurePostHog();
         $this->configureSocialite();
     }
 
@@ -82,17 +66,6 @@ class AppServiceProvider extends ServiceProvider
             'user' => User::class,
             'workspace' => Workspace::class,
             'workspaceInvite' => WorkspaceInvite::class,
-        ]);
-    }
-
-    protected function configurePostHog(): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        PostHog::init(config('services.posthog.api_key'), [
-            'host' => config('services.posthog.host'),
         ]);
     }
 
@@ -153,14 +126,6 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null
         );
-
-        Nightwatch::rejectCacheEvents(function (CacheEvent $cacheEvent) {
-            return in_array($cacheEvent->key, [
-                'illuminate:foundation:down',
-                'illuminate:queue:restart',
-                'illuminate:schedule:interrupt',
-            ]);
-        });
 
         // Custom email verification template
         VerifyEmail::toMailUsing(function (User $user, string $url) {
