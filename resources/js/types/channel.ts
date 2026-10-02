@@ -1,0 +1,43 @@
+import type { PinterestBoard } from '@/types';
+import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
+
+export interface ChannelAccount {
+    id: string;
+    platform: string;
+    display_name: string;
+    username: string;
+    display_label: string;
+    avatar_url: string | null;
+    is_active?: boolean;
+    status?: string;
+}
+
+export interface ChannelTikTokCreatorInfo {
+    creator_nickname: string | null;
+    creator_username: string | null;
+    creator_avatar_url: string | null;
+    privacy_level_options: TikTokPrivacyLevelValue[];
+    comment_disabled: boolean;
+    duet_disabled: boolean;
+    stitch_disabled: boolean;
+    max_video_post_duration_sec: number | null;
+}
+
+export interface Channel {
+    id: string;
+    platform: string;
+    displayName: string;
+    username: string | null;
+    avatarUrl: string | null;
+    socialAccount: ChannelAccount | null;
+    contentType: string;
+    meta: Record<string, any>;
+    issue?: string | null;
+    issueDocsUrl?: string | null;
+    status?: string | null;
+    contentTypeError?: string;
+    publishConfig?: Record<string, any> | null;
+    creatorInfo?: ChannelTikTokCreatorInfo | null;
+    boards?: PinterestBoard[];
+    boardsTruncated?: boolean;
+}

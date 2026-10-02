@@ -1,0 +1,1412 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\GoogleBusiness\TopicType;
+use App\Enums\Post\Status;
+use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
+use App\Enums\UserWorkspace\Role;
+use App\Jobs\PublishPost;
+use App\Models\Post;
+use App\Models\PostPlatform;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
+
+test('youtube description checks effective web metadata before scheduling or publishing', function (string $patch, bool $allowed, string $status) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $this->post->update([
+        'content' => 'Short title',
+        'status' => Status::Draft,
+        'media' => $this->mediaPayload,
+    ]);
+    $this->postPlatform->update(['enabled' => false]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => ['description' => str_repeat('a', 5001)],
+    ]);
+    $data = [
+        'status' => $status,
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+        'media' => $this->mediaPayload,
+    ];
+
+    if ($patch !== 'omit') {
+        $data['platforms'] = [['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value]];
+        if ($patch !== 'row') {
+            $data['platforms'][0]['meta'] = ['description' => $patch === 'clear' ? null : 'Valid description'];
+        }
+    }
+    Queue::fake();
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), $data);
+
+    if ($allowed) {
+        $response->assertSessionHasNoErrors();
+        expect($this->post->fresh()->status->value)->toBe($status);
+
+        if ($status === Status::Publishing->value) {
+            Queue::assertPushed(PublishPost::class);
+        }
+    } else {
+        $response->assertSessionHasErrors('platforms.0.meta.description');
+        expect($this->post->fresh()->status)->toBe(Status::Draft);
+        Queue::assertNotPushed(PublishPost::class);
+    }
+})->with([
+    'stored invalid description' => ['omit', false],
+    'retained invalid description' => ['row', false],
+    'replaced description' => ['replace', true],
+    'cleared description' => ['clear', true],
+])->with([Status::Scheduled->value, Status::Publishing->value]);
+
+test('youtube description reports and persists independent selected channel values', function () {
+    $platforms = collect(range(1, 2))->map(function () {
+        $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+
+        return PostPlatform::factory()->youtube()->create([
+            'post_id' => $this->post->id,
+            'social_account_id' => $account->id,
+            'meta' => [],
+        ]);
+    });
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $platforms[0]->id, 'meta' => ['description' => 'First channel']],
+            ['id' => $platforms[1]->id, 'meta' => ['description' => str_repeat('é', 2501)]],
+        ],
+    ])->assertSessionHasErrors('platforms.1.meta.description')->assertSessionDoesntHaveErrors('platforms.0.meta.description');
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'content' => 'Short title',
+        'platforms' => [
+            ['id' => $platforms[0]->id, 'meta' => ['description' => 'First channel']],
+            ['id' => $platforms[1]->id, 'meta' => ['description' => str_repeat('é', 2500)]],
+        ],
+    ])->assertSessionHasNoErrors();
+    expect(data_get($platforms[0]->fresh()->meta, 'description'))->toBe('First channel')
+        ->and(data_get($platforms[1]->fresh()->meta, 'description'))->toBe(str_repeat('é', 2500))
+        ->and($this->post->fresh()->content)->toBe('Short title');
+});
+
+test('youtube description update reports one validation message', function (bool $hasSubmittedError) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['description' => str_repeat('a', 5001)],
+    ]);
+    $data = [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+        'content' => 'Short title',
+        'media' => $this->mediaPayload,
+        'platforms' => [[
+            'id' => $platform->id,
+            'content_type' => ContentType::YouTubeShort->value,
+        ]],
+    ];
+    $key = 'platforms.0.meta.description';
+
+    if ($hasSubmittedError) {
+        $data['platforms'][0]['meta'] = ['description' => str_repeat('é', 2501)];
+    }
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), $data)
+        ->assertSessionHasErrors($key);
+
+    expect(session('errors')->get($key))->toBe([
+        __('posts.form.youtube.description_max'),
+    ]);
+})->with([
+    'stored invalid description' => [false],
+    'submitted invalid description' => [true],
+]);
+
+test('youtube description validation keeps submitted channel order and rolls back updates', function () {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => ['description' => str_repeat('a', 5001)],
+    ]);
+    $secondAccount = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $secondPlatform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $secondAccount->id,
+        'enabled' => false,
+        'meta' => ['description' => 'Valid description'],
+    ]);
+    $this->post->update(['content' => 'Original title']);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+        'content' => 'Changed title',
+        'media' => $this->mediaPayload,
+        'platforms' => [
+            ['id' => $secondPlatform->id, 'content_type' => ContentType::YouTubeShort->value],
+            ['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value],
+        ],
+    ])->assertSessionHasErrors('platforms.1.meta.description')
+        ->assertSessionDoesntHaveErrors('platforms.0.meta.description');
+
+    expect($this->post->fresh()->status)->toBe(Status::Draft)
+        ->and($this->post->fresh()->content)->toBe('Original title')
+        ->and($this->post->fresh()->scheduled_at)->toBeNull()
+        ->and($platform->fresh()->enabled)->toBeTrue()
+        ->and($secondPlatform->fresh()->enabled)->toBeFalse()
+        ->and($this->postPlatform->fresh()->enabled)->toBeTrue();
+});
+
+beforeEach(function () {
+    $this->user = User::factory()->create();
+    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    // Media payload used by tests that need to satisfy ContentTypeCompatibleWithMedia.
+    $this->mediaPayload = [
+        [
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'type' => 'video',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ],
+    ];
+    $this->socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::TikTok,
+    ]);
+    $this->postPlatform = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->socialAccount->id,
+        // Override factory default so we control privacy_level per test.
+        'meta' => [],
+    ]);
+});
+
+test('publishing a tiktok post without privacy_level is rejected', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.privacy_level');
+});
+
+test('publishing a tiktok post with privacy_level passes privacy_level validation', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.meta.privacy_level']);
+});
+
+test('scheduling a bluesky post with a mov video is not rejected on format', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'scheduled_at' => now()->addHour()->toIso8601String(),
+            'media' => [[
+                'id' => 'test-media-mov',
+                'path' => 'media/2026-01/clip.mov',
+                'url' => 'https://example.com/media/2026-01/clip.mov',
+                'type' => 'video',
+                'mime_type' => 'video/quicktime',
+                'original_filename' => 'clip.mov',
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.content_type']);
+});
+
+test('publishing a bluesky post with an oversized video is rejected server-side', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => [[
+                'id' => 'test-media-big',
+                'path' => 'media/2026-01/big.mp4',
+                'url' => 'https://example.com/media/2026-01/big.mp4',
+                'type' => 'video',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'big.mp4',
+                'size' => 300_000_001,
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    // Bluesky's cap is decimal, so both numbers render in decimal units.
+    $response->assertSessionHasErrors([
+        'platforms.0.content_type' => trans('posts.form.warnings.video_too_large', ['max' => '300 MB', 'current' => '300.0 MB']),
+    ]);
+});
+
+test('publishing a bluesky post with a video over the duration cap is rejected server-side', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => [[
+                'id' => 'test-media-long',
+                'path' => 'media/2026-01/long.mp4',
+                'url' => 'https://example.com/media/2026-01/long.mp4',
+                'type' => 'video',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'long.mp4',
+                'size' => 50_000_000,
+                'meta' => ['duration' => 601.5],
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors(['platforms.0.content_type' => 'Video is 10min 2s long, but this post type allows up to 10min.']);
+});
+
+test('saving a draft does not enforce media compatibility', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'media' => [[
+                'id' => 'test-media-mov',
+                'path' => 'media/2026-01/clip.mov',
+                'url' => 'https://example.com/media/2026-01/clip.mov',
+                'type' => 'video',
+                'mime_type' => 'video/quicktime',
+                'original_filename' => 'clip.mov',
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.content_type']);
+});
+
+test('publishing a pinterest post without board_id is rejected', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $mediaPayload = [
+        [
+            'id' => 'test-image',
+            'path' => 'media/2026-01/pin.jpg',
+            'url' => 'https://example.com/media/2026-01/pin.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'pin.jpg',
+        ],
+    ];
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $pinterestPlatform->id,
+                    'content_type' => ContentType::PinterestPin->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.board_id');
+});
+
+test('publishing a pinterest post with board_id passes board validation', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $mediaPayload = [
+        [
+            'id' => 'test-image',
+            'path' => 'media/2026-01/pin.jpg',
+            'url' => 'https://example.com/media/2026-01/pin.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'pin.jpg',
+        ],
+    ];
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $pinterestPlatform->id,
+                    'content_type' => ContentType::PinterestPin->value,
+                    'meta' => ['board_id' => '123456789'],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.meta.board_id']);
+});
+
+test('scheduling a pinterest post without board_id is rejected', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $mediaPayload = [
+        [
+            'id' => 'test-image',
+            'path' => 'media/2026-01/pin.jpg',
+            'url' => 'https://example.com/media/2026-01/pin.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'pin.jpg',
+        ],
+    ];
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'media' => $mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $pinterestPlatform->id,
+                    'content_type' => ContentType::PinterestPin->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.board_id');
+});
+
+test('publishing a pinterest carousel without board_id is rejected', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterestCarousel()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $mediaPayload = [
+        [
+            'id' => 'img-1',
+            'path' => 'media/2026-01/img1.jpg',
+            'url' => 'https://example.com/media/2026-01/img1.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'img1.jpg',
+        ],
+        [
+            'id' => 'img-2',
+            'path' => 'media/2026-01/img2.jpg',
+            'url' => 'https://example.com/media/2026-01/img2.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'img2.jpg',
+        ],
+    ];
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $pinterestPlatform->id,
+                    'content_type' => ContentType::PinterestCarousel->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.board_id');
+});
+
+test('publishing a pinterest video pin without board_id is rejected', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterestVideoPin()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $pinterestPlatform->id,
+                    'content_type' => ContentType::PinterestVideoPin->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.board_id');
+});
+
+test('pinterest board error does not block other platforms in multi-platform publish', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $linkedinAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $linkedinPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $linkedinAccount->id,
+        'platform' => Platform::LinkedIn,
+        'content_type' => ContentType::LinkedInPost,
+        'meta' => [],
+    ]);
+
+    $mediaPayload = [
+        [
+            'id' => 'test-image',
+            'path' => 'media/2026-01/pin.jpg',
+            'url' => 'https://example.com/media/2026-01/pin.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'pin.jpg',
+        ],
+    ];
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $pinterestPlatform->id,
+                    'content_type' => ContentType::PinterestPin->value,
+                    'meta' => [],
+                ],
+                [
+                    'id' => $linkedinPlatform->id,
+                    'content_type' => ContentType::LinkedInPost->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.board_id');
+    $response->assertSessionDoesntHaveErrors(['platforms.1.meta.board_id']);
+});
+
+test('saving a pinterest post as draft without board_id skips the board rule', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [
+                [
+                    'id' => $pinterestPlatform->id,
+                    'content_type' => ContentType::PinterestPin->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.meta.board_id']);
+});
+
+test('publishing a tiktok post with an unknown privacy_level is rejected', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => ['privacy_level' => 'EVERYONE'],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.privacy_level');
+});
+
+test('publishing a tiktok post as self only branded content is rejected', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => [
+                        'privacy_level' => PrivacyLevel::SelfOnly->value,
+                        'brand_content_toggle' => true,
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors(['platforms.0.meta.privacy_level' => trans('posts.form.tiktok.privacy.private_disabled_branded')]);
+});
+
+test('saving a tiktok post as draft without privacy_level skips the privacy_level rule', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.meta.privacy_level']);
+});
+
+test('scheduling a threads post over 500 chars is rejected with the platform name', function () {
+    $threadsAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Threads,
+    ]);
+    $threadsPlatform = PostPlatform::factory()->threads()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $threadsAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'content' => str_repeat('a', 537),
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'platforms' => [
+                [
+                    'id' => $threadsPlatform->id,
+                    'content_type' => ContentType::ThreadsPost->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('content');
+    expect(session('errors')->get('content')[0])
+        ->toContain('Threads')
+        ->toContain('500')
+        ->toContain('37'); // over by 37
+});
+
+test('scheduling a threads post within 500 chars passes content-length validation', function () {
+    $threadsAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Threads,
+    ]);
+    $threadsPlatform = PostPlatform::factory()->threads()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $threadsAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'content' => str_repeat('a', 500),
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'platforms' => [
+                [
+                    'id' => $threadsPlatform->id,
+                    'content_type' => ContentType::ThreadsPost->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors('content');
+});
+
+test('saving an over-limit threads post as draft skips the content-length rule', function () {
+    $threadsAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Threads,
+    ]);
+    $threadsPlatform = PostPlatform::factory()->threads()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $threadsAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'content' => str_repeat('a', 1000),
+            'platforms' => [
+                [
+                    'id' => $threadsPlatform->id,
+                    'content_type' => ContentType::ThreadsPost->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors('content');
+});
+
+test('scheduling across multiple platforms enforces the strictest content-length cap', function () {
+    $facebookAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Facebook,
+    ]);
+    $facebookPlatform = PostPlatform::factory()->facebook()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $facebookAccount->id,
+    ]);
+
+    $threadsAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Threads,
+    ]);
+    $threadsPlatform = PostPlatform::factory()->threads()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $threadsAccount->id,
+    ]);
+
+    // 600 chars: fine for Facebook (63206 cap), over for Threads (500 cap).
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'content' => str_repeat('a', 600),
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'platforms' => [
+                [
+                    'id' => $facebookPlatform->id,
+                    'content_type' => ContentType::FacebookPost->value,
+                    'meta' => [],
+                ],
+                [
+                    'id' => $threadsPlatform->id,
+                    'content_type' => ContentType::ThreadsPost->value,
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('content');
+    expect(session('errors')->get('content')[0])->toContain('Threads');
+});
+
+test('draft save accepts media source metadata for ai regeneration', function () {
+    $payload = [
+        [
+            'id' => 'media-ai-keep-meta',
+            'path' => 'ai-images/generated.webp',
+            'url' => 'https://example.com/ai-images/generated.webp',
+            'type' => 'image',
+            'mime_type' => 'image/webp',
+            'source' => 'ai',
+            'source_meta' => [
+                'title' => 'Fix ECP typo',
+                'body' => 'Body copy',
+                'keywords' => ['marketing', 'automation'],
+                'width' => 1080,
+                'height' => 1350,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'media' => $payload,
+            'platforms' => [],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors();
+
+    $this->post->refresh();
+    expect(data_get($this->post->media, '0.source'))->toBe('ai');
+    expect(data_get($this->post->media, '0.source_meta.title'))->toBe('Fix ECP typo');
+});
+
+test('instagram_carousel is rejected as a content_type — carousel is a feed post with multiple images', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => 'instagram_carousel',
+                    'meta' => [],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.content_type');
+});
+
+test('publishing a discord post without a channel is rejected', function () {
+    $account = SocialAccount::factory()->discord()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Discord,
+        'content_type' => ContentType::DiscordMessage,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [[
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::DiscordMessage->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertSessionHasErrors('platforms.0.meta.channel_id');
+});
+
+test('saving a discord draft without a channel is allowed', function () {
+    $account = SocialAccount::factory()->discord()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Discord,
+        'content_type' => ContentType::DiscordMessage,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::DiscordMessage->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors('platforms.0.meta.channel_id');
+});
+
+test('saving a pinterest draft persists title and link meta', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => ['board_id' => 'board-1'],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'id' => $pinterestPlatform->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Pin Title',
+                    'link' => 'https://example.com/product',
+                ],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $meta = $pinterestPlatform->fresh()->meta;
+
+    expect(data_get($meta, 'title'))->toBe('Pin Title')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product')
+        ->and(array_key_exists('description', $meta))->toBeFalse();
+});
+
+test('clearing pinterest title and link removes the meta keys', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [
+            'board_id' => 'board-1',
+            'title' => 'Keep me gone',
+            'link' => 'https://example.com/gone',
+        ],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $pinterestPlatform->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => null,
+                    'link' => null,
+                ],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $meta = $pinterestPlatform->fresh()->meta;
+
+    expect(data_get($meta, 'board_id'))->toBe('board-1')
+        ->and(array_key_exists('title', $meta))->toBeFalse()
+        ->and(array_key_exists('link', $meta))->toBeFalse();
+});
+
+test('pinterest rejects invalid link when scheduling', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => ['board_id' => 'board-1'],
+    ]);
+
+    $mediaPayload = [
+        [
+            'id' => 'test-image',
+            'path' => 'media/2026-01/pin.jpg',
+            'url' => 'https://example.com/media/2026-01/pin.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'pin.jpg',
+        ],
+    ];
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'scheduled_at' => now()->addHour()->toIso8601String(),
+            'content' => 'Ready to schedule',
+            'media' => $mediaPayload,
+            'platforms' => [[
+                'id' => $pinterestPlatform->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'link' => 'not-a-url',
+                ],
+            ]],
+        ])
+        ->assertSessionHasErrors([
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
+});
+
+test('pinterest meta title and link validation bounds are enforced', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $pinterestPlatform->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'title' => str_repeat('t', 101),
+                    'link' => 'not-a-url',
+                ],
+            ]],
+        ])
+        ->assertSessionHasErrors([
+            'platforms.0.meta.title' => __('posts.form.pinterest.title_max'),
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
+});
+
+test('saving a google business event title over the api length is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1)],
+                ],
+            ]],
+        ])
+        ->assertSessionHasErrors([
+            'platforms.0.meta.event.title' => __('posts.form.google_business.title_max'),
+        ]);
+});
+
+test('saving a google business coupon longer than the event title cap is accepted', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'OFFER',
+                    'offer' => ['coupon_code' => str_repeat('C', TopicType::TITLE_MAX_LENGTH + 20)],
+                ],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    expect(data_get($postPlatform->fresh()->meta, 'offer.coupon_code'))
+        ->toBe(str_repeat('C', TopicType::TITLE_MAX_LENGTH + 20));
+});
+
+test('publishing a google business event post without event fields is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => ['topic_type' => 'EVENT'],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.event.title');
+});
+
+test('publishing a google business offer post round-trips topic_type and offer meta', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'OFFER',
+                        'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
+                        'offer' => ['coupon_code' => 'SAVE10'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors();
+
+    $meta = $postPlatform->fresh()->meta;
+
+    expect(data_get($meta, 'topic_type'))->toBe('OFFER')
+        ->and(data_get($meta, 'event.title'))->toBe('Summer Sale')
+        ->and(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10');
+});
+
+test('publishing a google business offer post requires the event title', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'OFFER',
+                        'offer' => ['coupon_code' => 'SAVE10'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors([
+        'platforms.0.meta.event.title' => __('posts.form.google_business.offer_title_required'),
+    ]);
+});
+
+test('publishing a google business offer post without dates is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'OFFER',
+                        'event' => ['title' => 'Summer Sale'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.event.start_date');
+});
+
+test('publishing a google business event with the end date before the start is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => ['title' => 'Sale', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.event.end_date');
+});
+
+test('publishing a google business event with a same-day end time before start is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => [
+                            'title' => 'Sale',
+                            'start_date' => '2026-09-01',
+                            'end_date' => '2026-09-01',
+                            'start_time' => '18:00',
+                            'end_time' => '09:00',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors([
+        'platforms.0.meta.event.end_time' => __('posts.form.google_business.event_end_time_before_start'),
+    ]);
+});
+
+test('publishing a google business event persists start and end times', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => [
+                            'title' => 'Grand Opening',
+                            'start_date' => '2026-09-01',
+                            'end_date' => '2026-09-02',
+                            'start_time' => '09:30',
+                            'end_time' => '17:00',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors();
+
+    $meta = $postPlatform->fresh()->meta;
+
+    expect(data_get($meta, 'event.start_time'))->toBe('09:30')
+        ->and(data_get($meta, 'event.end_time'))->toBe('17:00');
+});
+
+test('saving two google business events scopes end-before-start to the inverted one', function () {
+    $firstAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $secondAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $validEvent = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $firstAccount->id,
+        'meta' => [],
+    ]);
+    $invertedEvent = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $secondAccount->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [
+                [
+                    'id' => $validEvent->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => ['title' => 'Valid', 'start_date' => '2026-09-01', 'end_date' => '2026-09-10'],
+                    ],
+                ],
+                [
+                    'id' => $invertedEvent->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => ['title' => 'Inverted', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors([
+        'platforms.1.meta.event.end_date' => __('posts.form.google_business.event_end_date_before_start'),
+    ]);
+    $response->assertSessionDoesntHaveErrors(['platforms.0.meta.event.end_date']);
+});
+
+test('publishing two google business posts scopes event errors to the missing one', function () {
+    $firstAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $secondAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $missingEvent = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $firstAccount->id,
+        'meta' => [],
+    ]);
+    $completeStandard = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $secondAccount->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $missingEvent->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => ['topic_type' => 'EVENT'],
+                ],
+                [
+                    'id' => $completeStandard->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => ['topic_type' => 'STANDARD'],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.event.title');
+    $response->assertSessionDoesntHaveErrors(['platforms.1.meta.event.title']);
+});
+
+test('publishing a google business post with a url-needing cta and no url is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'STANDARD',
+                        'call_to_action' => ['action_type' => 'BOOK'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.call_to_action.url');
+});

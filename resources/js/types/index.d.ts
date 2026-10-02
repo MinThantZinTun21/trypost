@@ -1,0 +1,152 @@
+import { InertiaLinkProps } from '@inertiajs/vue3';
+import type { Component } from 'vue';
+
+import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
+import type { AuthPlan, Features, PlanOption } from '@/types/plan';
+import type { WelcomeSummary } from '@/types/welcome';
+
+export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
+export type {
+    WelcomeNetwork,
+    WelcomeStep,
+    WelcomeSummary,
+} from '@/types/welcome';
+
+export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
+
+export interface Workspace {
+    id: string;
+    name: string;
+    logo_url: string | null;
+    role?: WorkspaceRole | null;
+    [key: string]: unknown;
+}
+
+export interface AuthAccount {
+    id: string;
+    name: string;
+    created_at: string | null;
+}
+
+export interface Auth {
+    user: User;
+    role: WorkspaceRole | null;
+    currentWorkspace: Workspace | null;
+    workspaces: Workspace[];
+    account: AuthAccount | null;
+    plan: AuthPlan | null;
+    hasActiveSubscription: boolean;
+    subscriptionPastDue: boolean;
+}
+
+export interface Usage {
+    workspaceCount: number;
+    socialAccountCount: number;
+    memberCount: number;
+    pendingInviteCount: number;
+    postCount: number;
+    creditsUsed: number;
+}
+
+export interface FlashData {
+    banner?: string;
+    bannerStyle?: 'success' | 'danger' | 'info' | 'warning';
+    success?: string;
+    error?: string;
+    warning?: string;
+    info?: string;
+    plainToken?: string;
+    [key: string]: unknown;
+}
+
+export interface NavItem {
+    title: string;
+    href: NonNullable<InertiaLinkProps['href']>;
+    icon?: Component;
+    isActive?: boolean;
+    activePattern?: string;
+    exact?: boolean;
+    excludeActive?: string[];
+    badge?: string;
+}
+
+export interface LegalLinks {
+    terms: string;
+    privacy: string;
+}
+
+export interface SharedData {
+    name: string;
+    auth: Auth;
+    flash: FlashData;
+    sidebarOpen: boolean;
+    selfHosted: boolean;
+    legal: LegalLinks;
+    contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
+    features?: Features | null;
+    usage?: Usage | null;
+    plans?: PlanOption[];
+    welcome?: WelcomeSummary;
+    [key: string]: unknown;
+}
+
+export type AppPageProps<
+    T extends Record<string, unknown> = Record<string, unknown>,
+> = T & SharedData;
+
+export interface User {
+    id: string;
+    name: string;
+    first_name: string;
+    email: string;
+    has_photo: boolean;
+    photo_url: string | null;
+    email_verified_at: string | null;
+    created_at: string;
+    updated_at: string;
+    [key: string]: unknown;
+}
+
+export type BreadcrumbItem = {
+    title: string;
+    href?: string;
+};
+
+export interface PinterestBoard {
+    id: string;
+    name: string;
+}
+
+/** Per-account payload from ListPinterestBoards (Inertia + API/MCP). */
+export interface PinterestBoardsPayload {
+    boards: PinterestBoard[];
+    truncated: boolean;
+}
+
+export interface Language {
+    code: string;
+    name: string;
+    dir: string;
+    flag: string;
+}
+
+export interface ContentLanguageOption {
+    value: string;
+    label: string;
+    englishName?: string;
+}
+
+/**
+ * An AI content template, as serialized by PostController::create from an
+ * AiContentTemplate. Shared by the post-creation screen and the AI wizard —
+ * declaring it in both places is what let them drift apart before.
+ */
+export interface AiTemplate {
+    key: string;
+    name: string;
+    description: string;
+    preview: string;
+    needs_account: boolean;
+    supported_formats: string[];
+    applies_brand_visuals: boolean;
+}

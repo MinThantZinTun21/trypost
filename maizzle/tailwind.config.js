@@ -1,0 +1,12 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  presets: [
+    require('tailwindcss-preset-email'),
+  ],
+  content: [
+    './components/**/*.html',
+    './templates/**/*.html',
+    './layouts/**/*.html',
+  ],
+}
