@@ -30,24 +30,12 @@ services:
       DB_USERNAME: trypost
       DB_PASSWORD: trypost-password     # <- change me (must match POSTGRES_PASSWORD below)
 
-      # ===== Redis / queue / cache / broadcasting =====
+      # ===== Redis / queue / cache =====
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
       SESSION_DRIVER: database
-      BROADCAST_CONNECTION: reverb
-
-      # ===== WebSockets (Reverb) =====
-      # The published image bakes the client at localhost:8080. For a custom
-      # domain, rebuild the image with --build-arg VITE_REVERB_HOST=<domain>
-      # VITE_REVERB_PORT=443 VITE_REVERB_SCHEME=https.
-      REVERB_APP_ID: "1001"
-      REVERB_APP_KEY: trypost-reverb-key           # must match the key baked into the published image
-      REVERB_APP_SECRET: change-me-reverb-secret   # <- change me
-      REVERB_HOST: localhost
-      REVERB_PORT: "8080"
-      REVERB_SCHEME: http
 
       # ===== Storage =====
       # Default: local disk, persisted in the "storage" volume below.
@@ -107,7 +95,6 @@ services:
       # ELEVENLABS_API_KEY: ""
     ports:
       - "8000:80"     # app (nginx)
-      - "8080:8080"   # Reverb WebSocket
     volumes:
       - storage:/var/www/html/storage/app
     depends_on:

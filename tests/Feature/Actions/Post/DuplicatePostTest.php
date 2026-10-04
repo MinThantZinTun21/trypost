@@ -7,13 +7,11 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
-use App\Events\PostCreated;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Event;
 
 test('execute clones the post as a draft created via web', function () {
     $user = User::factory()->create();
@@ -34,24 +32,6 @@ test('execute clones the post as a draft created via web', function () {
         ->and($copy->created_via)->toBe(CreatedVia::Web)
         ->and($copy->scheduled_at)->toBeNull()
         ->and($copy->published_at)->toBeNull();
-});
-
-test('execute relies on the observer to dispatch PostCreated for the duplicate', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $original = Post::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-    ]);
-
-    Event::fake([PostCreated::class]);
-
-    $copy = DuplicatePost::execute($original, $user);
-
-    Event::assertDispatched(
-        PostCreated::class,
-        fn (PostCreated $event) => $event->post->id === $copy->id,
-    );
 });
 
 test('execute skips platform rows whose social account was removed', function () {

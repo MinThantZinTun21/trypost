@@ -4,14 +4,11 @@
     {
       "name": "trypost",
       "runtimeExecutable": "composer",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 8000
-    },
-    {
-      "name": "reverb",
-      "runtimeExecutable": "php",
-      "runtimeArgs": ["artisan", "reverb:start", "--port=8080"],
-      "port": 8080
     }
   ]
 }

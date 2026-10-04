@@ -10,7 +10,7 @@ import PostEditorComposer from '@/components/posts/editor/PostEditorComposer.vue
 import PostEditorHeader from '@/components/posts/editor/PostEditorHeader.vue';
 import PostEditorMobileNav from '@/components/posts/editor/PostEditorMobileNav.vue';
 import PostEditorTabs from '@/components/posts/editor/PostEditorTabs.vue';
-import { usePostEcho } from '@/composables/echo/usePostEcho';
+import { usePollWhile } from '@/composables/usePollWhile';
 import {
     firstCompatibleVariant,
     getMediaIncompatibilityReason,
@@ -352,8 +352,8 @@ const unschedulePost = () => {
     submit(PostStatus.Draft);
 };
 
-usePostEcho(post.value.id, '.post.platform.status.updated', () => {
-    router.reload({ only: ['post'] });
+usePollWhile(() => post.value.status === PostStatus.Publishing, {
+    only: ['post'],
 });
 </script>
 

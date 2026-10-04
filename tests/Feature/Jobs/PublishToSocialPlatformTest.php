@@ -9,7 +9,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
-use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
@@ -56,20 +55,25 @@ beforeEach(function () {
     ]);
 });
 
-test('publish to social platform marks platform as publishing', function () {
+test('publish to social platform marks platform as publishing while the publisher runs', function () {
     Event::fake();
 
+    $statusDuringPublish = null;
     $publisher = Mockery::mock(FacebookPublisher::class);
-    $publisher->shouldReceive('publish')->andReturn([
-        'id' => 'post-123',
-        'url' => 'https://facebook.com/post/123',
-    ]);
+    $publisher->shouldReceive('publish')->andReturnUsing(function () use (&$statusDuringPublish) {
+        $statusDuringPublish = $this->postPlatform->fresh()->status;
+
+        return [
+            'id' => 'post-123',
+            'url' => 'https://facebook.com/post/123',
+        ];
+    });
 
     $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
-    Event::assertDispatched(PostPlatformStatusUpdated::class);
+    expect($statusDuringPublish)->toBe(PlatformStatus::Publishing);
 });
 
 test('publish to social platform marks platform as published on success', function () {

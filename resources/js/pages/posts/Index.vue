@@ -46,12 +46,12 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import { useCreatePost } from '@/composables/useCreatePost';
 import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
+import { usePollWhile } from '@/composables/usePollWhile';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
 import debounce from '@/debounce';
@@ -188,11 +188,10 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
 
 const hasActiveFilters = computed(() => hasActiveSearch.value);
 
-const refreshPosts = () => router.reload({ only: ['posts'], reset: ['posts'] });
-
-useWorkspaceEcho(
-    ['.post.created', '.post.deleted', '.post.platform.status.updated'],
-    refreshPosts,
+usePollWhile(
+    () =>
+        props.posts.data.some((post) => post.status === PostStatus.Publishing),
+    { only: ['posts'], reset: ['posts'] },
 );
 </script>
 

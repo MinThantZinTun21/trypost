@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostController;
-use App\Http\Controllers\App\PresenceController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
@@ -16,15 +15,11 @@ use App\Http\Controllers\Auth\YouTubeController;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use Illuminate\Support\Facades\Route;
 
-// Home and presence (auth only)
+// Home (auth only)
 Route::middleware(['auth'])->group(function () {
-
     Route::get('/', function () {
         return redirect()->route('app.calendar');
     })->name('app.home');
-
-    Route::post('presence/heartbeat', [PresenceController::class, 'heartbeat'])
-        ->name('app.presence.heartbeat');
 });
 
 // Social Connect routes

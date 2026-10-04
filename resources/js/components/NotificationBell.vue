@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { router, usePage } from '@inertiajs/vue3';
-import { useEcho } from '@laravel/echo-vue';
+import { router } from '@inertiajs/vue3';
 import {
     IconArchive,
     IconBell,
@@ -9,7 +8,7 @@ import {
     IconInbox,
     IconX,
 } from '@tabler/icons-vue';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -22,7 +21,6 @@ import dayjs from '@/dayjs';
 import { accounts } from '@/routes/app';
 import { archiveAll, index, read, readAll } from '@/routes/app/notifications';
 import { edit as editPost } from '@/routes/app/posts';
-import type { SharedData } from '@/types';
 
 interface Notification {
     id: string;
@@ -40,36 +38,6 @@ const unreadCount = ref(0);
 const loading = ref(false);
 const show = ref(false);
 const panel = ref<HTMLElement | null>(null);
-
-const page = usePage<SharedData>();
-const currentUserId = computed(() => page.props.auth?.user?.id ?? null);
-const currentWorkspaceId = computed(
-    () => page.props.auth?.currentWorkspace?.id ?? null,
-);
-
-const channelName = computed(() =>
-    currentUserId.value && currentWorkspaceId.value
-        ? `workspace.${currentWorkspaceId.value}.user.${currentUserId.value}`
-        : null,
-);
-
-if (channelName.value) {
-    useEcho(
-        channelName.value,
-        '.notification.created',
-        (e: { notification: Notification }) => {
-            const exists = notifications.value.some(
-                (n) => n.id === e.notification.id,
-            );
-            if (exists) return;
-
-            notifications.value = [e.notification, ...notifications.value];
-            if (!e.notification.read_at) {
-                unreadCount.value += 1;
-            }
-        },
-    );
-}
 
 const csrfToken = () =>
     document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
@@ -212,6 +180,8 @@ watch(show, (value) => {
     }
 });
 
+// No live updates: the layout remounts on every visit, so the bell refetches
+// on each page load and again whenever it is opened.
 onMounted(() => {
     fetchNotifications();
 });

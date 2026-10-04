@@ -9,7 +9,6 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
-use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
@@ -103,7 +102,6 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         $this->postPlatform->markAsPublishing();
-        $this->broadcastStatus();
 
         $maxAttempts = 2; // Original attempt + 1 retry after token refresh
 
@@ -156,7 +154,6 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         $this->updatePostStatus();
-        $this->broadcastStatus();
     }
 
     /**
@@ -359,17 +356,11 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     {
         $this->markPlatformAsFailed($message, $context);
         $this->updatePostStatus();
-        $this->broadcastStatus();
-    }
-
-    private function broadcastStatus(): void
-    {
-        PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
     }
 
     /**
      * A user-safe failure message: only our own publish exceptions are shown
-     * verbatim; anything else is genericized so internals never reach the email.
+     * verbatim; anything else is genericized so internals never reach the owner.
      */
     private function safeFailureMessage(Throwable $e): string
     {

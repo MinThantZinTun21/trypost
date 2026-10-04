@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import {
     IconArrowLeft,
     IconCalendar,
@@ -21,12 +21,12 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { usePostEcho } from '@/composables/echo/usePostEcho';
 import {
     getContentTypeBadgeKey,
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
+import { usePollWhile } from '@/composables/usePollWhile';
 import {
     getPlatformStatusConfig,
     getPostStatusConfig,
@@ -42,7 +42,7 @@ import {
 } from '@/lib/mediaType';
 import { index as postsIndex } from '@/routes/app/posts';
 import type { MediaItem } from '@/types/media';
-import { PostPlatformStatus } from '@/types/post';
+import { PostPlatformStatus, PostStatus } from '@/types/post';
 
 interface SocialAccount {
     id: string;
@@ -134,8 +134,8 @@ const openLightbox = (i: number) => {
     lightbox.value?.openCollection(collection, i);
 };
 
-usePostEcho(props.post.id, '.post.platform.status.updated', () => {
-    router.reload({ only: ['post'] });
+usePollWhile(() => props.post.status === PostStatus.Publishing, {
+    only: ['post'],
 });
 </script>
 

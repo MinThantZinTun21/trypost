@@ -6,7 +6,6 @@ namespace App\Jobs;
 
 use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
-use App\Events\NotificationCreated;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Stores an in-app Notification (the bell) and broadcasts it. The app sends
+ * Stores an in-app Notification (the bell). The app sends
  * no email: this is the only way an owner is told about something.
  */
 class SendNotification implements ShouldQueue
@@ -40,7 +39,7 @@ class SendNotification implements ShouldQueue
 
     public function handle(): void
     {
-        $notification = Notification::create([
+        Notification::create([
             'user_id' => $this->user->id,
             'workspace_id' => $this->workspaceId,
             'type' => $this->type,
@@ -49,8 +48,6 @@ class SendNotification implements ShouldQueue
             'body' => $this->body,
             'data' => $this->data,
         ]);
-
-        NotificationCreated::dispatch($notification);
     }
 
     public function failed(Throwable $exception): void

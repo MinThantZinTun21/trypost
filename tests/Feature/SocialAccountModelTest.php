@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Status;
-use App\Events\NotificationCreated;
 use App\Jobs\SendNotification;
 use App\Models\Notification;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
@@ -120,7 +118,6 @@ test('markAsTokenExpired preserves existing disconnected_at value', function () 
 });
 
 test('markAsTokenExpired creates notification row with i18n placeholders substituted', function () {
-    Event::fake([NotificationCreated::class]);
     Mail::fake();
 
     $account = SocialAccount::factory()->tiktok()->create([
@@ -139,7 +136,6 @@ test('markAsTokenExpired creates notification row with i18n placeholders substit
     expect($notification->type)->toBe(Type::AccountDisconnected);
     expect($notification->data)->toBe(['social_account_id' => $account->id]);
 
-    Event::assertDispatched(NotificationCreated::class);
     Mail::assertNothingSent();
     Mail::assertNothingQueued();
 });
@@ -182,7 +178,6 @@ test('markAsDisconnected does not dispatch notification when already disconnecte
 });
 
 test('markAsDisconnected creates notification row with i18n placeholders substituted', function () {
-    Event::fake([NotificationCreated::class]);
     Mail::fake();
 
     $account = SocialAccount::factory()->tiktok()->create([
@@ -201,7 +196,6 @@ test('markAsDisconnected creates notification row with i18n placeholders substit
     expect($notification->type)->toBe(Type::AccountDisconnected);
     expect($notification->data)->toBe(['social_account_id' => $account->id]);
 
-    Event::assertDispatched(NotificationCreated::class);
     Mail::assertNothingSent();
     Mail::assertNothingQueued();
 });
