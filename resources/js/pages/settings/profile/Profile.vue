@@ -15,7 +15,6 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { edit as editAuthentication } from '@/routes/app/authentication';
-import { preferences as notificationPreferences } from '@/routes/app/notifications';
 import {
     deletePhoto,
     edit as editProfile,
@@ -35,11 +34,6 @@ const tabs = computed(() => [
         name: 'authentication',
         label: trans('settings.nav.authentication'),
         href: editAuthentication().url,
-    },
-    {
-        name: 'notifications',
-        label: trans('settings.nav.notifications'),
-        href: notificationPreferences().url,
     },
 ]);
 </script>

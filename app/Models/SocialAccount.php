@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\SendNotification;
-use App\Mail\AccountDisconnected;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
@@ -282,11 +280,9 @@ class SocialAccount extends Model
                         user: $this->workspace->owner,
                         workspaceId: $this->workspace_id,
                         type: Type::AccountDisconnected,
-                        channel: Channel::Both,
                         title: __('notifications.account_disconnected.title', $placeholders),
                         body: __('notifications.account_disconnected.body', $placeholders),
                         data: ['social_account_id' => $this->id],
-                        mailable: new AccountDisconnected($this),
                     );
                 }
             } finally {
@@ -323,11 +319,9 @@ class SocialAccount extends Model
                     user: $this->workspace->owner,
                     workspaceId: $this->workspace_id,
                     type: Type::AccountDisconnected,
-                    channel: Channel::Both,
                     title: __('notifications.account_token_expired.title', $placeholders),
                     body: __('notifications.account_token_expired.body', $placeholders),
                     data: ['social_account_id' => $this->id],
-                    mailable: new AccountDisconnected($this),
                 );
             }
         } finally {

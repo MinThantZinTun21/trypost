@@ -27,7 +27,6 @@ import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { isMobileDevice, parseBrowserName, parseOsName } from '@/lib/userAgent';
 import { edit as editAuthentication } from '@/routes/app/authentication';
-import { preferences as notificationPreferences } from '@/routes/app/notifications';
 import { edit as editProfile } from '@/routes/app/profile';
 
 type Session = {
@@ -52,11 +51,6 @@ const tabs = computed(() => [
         name: 'authentication',
         label: trans('settings.nav.authentication'),
         href: editAuthentication().url,
-    },
-    {
-        name: 'notifications',
-        label: trans('settings.nav.notifications'),
-        href: notificationPreferences().url,
     },
 ]);
 

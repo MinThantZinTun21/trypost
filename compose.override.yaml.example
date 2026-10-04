@@ -36,12 +36,6 @@ services:
         # ports:
         #     - '63790:6379'
 
-    mailpit:
-        # Move the Mailpit UI off port 8025.
-        # ports:
-        #     - '8025:8025'
-        #     - '1025:1025'
-
 # Add additional services here — e.g. a Selenium container for Dusk tests:
 #
 #     selenium:

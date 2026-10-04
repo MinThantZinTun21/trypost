@@ -11,11 +11,13 @@ use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Throwable;
 
+/**
+ * Stores an in-app Notification (the bell) and broadcasts it. The app sends
+ * no email: this is the only way an owner is told about something.
+ */
 class SendNotification implements ShouldQueue
 {
     use Queueable;
@@ -31,34 +33,24 @@ class SendNotification implements ShouldQueue
         public User $user,
         public string $workspaceId,
         public Type $type,
-        public Channel $channel,
         public string $title,
         public string $body,
         public ?array $data = null,
-        public ?Mailable $mailable = null,
     ) {}
 
     public function handle(): void
     {
-        // Save in-app notification
-        if ($this->channel !== Channel::Email) {
-            $notification = Notification::create([
-                'user_id' => $this->user->id,
-                'workspace_id' => $this->workspaceId,
-                'type' => $this->type,
-                'channel' => $this->channel,
-                'title' => $this->title,
-                'body' => $this->body,
-                'data' => $this->data,
-            ]);
+        $notification = Notification::create([
+            'user_id' => $this->user->id,
+            'workspace_id' => $this->workspaceId,
+            'type' => $this->type,
+            'channel' => Channel::InApp,
+            'title' => $this->title,
+            'body' => $this->body,
+            'data' => $this->data,
+        ]);
 
-            NotificationCreated::dispatch($notification);
-        }
-
-        // Send email (respects user preferences)
-        if ($this->mailable && $this->channel !== Channel::InApp && $this->user->wantsEmailFor($this->type)) {
-            Mail::to($this->user)->send($this->mailable);
-        }
+        NotificationCreated::dispatch($notification);
     }
 
     public function failed(Throwable $exception): void

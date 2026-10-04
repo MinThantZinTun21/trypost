@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\VerifyWorkspaceConnections;
-use App\Mail\WorkspaceConnectionsDisconnected;
+use App\Models\Notification;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
@@ -63,13 +64,13 @@ test('job marks account as token expired on first failure and disconnected on se
 
     expect($account->fresh()->status)->toBe(Status::Disconnected);
 
-    Mail::assertQueued(WorkspaceConnectionsDisconnected::class, function ($mail) use ($workspace) {
-        return $mail->workspace->id === $workspace->id
-            && $mail->disconnectedAccounts->count() === 1;
-    });
+    $notifications = Notification::where('workspace_id', $workspace->id)->where('type', Type::AccountDisconnected)->get();
+    expect($notifications)->toHaveCount(2);
+    expect($notifications->pluck('title')->unique()->all())->toBe(['1 account disconnected']);
+    Mail::assertNothingQueued();
 });
 
-test('job sends single email with all failed accounts', function () {
+test('job sends a single notification listing all failed accounts', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
@@ -87,15 +88,13 @@ test('job sends single email with all failed accounts', function () {
     expect($account1->fresh()->status)->toBe(Status::TokenExpired);
     expect($account2->fresh()->status)->toBe(Status::TokenExpired);
 
-    Mail::assertQueued(WorkspaceConnectionsDisconnected::class, function ($mail) use ($workspace) {
-        return $mail->workspace->id === $workspace->id
-            && $mail->disconnectedAccounts->count() === 2;
-    });
-
-    Mail::assertQueuedCount(1);
+    $notifications = Notification::where('workspace_id', $workspace->id)->where('type', Type::AccountDisconnected)->get();
+    expect($notifications)->toHaveCount(1);
+    expect($notifications->first()->title)->toBe('2 accounts disconnected');
+    Mail::assertNothingQueued();
 });
 
-test('job only includes failed accounts in email', function () {
+test('job only includes failed accounts in the notification', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
@@ -117,10 +116,10 @@ test('job only includes failed accounts in email', function () {
     expect($validAccount->fresh()->status)->toBe(Status::Connected);
     expect($invalidAccount->fresh()->status)->toBe(Status::TokenExpired);
 
-    Mail::assertQueued(WorkspaceConnectionsDisconnected::class, function ($mail) use ($invalidAccount) {
-        return $mail->disconnectedAccounts->count() === 1
-            && $mail->disconnectedAccounts->first()->id === $invalidAccount->id;
-    });
+    $notification = Notification::where('workspace_id', $workspace->id)->where('type', Type::AccountDisconnected)->sole();
+    expect($notification->title)->toBe('1 account disconnected');
+    expect($notification->body)->toBe("{$invalidAccount->platform->label()} ({$invalidAccount->handle()})");
+    Mail::assertNothingQueued();
 });
 
 test('job does NOT disconnect or email when platform is unavailable', function () {

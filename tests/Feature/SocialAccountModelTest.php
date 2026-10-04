@@ -6,7 +6,6 @@ use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Status;
 use App\Events\NotificationCreated;
 use App\Jobs\SendNotification;
-use App\Mail\AccountDisconnected;
 use App\Models\Notification;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -141,7 +140,8 @@ test('markAsTokenExpired creates notification row with i18n placeholders substit
     expect($notification->data)->toBe(['social_account_id' => $account->id]);
 
     Event::assertDispatched(NotificationCreated::class);
-    Mail::assertQueued(AccountDisconnected::class);
+    Mail::assertNothingSent();
+    Mail::assertNothingQueued();
 });
 
 // ---- markAsDisconnected ----
@@ -202,7 +202,8 @@ test('markAsDisconnected creates notification row with i18n placeholders substit
     expect($notification->data)->toBe(['social_account_id' => $account->id]);
 
     Event::assertDispatched(NotificationCreated::class);
-    Mail::assertQueued(AccountDisconnected::class);
+    Mail::assertNothingSent();
+    Mail::assertNothingQueued();
 });
 
 // ---- profile_url ----

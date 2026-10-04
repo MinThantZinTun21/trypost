@@ -1171,7 +1171,7 @@ test('publish to social platform skips publishing when account is inactive', fun
     expect($this->postPlatform->error_message)->toBe(__('posts.errors.account_inactive'));
 });
 
-test('publish to social platform dispatches success notification when all platforms published', function () {
+test('publish to social platform sends no notification when all platforms published', function () {
     Event::fake();
     Queue::fake();
 
@@ -1189,7 +1189,7 @@ test('publish to social platform dispatches success notification when all platfo
 
     $this->post->refresh();
     expect($this->post->status)->toBe(PostStatus::Published);
-    Queue::assertPushed(SendNotification::class);
+    Queue::assertNotPushed(SendNotification::class);
 });
 
 test('publish to social platform dispatches failure notification when platform fails', function () {
@@ -1208,45 +1208,6 @@ test('publish to social platform dispatches failure notification when platform f
     $this->post->refresh();
     expect($this->post->status)->toBe(PostStatus::Failed);
     Queue::assertPushed(SendNotification::class);
-});
-
-test('in-app published notification falls back to the facebook page display name', function () {
-    Event::fake();
-    Queue::fake();
-
-    $account = SocialAccount::factory()->facebook()->create([
-        'workspace_id' => $this->workspace->id,
-        'username' => null,
-        'display_name' => 'InboxPlacement.io',
-    ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $postPlatform = PostPlatform::factory()->facebook()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'enabled' => true,
-    ]);
-
-    $publisher = Mockery::mock(FacebookPublisher::class);
-    $publisher->shouldReceive('publish')->andReturn([
-        'id' => 'fb-123',
-        'url' => 'https://www.facebook.com/permalink.php?story_fbid=pfbid0&id=61592851040951',
-    ]);
-    $this->app->instance(FacebookPublisher::class, $publisher);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
-        $platforms = 'Facebook Page (@InboxPlacement.io)';
-
-        return $job->type === Type::PostPublished
-            && $job->title === __('notifications.post_published.title')
-            && $job->body === __('notifications.post_published.body', ['platforms' => $platforms])
-            && data_get($job->data, 'post_id') === $post->id;
-    });
 });
 
 test('in-app failed notification falls back to the facebook page display name', function () {

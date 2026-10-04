@@ -7,7 +7,6 @@ namespace App\Providers;
 use App\Models\Account;
 use App\Models\Media;
 use App\Models\Notification;
-use App\Models\NotificationPreference;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -44,7 +43,6 @@ class AppServiceProvider extends ServiceProvider
             'account' => Account::class,
             'media' => Media::class,
             'notification' => Notification::class,
-            'notificationPreference' => NotificationPreference::class,
             'post' => Post::class,
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,

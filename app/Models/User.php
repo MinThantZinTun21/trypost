@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\Notification\Type as NotificationType;
 use App\Models\Traits\HasAccount;
 use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
@@ -12,15 +11,13 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasAccount, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
+    use HasAccount, HasFactory, HasMedia, HasUuids, HasWorkspace;
 
     /**
      * @var list<string>
@@ -79,26 +76,5 @@ class User extends Authenticatable
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
-    }
-
-    public function notificationPreference(): HasOne
-    {
-        return $this->hasOne(NotificationPreference::class);
-    }
-
-    public function wantsEmailFor(NotificationType $type): bool
-    {
-        $preference = $this->notificationPreference;
-
-        if (! $preference) {
-            return true;
-        }
-
-        return match ($type) {
-            NotificationType::PostPublished => $preference->post_published,
-            NotificationType::PostFailed, NotificationType::PostPartiallyPublished => $preference->post_failed,
-            NotificationType::AccountDisconnected, NotificationType::PostAtRisk => $preference->account_disconnected,
-            default => true,
-        };
     }
 }

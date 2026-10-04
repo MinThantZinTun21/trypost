@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
-use App\Mail\PostAtRisk;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -353,11 +351,13 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             user: $owner,
             workspaceId: $workspace->id,
             type: Type::PostAtRisk,
-            channel: Channel::Both,
             title: trans_choice('notifications.post_at_risk.title', $postCount, ['count' => $postCount]),
             body: $atRisk->map(fn (array $group) => $group['account']->platform->label().' ('.$group['account']->handle().')')->implode(', '),
-            data: ['workspace_id' => $workspace->id],
-            mailable: new PostAtRisk($workspace, $postPlatformIds, $postCount),
+            data: [
+                'workspace_id' => $workspace->id,
+                'post_platform_ids' => $postPlatformIds,
+                'post_count' => $postCount,
+            ],
         );
     }
 }

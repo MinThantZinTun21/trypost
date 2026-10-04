@@ -7,7 +7,6 @@ use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\PresenceController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
-use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
 use App\Http\Controllers\Auth\FacebookController;
@@ -104,6 +103,4 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('settings/authentication/sessions', [AuthenticationController::class, 'destroyOtherSessions'])
         ->name('app.authentication.destroy-other-sessions');
 
-    Route::get('settings/profile/notifications', [NotificationPreferenceController::class, 'edit'])->name('app.notifications.preferences');
-    Route::put('settings/profile/notifications', [NotificationPreferenceController::class, 'update'])->name('app.notifications.preferences.update');
 });

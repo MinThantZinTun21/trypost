@@ -9,27 +9,13 @@ return [
         'description' => 'Choose what you want to manage.',
         'profile' => [
             'title' => 'Profile',
-            'description' => 'Update your personal info, password, and notification preferences.',
+            'description' => 'Update your personal info and password.',
         ],
     ],
 
     'nav' => [
         'profile' => 'Profile',
         'authentication' => 'Authentication',
-        'notifications' => 'Notifications',
-    ],
-
-    'notifications' => [
-        'title' => 'Notification preferences',
-        'heading' => 'Email notifications',
-        'description' => 'Choose which email notifications you want to receive',
-        'post_published' => 'Post published',
-        'post_published_description' => 'Receive an email when your post is published successfully',
-        'post_failed' => 'Post failed',
-        'post_failed_description' => 'Receive an email when your post fails to publish',
-        'account_disconnected' => 'Account disconnected',
-        'account_disconnected_description' => 'Receive an email when a social account is disconnected',
-        'save' => 'Save preferences',
     ],
 
     'profile' => [
