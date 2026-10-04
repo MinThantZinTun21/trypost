@@ -28,10 +28,10 @@ test('altText keeps the literal string "0"', function () {
 });
 
 test('altTextFor truncates to the platform cap and is null for an unsupported platform', function () {
-    $longAlt = str_repeat('a', Platform::X->altTextMaxLength() + 50);
+    $longAlt = str_repeat('a', Platform::Facebook->altTextMaxLength() + 50);
     $item = MediaItem::fromArray(['id' => 'a', 'path' => 'p.jpg', 'url' => 'u', 'meta' => ['alt_text' => $longAlt]]);
 
-    expect($item->altTextFor(Platform::X))->toBe(mb_substr($longAlt, 0, Platform::X->altTextMaxLength()))
-        ->and(mb_strlen($item->altTextFor(Platform::X)))->toBe(Platform::X->altTextMaxLength())
+    expect($item->altTextFor(Platform::Facebook))->toBe(mb_substr($longAlt, 0, Platform::Facebook->altTextMaxLength()))
+        ->and(mb_strlen($item->altTextFor(Platform::Facebook)))->toBe(Platform::Facebook->altTextMaxLength())
         ->and($item->altTextFor(Platform::TikTok))->toBeNull();
 });

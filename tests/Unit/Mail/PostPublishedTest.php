@@ -32,13 +32,13 @@ test('published email falls back to the page display name when facebook has no u
 
 test('published email uses the username when the display name is empty', function () {
     $workspace = Workspace::factory()->create(['name' => 'InboxPlacement.io']);
-    $account = SocialAccount::factory()->bluesky()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
-        'username' => 'inboxplacementio.bsky.social',
+        'username' => 'inboxplacementio',
         'display_name' => '',
     ]);
     $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
-    PostPlatform::factory()->bluesky()->published()->create([
+    PostPlatform::factory()->tiktok()->published()->create([
         'post_id' => $post->id,
         'social_account_id' => $account->id,
         'platform' => $account->platform,
@@ -46,8 +46,8 @@ test('published email uses the username when the display name is empty', functio
 
     $mail = new PostPublished($post);
 
-    $mail->assertSeeInHtml('Bluesky (@inboxplacementio.bsky.social)');
-    $mail->assertDontSeeInHtml('Bluesky (@)');
+    $mail->assertSeeInHtml('TikTok (@inboxplacementio)');
+    $mail->assertDontSeeInHtml('TikTok (@)');
 });
 
 test('published email omits empty parentheses when both identifiers are missing', function () {

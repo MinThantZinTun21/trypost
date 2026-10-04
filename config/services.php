@@ -37,24 +37,6 @@ return [
         ],
     ],
 
-    'linkedin' => [
-        'client_id' => env('LINKEDIN_CLIENT_ID'),
-        'client_secret' => env('LINKEDIN_CLIENT_SECRET'),
-        'redirect' => env('LINKEDIN_CLIENT_REDIRECT'),
-    ],
-
-    'linkedin-openid' => [
-        'client_id' => env('LINKEDIN_CLIENT_ID'),
-        'client_secret' => env('LINKEDIN_CLIENT_SECRET'),
-        'redirect' => env('LINKEDIN_CLIENT_REDIRECT'),
-    ],
-
-    'x' => [
-        'client_id' => env('X_CLIENT_ID'),
-        'client_secret' => env('X_CLIENT_SECRET'),
-        'redirect' => env('X_CLIENT_REDIRECT'),
-    ],
-
     'tiktok' => [
         'client_id' => env('TIKTOK_CLIENT_ID'),
         'client_secret' => env('TIKTOK_CLIENT_SECRET'),
@@ -73,43 +55,6 @@ return [
         'client_id' => env('FACEBOOK_CLIENT_ID'),
         'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
         'redirect' => env('FACEBOOK_CLIENT_REDIRECT'),
-    ],
-
-    // Instagram
-    'instagram' => [
-        'client_id' => env('INSTAGRAM_CLIENT_ID'),
-        'client_secret' => env('INSTAGRAM_CLIENT_SECRET'),
-        'redirect' => env('INSTAGRAM_CLIENT_REDIRECT'),
-    ],
-
-    // Threads
-    'threads' => [
-        'client_id' => env('THREADS_CLIENT_ID'),
-        'client_secret' => env('THREADS_CLIENT_SECRET'),
-        'redirect' => env('THREADS_CLIENT_REDIRECT'),
-    ],
-
-    // Pinterest
-    'pinterest' => [
-        'client_id' => env('PINTEREST_CLIENT_ID'),
-        'client_secret' => env('PINTEREST_CLIENT_SECRET'),
-        'redirect' => env('PINTEREST_CLIENT_REDIRECT'),
-    ],
-
-    // Discord
-    'discord' => [
-        'client_id' => env('DISCORD_CLIENT_ID'),
-        'client_secret' => env('DISCORD_CLIENT_SECRET'),
-        'redirect' => env('DISCORD_CLIENT_REDIRECT'),
-    ],
-
-    // Google Business Profile — dedicated OAuth app, isolated from 'google'
-    // (YouTube) so adding the sensitive business.manage scope never triggers
-    // Google to re-review the YouTube app's already-verified scope set.
-    'google-business' => [
-        'client_id' => env('GOOGLE_BUSINESS_CLIENT_ID'),
-        'client_secret' => env('GOOGLE_BUSINESS_CLIENT_SECRET'),
-        'redirect' => env('GOOGLE_BUSINESS_CLIENT_REDIRECT'),
     ],
 
 ];

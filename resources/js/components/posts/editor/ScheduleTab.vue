@@ -8,7 +8,6 @@ import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import type { PlatformIssue } from '@/composables/usePostCompliance';
 import { isVideo } from '@/lib/mediaType';
-import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 import type { Channel } from '@/types/channel';
 import type { MediaItem } from '@/types/media';
 import { PostPlatformStatus } from '@/types/post';
@@ -71,7 +70,6 @@ const props = defineProps<{
     platformContentTypes: Record<string, string>;
     platformIssues?: Record<string, PlatformIssue>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
-    pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     media?: MediaItem[];
 }>();
 
@@ -90,20 +88,6 @@ const getCreatorInfo = (pp: PostPlatform): TikTokCreatorInfo | null =>
     pp.social_account_id
         ? (props.tiktokCreatorInfos?.[pp.social_account_id] ?? null)
         : null;
-
-const boardsPayload = (pp: PostPlatform): PinterestBoardsPayload =>
-    pp.social_account_id
-        ? (props.pinterestBoards?.[pp.social_account_id] ?? {
-              boards: [],
-              truncated: false,
-          })
-        : { boards: [], truncated: false };
-
-const getBoards = (pp: PostPlatform): PinterestBoard[] =>
-    boardsPayload(pp).boards;
-
-const boardsTruncated = (pp: PostPlatform): boolean =>
-    boardsPayload(pp).truncated;
 
 const videoDurationSec = computed(() => {
     const video = props.media?.find((m) => isVideo(m));
@@ -153,8 +137,6 @@ const channels = computed<Channel[]>(() =>
         contentTypeError: contentTypeErrorFor(pp),
         publishConfig: getPublishConfig(pp),
         creatorInfo: getCreatorInfo(pp),
-        boards: getBoards(pp),
-        boardsTruncated: boardsTruncated(pp),
     })),
 );
 </script>
@@ -243,28 +225,6 @@ const channels = computed<Channel[]>(() =>
                                     <Badge
                                         v-else-if="
                                             pp.status ===
-                                            PostPlatformStatus.PendingReview
-                                        "
-                                        variant="warning"
-                                        >{{
-                                            $t(
-                                                'posts.edit.status.pending_review',
-                                            )
-                                        }}</Badge
-                                    >
-                                    <Badge
-                                        v-else-if="
-                                            pp.status ===
-                                            PostPlatformStatus.Rejected
-                                        "
-                                        variant="destructive"
-                                        >{{
-                                            $t('posts.edit.status.rejected')
-                                        }}</Badge
-                                    >
-                                    <Badge
-                                        v-else-if="
-                                            pp.status ===
                                             PostPlatformStatus.Failed
                                         "
                                         variant="destructive"
@@ -288,10 +248,7 @@ const channels = computed<Channel[]>(() =>
                             </div>
                             <p
                                 v-if="
-                                    (pp.status ===
-                                        PostPlatformStatus.Rejected ||
-                                        pp.status ===
-                                            PostPlatformStatus.Failed) &&
+                                    pp.status === PostPlatformStatus.Failed &&
                                     pp.error_message
                                 "
                                 class="mt-2 text-xs font-semibold text-rose-700"

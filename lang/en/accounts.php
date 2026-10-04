@@ -13,11 +13,6 @@ return [
     'paused' => 'Off',
     'accounts_count' => ':count account|:count accounts',
 
-    'variants' => [
-        'linkedin-page' => 'Page',
-        'instagram-facebook' => 'via Facebook',
-    ],
-
     'not_connected' => 'Not connected',
     'connect' => 'Connect',
     'connection_lost' => 'Connection lost',
@@ -27,21 +22,9 @@ return [
     'disconnect' => 'Disconnect',
 
     'descriptions' => [
-        'linkedin' => 'Connect your LinkedIn profile or company page',
-        'linkedin-page' => 'Connect a LinkedIn company page',
-        'x' => 'Connect your X (Twitter) account',
         'tiktok' => 'Connect your TikTok account',
         'youtube' => 'Connect a YouTube channel',
         'facebook' => 'Connect a Facebook page',
-        'instagram' => 'Connect via Instagram Login or Facebook Pages',
-        'instagram-facebook' => 'Connect Instagram via Facebook page',
-        'threads' => 'Connect your Threads account',
-        'pinterest' => 'Connect your Pinterest account',
-        'bluesky' => 'Connect your Bluesky account',
-        'mastodon' => 'Connect your Mastodon account',
-        'telegram' => 'Connect a Telegram channel or group',
-        'discord' => 'Connect a Discord server',
-        'google_business' => 'Connect a Google Business Profile location',
     ],
 
     'disconnect_modal' => [
@@ -51,85 +34,12 @@ return [
         'cancel' => 'Cancel',
     ],
 
-    'bluesky' => [
-        'title' => 'Connect Bluesky',
-        'description' => 'Enter your credentials to connect',
-        'email' => 'Email',
-        'email_placeholder' => 'yourhandle.bsky.social',
-        'app_password' => 'App Password',
-        'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
-        'app_password_hint' => 'Use an <strong>App Password</strong> for security. Create one at <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
-        'submit' => 'Connect Bluesky',
-        'submitting' => 'Connecting...',
-    ],
-
-    'mastodon' => [
-        'title' => 'Connect Mastodon',
-        'description' => 'Enter your Mastodon instance',
-        'instance_url' => 'Instance URL',
-        'instance_placeholder' => 'https://mastodon.social',
-        'instance_hint' => 'Enter your Mastodon instance URL (e.g., mastodon.social, techhub.social)',
-        'submit' => 'Continue with Mastodon',
-        'submitting' => 'Connecting...',
-    ],
-
-    'telegram' => [
-        'title' => 'Connect Telegram',
-        'description' => 'Link a channel or group',
-        'step_admin' => 'Add :bot as an administrator to your Telegram channel or group.',
-        'step_command' => 'Post this command in the channel or group:',
-        'waiting' => 'Waiting for the channel to connect…',
-        'connected' => 'Channel connected!',
-        'connected_toast' => 'Telegram channel connected successfully!',
-        'copied_toast' => 'Command copied to clipboard',
-        'copy_tooltip' => 'Copy command',
-        'expired' => 'This code has expired. Generate a new one to try again.',
-        'new_code' => 'Generate a new code',
-        'retry' => 'Try again',
-        'error_generic' => 'Could not start the connection. Please try again.',
-        'network_taken' => 'This workspace already has a Telegram channel connected. Disconnect it first.',
-        'wrong_chat' => 'Post the command in the channel you are reconnecting.',
-        'busy' => 'Another connection is still finishing. Post the command again in a moment.',
-    ],
-
     'facebook' => [
         'title' => 'Select Facebook Page',
         'description' => 'Choose which page you want to connect',
         'no_pages' => 'No pages found',
         'no_pages_description' => 'You are not an admin of any Facebook page.',
         'page_label' => 'Facebook Page',
-        'view' => 'View',
-        'choose' => 'Choose',
-    ],
-
-    'instagram_facebook' => [
-        'title' => 'Select Instagram Account',
-        'description' => 'Choose which Instagram account you want to connect',
-        'no_pages' => 'No Instagram accounts found',
-        'no_pages_description' => 'No Facebook Pages with linked Instagram Business accounts were found.',
-        'view' => 'View',
-        'choose' => 'Choose',
-    ],
-
-    'instagram_connect' => [
-        'title' => 'Connect Instagram',
-        'description' => 'Choose how you want to connect your Instagram account',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Sign in with your Instagram professional account',
-        'facebook_title' => 'Facebook Pages',
-        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
-    ],
-
-    'linkedin' => [
-        'title' => 'Select LinkedIn Page',
-        'description' => 'Choose which page you want to connect',
-        'no_pages' => 'No pages found',
-        'no_pages_description' => 'You are not an administrator of any LinkedIn page.',
-        'page_label' => 'LinkedIn Page',
-        'select_title' => 'Where do you want to post?',
-        'select_subtitle' => 'Post as yourself or choose a company page you manage.',
-        'person_tag' => 'Person',
-        'organization_tag' => 'Organization',
         'view' => 'View',
         'choose' => 'Choose',
     ],
@@ -171,19 +81,6 @@ return [
         'publish_permission_refused' => 'This login refused a permission we need to post. Reconnect and accept all of them.',
         'pages_missing_permission' => 'We found Pages, but none you can post to. You need a role on the Page itself, and every permission accepted.',
         'no_facebook_pages' => 'No Facebook Pages found. You need to be an admin of at least one page.',
-        'no_facebook_instagram_pages' => 'No Facebook Pages with linked Instagram accounts found.',
         'no_youtube_channels' => 'No YouTube channels found. Please create a channel first.',
-        'not_linkedin_admin' => 'You are not an administrator of any LinkedIn page.',
-        'no_google_business_locations' => 'No Google Business Profile locations found. Verify your business first.',
-        'location_not_found' => 'Location not found.',
-        'error_connecting_location' => 'Error connecting location. Please try again.',
-    ],
-
-    'google_business' => [
-        'title' => 'Select Business Location',
-        'description' => 'Choose which location you want to connect',
-        'no_locations' => 'No locations found',
-        'no_locations_description' => 'You are not a manager of any verified Google Business Profile location.',
-        'choose' => 'Choose',
     ],
 ];

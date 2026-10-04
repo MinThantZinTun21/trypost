@@ -38,7 +38,7 @@ test('post has many post platforms', function () {
         'user_id' => $this->user->id,
     ]);
 
-    $socialAccount = SocialAccount::factory()->linkedin()->create([
+    $socialAccount = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $this->workspace->id,
     ]);
 

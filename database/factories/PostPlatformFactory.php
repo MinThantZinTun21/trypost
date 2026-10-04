@@ -29,8 +29,8 @@ class PostPlatformFactory extends Factory
             'post_id' => Post::factory(),
             'social_account_id' => SocialAccount::factory(),
             'enabled' => true,
-            'platform' => Platform::LinkedIn,
-            'content_type' => ContentType::LinkedInPost,
+            'platform' => Platform::Facebook,
+            'content_type' => ContentType::FacebookPost,
             'status' => Status::Pending,
             'meta' => [],
         ];
@@ -61,60 +61,6 @@ class PostPlatformFactory extends Factory
         ]);
     }
 
-    public function pendingReview(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => Status::PendingReview,
-            'submitted_at' => now(),
-        ]);
-    }
-
-    public function linkedin(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::LinkedIn,
-        ]);
-    }
-
-    public function x(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::X,
-            'content_type' => ContentType::XPost,
-        ]);
-    }
-
-    public function instagram(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::Instagram,
-        ]);
-    }
-
-    public function bluesky(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::Bluesky,
-            'content_type' => ContentType::BlueskyPost,
-        ]);
-    }
-
-    public function mastodon(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::Mastodon,
-            'content_type' => ContentType::MastodonPost,
-        ]);
-    }
-
-    public function threads(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::Threads,
-            'content_type' => ContentType::ThreadsPost,
-        ]);
-    }
-
     public function tiktok(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -132,51 +78,11 @@ class PostPlatformFactory extends Factory
         ]);
     }
 
-    public function pinterest(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::Pinterest,
-            'content_type' => ContentType::PinterestPin,
-        ]);
-    }
-
-    public function googleBusiness(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::GoogleBusiness,
-            'content_type' => ContentType::GoogleBusinessPost,
-        ]);
-    }
-
-    public function pinterestVideoPin(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::Pinterest,
-            'content_type' => ContentType::PinterestVideoPin,
-        ]);
-    }
-
-    public function pinterestCarousel(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::Pinterest,
-            'content_type' => ContentType::PinterestCarousel,
-        ]);
-    }
-
     public function facebook(): static
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Facebook,
             'content_type' => ContentType::FacebookPost,
-        ]);
-    }
-
-    public function discord(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'platform' => Platform::Discord,
-            'content_type' => ContentType::DiscordMessage,
         ]);
     }
 

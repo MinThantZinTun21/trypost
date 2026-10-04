@@ -12,19 +12,19 @@ test('account disconnected mail has correct subject', function () {
     $workspace = Workspace::factory()->create(['name' => 'My Workspace']);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::Instagram,
+        'platform' => Platform::TikTok,
     ]);
 
     $mail = new AccountDisconnected($account);
 
-    expect($mail->envelope()->subject)->toBe('Your Instagram account in My Workspace needs to be reconnected');
+    expect($mail->envelope()->subject)->toBe('Your TikTok account in My Workspace needs to be reconnected');
 });
 
 test('account disconnected mail has correct content', function () {
     $workspace = Workspace::factory()->create(['name' => 'Test Team']);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::LinkedIn,
+        'platform' => Platform::TikTok,
         'display_name' => 'John Doe',
         'username' => 'johndoe',
     ]);
@@ -33,10 +33,10 @@ test('account disconnected mail has correct content', function () {
     $content = $mail->content();
 
     expect($content->view)->toBe('mail.account-disconnected');
-    expect($content->with['title'])->toBe('Your LinkedIn account needs to be reconnected');
-    expect($content->with['previewText'])->toContain('LinkedIn');
+    expect($content->with['title'])->toBe('Your TikTok account needs to be reconnected');
+    expect($content->with['previewText'])->toContain('TikTok');
     expect($content->with['previewText'])->toContain('Test Team');
-    expect($content->with['platformName'])->toBe('LinkedIn');
+    expect($content->with['platformName'])->toBe('TikTok');
     expect($content->with['accountName'])->toBe('John Doe');
     expect($content->with['workspaceName'])->toBe('Test Team');
     expect($content->with['url'])->toBe(route('app.accounts'));

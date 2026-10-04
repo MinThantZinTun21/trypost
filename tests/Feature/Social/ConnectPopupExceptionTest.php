@@ -19,7 +19,7 @@ test('an expired connect popup closes without filing an error', function () {
     Log::spy();
 
     $this->actingAs($this->user)
-        ->get(route('app.social.instagram.callback'))
+        ->get(route('app.social.tiktok.callback'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('accounts/PopupCallback')
@@ -28,34 +28,4 @@ test('an expired connect popup closes without filing an error', function () {
         );
 
     Log::shouldNotHaveReceived('error');
-});
-
-test('a lost mastodon session leaves no client credentials behind', function () {
-    session([
-        'mastodon_instance' => 'https://mastodon.social',
-        'mastodon_client_id' => 'client-id',
-        'mastodon_client_secret' => 'client-secret',
-        'mastodon_oauth_state' => 'test-state',
-    ]);
-
-    $this->actingAs($this->user)
-        ->get(route('app.social.mastodon.callback', ['code' => 'x', 'state' => 'test-state']))
-        ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-
-    expect(session()->all())
-        ->not->toHaveKey('mastodon_client_secret')
-        ->not->toHaveKey('mastodon_instance')
-        ->not->toHaveKey('mastodon_oauth_state');
-});
-
-test('a lost threads session leaves no oauth state behind', function () {
-    session(['threads_oauth_state' => 'test-state']);
-
-    $this->actingAs($this->user)
-        ->get(route('app.social.threads.callback', ['code' => 'x', 'state' => 'test-state']))
-        ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-
-    expect(session()->all())->not->toHaveKey('threads_oauth_state');
 });

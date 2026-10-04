@@ -3,8 +3,6 @@ import { router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 import ConnectedAccountsByNetwork from '@/components/accounts/ConnectedAccountsByNetwork.vue';
-import InstagramConnectDialog from '@/components/accounts/InstagramConnectDialog.vue';
-import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import { disconnect, toggle } from '@/routes/app/accounts';
@@ -13,7 +11,7 @@ import type {
     ConnectedAccount,
 } from '@/types/social-account';
 
-const props = withDefaults(
+withDefaults(
     defineProps<{
         platforms: AvailablePlatform[];
         connectedAccounts?: ConnectedAccount[];
@@ -27,14 +25,7 @@ const disconnectModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
     null,
 );
 
-const {
-    telegramOpen,
-    telegramReconnectId,
-    instagramOpen,
-    instagramMethods,
-    startConnect,
-    openConnect,
-} = useNetworkConnect(() => props.platforms);
+const { startConnect } = useNetworkConnect();
 
 const reconnectAccount = (account: ConnectedAccount) =>
     startConnect(account.platform, account.id);
@@ -62,17 +53,6 @@ defineExpose({ startConnect });
             @reconnect="reconnectAccount"
             @disconnect="disconnectAccount"
             @toggle="toggleAccount"
-        />
-
-        <TelegramConnectDialog
-            v-model:open="telegramOpen"
-            :reconnect-id="telegramReconnectId"
-        />
-
-        <InstagramConnectDialog
-            v-model:open="instagramOpen"
-            :methods="instagramMethods"
-            @select="openConnect"
         />
 
         <ConfirmDeleteModal

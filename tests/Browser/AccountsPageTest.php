@@ -41,13 +41,13 @@ function accountsOwner(): User
     return $user->fresh();
 }
 
-function accountsOwnerWithLinkedIn(): User
+function accountsOwnerWithFacebook(): User
 {
     $user = accountsOwner();
 
-    SocialAccount::factory()->linkedin()->create([
+    SocialAccount::factory()->facebook()->create([
         'workspace_id' => $user->current_workspace_id,
-        'platform_user_id' => 'li-connected',
+        'platform_user_id' => 'fb-connected',
     ]);
 
     return $user;
@@ -58,58 +58,58 @@ test('a workspace without accounts lists every network with a connect slot', fun
 
     $page = visit(route('app.accounts'));
 
-    waitForAccountsTestId($page, 'network-group-linkedin');
+    waitForAccountsTestId($page, 'network-group-facebook');
 
-    $page->assertVisible('@network-group-linkedin')
-        ->assertVisible('@connect-linkedin')
-        ->assertVisible('@connect-x')
-        ->assertMissing('@connect-another-linkedin')
+    $page->assertVisible('@network-group-facebook')
+        ->assertVisible('@connect-facebook')
+        ->assertVisible('@connect-tiktok')
+        ->assertMissing('@connect-another-facebook')
         ->assertMissing('@connect-account-button')
         ->assertNoJavaScriptErrors();
 });
 
 test('every network is listed, connected ones grouped with a slot for one more', function () {
-    $user = accountsOwnerWithLinkedIn();
+    $user = accountsOwnerWithFacebook();
 
-    SocialAccount::factory()->linkedinPage()->create([
+    SocialAccount::factory()->facebook()->create([
         'workspace_id' => $user->current_workspace_id,
-        'platform_user_id' => 'li-page',
+        'platform_user_id' => 'fb-page',
     ]);
 
     $this->actingAs($user);
 
     $page = visit(route('app.accounts'));
 
-    waitForAccountsTestId($page, 'network-group-linkedin');
+    waitForAccountsTestId($page, 'network-group-facebook');
 
-    $page->assertVisible('@network-group-linkedin')
-        ->assertVisible('@connect-another-linkedin')
-        ->assertMissing('@connect-linkedin')
-        ->assertVisible('@network-group-x')
-        ->assertVisible('@connect-x')
-        ->assertMissing('@connect-another-x')
+    $page->assertVisible('@network-group-facebook')
+        ->assertVisible('@connect-another-facebook')
+        ->assertMissing('@connect-facebook')
+        ->assertVisible('@network-group-tiktok')
+        ->assertVisible('@connect-tiktok')
+        ->assertMissing('@connect-another-tiktok')
         ->assertNoJavaScriptErrors();
 });
 
 test('the accounts page has no header connect catalog', function () {
-    $this->actingAs(accountsOwnerWithLinkedIn());
+    $this->actingAs(accountsOwnerWithFacebook());
 
     $page = visit(route('app.accounts'));
 
-    waitForAccountsTestId($page, 'network-group-linkedin');
+    waitForAccountsTestId($page, 'network-group-facebook');
 
     $page->assertMissing('@connect-account-button')
         ->assertMissing('@connect-account-dialog')
-        ->assertVisible('@connect-another-linkedin')
+        ->assertVisible('@connect-another-facebook')
         ->assertNoJavaScriptErrors();
 });
 
 test('a lost connection offers reconnect on the card and disconnect in its menu', function () {
-    $user = accountsOwnerWithLinkedIn();
+    $user = accountsOwnerWithFacebook();
 
-    $account = SocialAccount::factory()->x()->tokenExpired()->create([
+    $account = SocialAccount::factory()->tiktok()->tokenExpired()->create([
         'workspace_id' => $user->current_workspace_id,
-        'platform_user_id' => 'x-expired',
+        'platform_user_id' => 'tiktok-expired',
     ]);
 
     $this->actingAs($user);

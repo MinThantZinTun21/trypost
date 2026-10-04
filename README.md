@@ -61,20 +61,9 @@ Posts publish natively through each platform's official API.
 
 <table>
   <tr>
-    <td align="center"><img src="public/images/accounts/instagram.png" width="38"><br><sub><b>Instagram</b></sub></td>
     <td align="center"><img src="public/images/accounts/facebook.png" width="38"><br><sub><b>Facebook</b></sub></td>
-    <td align="center"><img src="public/images/accounts/linkedin.png" width="38"><br><sub><b>LinkedIn</b></sub></td>
-    <td align="center"><img src="public/images/accounts/x.png" width="38"><br><sub><b>X (Twitter)</b></sub></td>
     <td align="center"><img src="public/images/accounts/tiktok.png" width="38"><br><sub><b>TikTok</b></sub></td>
     <td align="center"><img src="public/images/accounts/youtube.png" width="38"><br><sub><b>YouTube</b></sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="public/images/accounts/pinterest.png" width="38"><br><sub><b>Pinterest</b></sub></td>
-    <td align="center"><img src="public/images/accounts/threads.png" width="38"><br><sub><b>Threads</b></sub></td>
-    <td align="center"><img src="public/images/accounts/bluesky.png" width="38"><br><sub><b>Bluesky</b></sub></td>
-    <td align="center"><img src="public/images/accounts/mastodon.png" width="38"><br><sub><b>Mastodon</b></sub></td>
-    <td align="center"><img src="public/images/accounts/telegram.png" width="38"><br><sub><b>Telegram</b></sub></td>
-    <td align="center"><img src="public/images/accounts/discord.png" width="38"><br><sub><b>Discord</b></sub></td>
   </tr>
 </table>
 

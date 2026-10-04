@@ -59,14 +59,7 @@ interface PostPlatform {
     display_username: string | null;
     display_avatar: string | null;
     content_type: string | null;
-    status:
-        | 'pending'
-        | 'publishing'
-        | 'published'
-        | 'failed'
-        | 'retrying'
-        | 'rejected'
-        | 'pending_review';
+    status: 'pending' | 'publishing' | 'published' | 'failed' | 'retrying';
     platform_url: string | null;
     error_message: string | null;
     published_at: string | null;
@@ -412,20 +405,7 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                                 <div
                                     v-if="
                                         pp.status ===
-                                        PostPlatformStatus.PendingReview
-                                    "
-                                    class="border-t-2 border-foreground/10 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800"
-                                    data-testid="google-business-pending-review"
-                                >
-                                    {{ $t('posts.show.pending_review') }}
-                                </div>
-
-                                <div
-                                    v-if="
-                                        (pp.status ===
-                                            PostPlatformStatus.Failed ||
-                                            pp.status ===
-                                                PostPlatformStatus.Rejected) &&
+                                            PostPlatformStatus.Failed &&
                                         pp.error_message
                                     "
                                     class="border-t-2 border-foreground/10 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700"

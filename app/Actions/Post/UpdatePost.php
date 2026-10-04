@@ -6,16 +6,11 @@ namespace App\Actions\Post;
 
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PlatformStatus;
-use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\Workspace;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
-use App\Support\Social\AbandonGoogleBusinessReview;
-use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -78,30 +73,6 @@ class UpdatePost
                     $post,
                     collect(data_get($data, 'platforms', []))->pluck('id')->all(),
                 );
-            }
-
-            if (Arr::has($data, 'platforms')) {
-                $post->postPlatforms()
-                    ->disabled()
-                    ->where('platform', Platform::GoogleBusiness)
-                    ->where('status', PlatformStatus::PendingReview)
-                    ->get()
-                    ->each(fn (PostPlatform $platform) => AbandonGoogleBusinessReview::execute(
-                        $platform,
-                        __('posts.errors.target_disabled'),
-                        ['category' => 'target_disabled'],
-                    ));
-
-                $disabledGoogleBusinessIds = $post->postPlatforms()
-                    ->disabled()
-                    ->where('platform', Platform::GoogleBusiness)
-                    ->pluck('id');
-
-                DB::afterCommit(function () use ($disabledGoogleBusinessIds): void {
-                    $disabledGoogleBusinessIds->each(
-                        fn (string $id) => app(GoogleBusinessDerivativeCleaner::class)->cleanup($id),
-                    );
-                });
             }
 
             if ($status === PostStatus::Publishing->value) {

@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Settles a post once every enabled target has reached a terminal state, and
  * notifies the owner once. Shared by PublishToSocialPlatform, PublishPost::failed,
- * RecoverStuckPosts, and ReconcileGoogleBusinessPost.
+ * and RecoverStuckPosts.
  */
 class FinalizePostPublication
 {

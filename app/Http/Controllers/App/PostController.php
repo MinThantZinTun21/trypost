@@ -9,7 +9,6 @@ use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
 use App\Actions\Post\SyncPostPlatforms;
 use App\Actions\Post\UpdatePost;
-use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
@@ -20,7 +19,6 @@ use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\PostResource;
 use App\Models\Post;
 use App\Services\Social\TikTokCreatorInfo;
-use App\Support\LinkTlds;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -177,16 +175,6 @@ class PostController extends Controller
             $account->id => new PlatformConfigResource($account),
         ]);
 
-        $pinterestBoards = $socialAccounts
-            ->where('platform', Platform::Pinterest)
-            ->mapWithKeys(fn ($account) => [
-                $account->id => rescue(
-                    fn () => ListPinterestBoards::execute($account),
-                    ['boards' => [], 'truncated' => false],
-                    report: false,
-                ),
-            ]);
-
         $tiktokCreatorInfos = $socialAccounts
             ->where('platform', Platform::TikTok)
             ->mapWithKeys(fn ($account) => [
@@ -203,9 +191,7 @@ class PostController extends Controller
             'post' => $post,
             'socialAccounts' => $socialAccounts,
             'platformConfigs' => $platformConfigs,
-            'pinterestBoards' => $pinterestBoards,
             'tiktokCreatorInfos' => $tiktokCreatorInfos,
-            'xLinkTlds' => config('trypost.platforms.x.defuse_links') ? LinkTlds::all() : [],
         ]);
     }
 

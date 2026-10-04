@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Queue;
 beforeEach(function () {
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
-    $this->account = SocialAccount::factory()->x()->create([
+    $this->account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
         'username' => 'testuser',
@@ -39,9 +39,9 @@ test('refresh job routes through refreshToken, never the billed verify endpoint'
     (new RefreshSocialToken($this->account))->handle($verifier);
 });
 
-test('proactive refresh rotates the X refresh token without disconnecting the account', function () {
+test('proactive refresh rotates the TikTok refresh token without disconnecting the account', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => 'rotated-access-token',
             'refresh_token' => 'rotated-refresh-token',
             'expires_in' => 7200,
@@ -56,78 +56,10 @@ test('proactive refresh rotates the X refresh token without disconnecting the ac
 
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
-    // X single-uses the refresh_token, so rotating one proactively has to leave
+    // TikTok rotates the refresh_token, so rotating one proactively has to leave
     // the account healthy instead of tripping a false-positive disconnect.
     expect($this->account->fresh()->refresh_token)->toBe('rotated-refresh-token');
     expect($this->account->fresh()->status)->toBe(Status::Connected);
-});
-
-test('proactive refresh EXTENDS a still-valid Instagram token (extension-model platform)', function () {
-    $account = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'status' => Status::Connected,
-        'access_token' => 'old-ig-token',
-        'token_expires_at' => now()->addMinutes(20),
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
-            'access_token' => 'extended-ig-token',
-            'expires_in' => 5184000,
-        ], 200),
-    ]);
-
-    (new RefreshSocialToken($account))->handle(app(ConnectionVerifier::class));
-
-    // Instagram/Threads extend the token itself and can't refresh once expired,
-    // so a still-valid token IS extended proactively — unlike rotating platforms.
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'refresh_access_token'));
-    expect($account->fresh()->access_token)->toBe('extended-ig-token');
-});
-
-test('proactive refresh EXTENDS a still-valid Threads token (extension-model platform)', function () {
-    $account = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Threads,
-        'status' => Status::Connected,
-        'access_token' => 'old-threads-token',
-        'token_expires_at' => now()->addMinutes(20),
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.threads.auth_api').'/refresh_access_token*' => Http::response([
-            'access_token' => 'extended-threads-token',
-            'expires_in' => 5184000,
-        ], 200),
-    ]);
-
-    (new RefreshSocialToken($account))->handle(app(ConnectionVerifier::class));
-
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'refresh_access_token'));
-    expect($account->fresh()->access_token)->toBe('extended-threads-token');
-});
-
-test('proactive refresh does NOT disconnect Instagram on a Meta rate-limit (400 OAuthException code 4)', function () {
-    $account = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'status' => Status::Connected,
-        'access_token' => 'valid-ig-token',
-        'token_expires_at' => now()->addMinutes(20),
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
-            'error' => ['message' => 'Application request limit reached', 'type' => 'OAuthException', 'code' => 4],
-        ], 400),
-    ]);
-
-    (new RefreshSocialToken($account))->handle(app(ConnectionVerifier::class));
-
-    // A rate-limit is transient — the still-valid token must stay Connected.
-    expect($account->fresh()->status)->toBe(Status::Connected);
-    expect($account->fresh()->access_token)->toBe('valid-ig-token');
 });
 
 test('refresh job marks account as TokenExpired when refresh_token is rejected', function () {
@@ -139,7 +71,7 @@ test('refresh job marks account as TokenExpired when refresh_token is rejected',
     );
     // The access_token is dead too, so there is nothing left to fall back to.
     $verifier->shouldReceive('verifyAccessToken')->once()->andThrow(
-        new TokenExpiredException('X access token is invalid or expired')
+        new TokenExpiredException('TikTok access token is invalid or expired')
     );
     app()->instance(ConnectionVerifier::class, $verifier);
 
@@ -179,7 +111,7 @@ test('refresh job does NOT mark account expired when platform is unavailable', f
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('refreshToken')->once()->andThrow(
-        new PlatformUnavailableException('X API returned 503 during token refresh', 503)
+        new PlatformUnavailableException('TikTok API returned 503 during token refresh', 503)
     );
     app()->instance(ConnectionVerifier::class, $verifier);
 
@@ -189,10 +121,10 @@ test('refresh job does NOT mark account expired when platform is unavailable', f
     Queue::assertNotPushed(SendNotification::class);
 });
 
-test('proactive refresh renews a still-valid X token without spending a billed user read', function () {
+test('proactive refresh renews a still-valid TikTok token without spending a billed user read', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => []]], 200),
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => 'rotated-access-token',
             'refresh_token' => 'rotated-refresh-token',
             'expires_in' => 7200,
@@ -206,10 +138,10 @@ test('proactive refresh renews a still-valid X token without spending a billed u
 
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
-    // GET /2/users/me is a billed "User: Read" ($0.010). A successful token
+    // GET /user/info/ is an extra call we do not need. A successful token
     // refresh already proves the credential works, so it must not be called.
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/users/me'));
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/user/info/'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth/token/'));
 
     expect($this->account->fresh()->access_token)->toBe('rotated-access-token');
     expect($this->account->fresh()->token_expires_at->isAfter(now()->addHour()))->toBeTrue();
@@ -217,7 +149,7 @@ test('proactive refresh renews a still-valid X token without spending a billed u
 
 test('a successful refresh stamps last_verified_at so other jobs can skip verifying', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => 'rotated-access-token',
             'refresh_token' => 'rotated-refresh-token',
             'expires_in' => 7200,
@@ -238,13 +170,13 @@ test('a rejected refresh does not disconnect an account whose access token still
     Queue::fake();
 
     Http::fake([
-        // X single-uses the refresh_token; a concurrent refresh already burned
+        // TikTok rotates the refresh_token; a concurrent refresh already burned
         // this one, so the provider rejects it — but the access_token is alive.
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'error' => 'invalid_grant',
             'error_description' => 'Value passed for the token was invalid.',
         ], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => []]], 200),
     ]);
 
     $this->account->update([
@@ -265,7 +197,7 @@ test('an account with no refresh token stays connected while its access token wo
     Queue::fake();
 
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => []]], 200),
     ]);
 
     $this->account->update([
@@ -284,11 +216,11 @@ test('a rejected refresh DOES disconnect once the access token is dead too', fun
     Queue::fake();
 
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'error' => 'invalid_grant',
             'error_description' => 'refresh_token revoked',
         ], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response([
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response([
             'title' => 'Unauthorized',
             'status' => 401,
         ], 401),
@@ -306,7 +238,7 @@ test('a rejected refresh DOES disconnect once the access token is dead too', fun
 });
 
 test('lock skipped by a concurrent refresh does not record a verification', function () {
-    Http::fake([config('trypost.platforms.x.api').'/*' => Http::response([], 200)]);
+    Http::fake([config('trypost.platforms.tiktok.api').'/*' => Http::response([], 200)]);
 
     $this->account->update([
         'last_verified_at' => null,
@@ -324,7 +256,7 @@ test('lock skipped by a concurrent refresh does not record a verification', func
 });
 
 test('a platform with nothing to refresh is never recorded as verified', function () {
-    $account = SocialAccount::factory()->mastodon()->create([
+    $account = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
         'last_verified_at' => null,
@@ -337,12 +269,12 @@ test('a platform with nothing to refresh is never recorded as verified', functio
 
 test('a refresh whose follow-up verify fails is not recorded as a verification', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => 'fresh-but-rejected',
             'refresh_token' => 'rt-new',
             'expires_in' => 7200,
         ], 200),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['title' => 'Unauthorized'], 401),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['title' => 'Unauthorized'], 401),
     ]);
 
     $this->account->update([
@@ -365,7 +297,7 @@ test('a refresh that returns an empty access token is not recorded as a verifica
     // TokenRefreshClient classifies on HTTP status alone and never inspects the
     // body, so a 200 carrying an empty token is stored as-is.
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => '',
             'refresh_token' => 'rt-new',
             'expires_in' => 7200,
@@ -386,10 +318,10 @@ test('a rejected refresh is not re-sent before the access token is checked', fun
     Queue::fake();
 
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'error' => 'invalid_grant',
         ], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => []]], 200),
     ]);
 
     $this->account->update([
@@ -401,9 +333,9 @@ test('a rejected refresh is not re-sent before the access token is checked', fun
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
     // Going through verify() would re-send the refresh_token the provider just
-    // rejected — and on Bluesky re-run the rate-limited password re-auth.
+    // rejected.
     $refreshCalls = collect(Http::recorded())
-        ->filter(fn ($pair) => str_contains($pair[0]->url(), '/oauth2/token'))
+        ->filter(fn ($pair) => str_contains($pair[0]->url(), '/oauth/token/'))
         ->count();
 
     expect($refreshCalls)->toBe(1);
@@ -412,15 +344,15 @@ test('a rejected refresh is not re-sent before the access token is checked', fun
 test('a refresh lost to a concurrent one falls back to the token that won', function () {
     Queue::fake();
 
-    $api = config('trypost.platforms.x.api');
+    $api = config('trypost.platforms.tiktok.api');
     Http::fake([
         // Our refresh_token was already consumed by the process that won.
-        $api.'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
-        $api.'/users/me' => function ($request) {
+        $api.'/oauth/token/' => Http::response(['error' => 'invalid_grant'], 400),
+        $api.'/user/info/*' => function ($request) {
             $auth = $request->header('Authorization')[0] ?? '';
 
             return str_contains($auth, 'winner-access-token')
-                ? Http::response(['data' => ['id' => '123']], 200)
+                ? Http::response(['data' => ['user' => []]], 200)
                 : Http::response(['title' => 'Unauthorized', 'status' => 401], 401);
         },
     ]);
@@ -444,52 +376,24 @@ test('a refresh lost to a concurrent one falls back to the token that won', func
 
     // The recovery is the point: reload, find the winner's token, verify with
     // it. Asserting the call proves we got that far rather than bailing early.
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/user/info/'));
     expect($this->account->fresh()->status)->toBe(Status::Connected);
     Queue::assertNotPushed(SendNotification::class);
 });
 
 test('the refresh lock outlives the slowest refresh a provider can make us wait', function () {
-    // Bluesky refreshes with two sequential calls (refreshSession, then the
-    // createSession re-auth). If the lock expires first, a second process
-    // refreshes with the same single-use refresh_token and one of the two is
-    // rejected. Bounding the calls ourselves keeps that under the lock without
+    // A provider may make us wait up to two bounded calls. If the lock expires
+    // first, a second process refreshes with the same single-use refresh_token
+    // and one of the two is rejected. Bounding the calls ourselves keeps that under the lock without
     // holding the lock longer, which the publish path also waits on.
     $worstCaseSeconds = 2 * (ConnectionVerifier::REFRESH_TIMEOUT_SECONDS + ConnectionVerifier::REFRESH_CONNECT_TIMEOUT_SECONDS);
 
     expect(ConnectionVerifier::REFRESH_LOCK_SECONDS)->toBeGreaterThan($worstCaseSeconds);
 });
 
-test('a rejected Instagram extension disconnects loudly instead of waiting for the token to die', function () {
-    Queue::fake();
-
-    $account = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'status' => Status::Connected,
-        'access_token' => 'still-valid-but-unextendable',
-        'token_expires_at' => now()->addHours(20),
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
-            'error' => ['message' => 'Invalid OAuth access token', 'type' => 'OAuthException', 'code' => 190],
-        ], 400),
-        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['id' => '1', 'username' => 'u'], 200),
-    ]);
-
-    (new RefreshSocialToken($account))->handle(app(ConnectionVerifier::class));
-
-    // Instagram/Threads tokens cannot be refreshed once expired. Staying
-    // Connected because the token still reads means the owner is told only
-    // after it dies — by which point reconnecting is the only option left.
-    expect($account->fresh()->status)->toBe(Status::TokenExpired);
-    Queue::assertPushed(SendNotification::class);
-});
-
 test('the job survives the account being deleted while it is in flight', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response(['error' => 'invalid_grant'], 400),
     ]);
 
     $account = $this->account;
@@ -506,14 +410,14 @@ test('the job survives the account being deleted while it is in flight', functio
 
     // Reaching this line is the point: the refresh ran and the vanished row
     // did not escape as a ModelNotFoundException.
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth/token/'));
 });
 
 test('a 200 without a token leaves the working credential intact', function () {
     Queue::fake();
 
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => '',
             'refresh_token' => 'rt-new',
             'expires_in' => 7200,
@@ -538,7 +442,7 @@ test('a 200 without a token leaves the working credential intact', function () {
 });
 
 test('refreshToken reports false for a platform with nothing to refresh', function () {
-    $account = SocialAccount::factory()->mastodon()->create([
+    $account = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
     ]);
@@ -562,12 +466,10 @@ test('every platform that claims a refresh flow actually performs one', function
             'platform' => $platform,
             'status' => Status::Connected,
             'refresh_token' => 'rt-seed',
-            'meta' => ['service' => 'https://bsky.social', 'identifier' => 'a.bsky.social'],
         ]);
 
         Http::fake(['*' => Http::response([
             'access_token' => 'at', 'refresh_token' => 'rt', 'expires_in' => 3600,
-            'accessJwt' => 'j', 'refreshJwt' => 'r', 'id' => '1', 'data' => ['id' => '1'],
         ], 200)]);
 
         try {
@@ -610,7 +512,6 @@ test('no platform lets a tokenless 200 destroy the credential it already had', f
             'status' => Status::Connected,
             'access_token' => 'the-token-that-still-works',
             'refresh_token' => 'rt-seed',
-            'meta' => ['service' => 'https://bsky.social', 'identifier' => 'a.bsky.social'],
         ]);
 
         // A 200 carrying no token at all. Every provider reads a different
@@ -643,7 +544,7 @@ test('a platform outage never disconnects, not even once the token has expired',
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('refreshToken')->once()->andThrow(
         // TokenRefreshClient raises this for 5xx, 429 and connection timeouts.
-        new PlatformUnavailableException('X API returned 429 during token refresh', 429)
+        new PlatformUnavailableException('TikTok API returned 429 during token refresh', 429)
     );
     app()->instance(ConnectionVerifier::class, $verifier);
 
@@ -663,7 +564,7 @@ test('a platform outage on a live token stays quiet and retries', function () {
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('refreshToken')->once()->andThrow(
-        new PlatformUnavailableException('X API returned 503 during token refresh', 503)
+        new PlatformUnavailableException('TikTok API returned 503 during token refresh', 503)
     );
     app()->instance(ConnectionVerifier::class, $verifier);
 
@@ -698,7 +599,7 @@ test('a failure the fallback cannot attribute to the token surfaces instead of p
 
 test('a null refresh_token in a 200 does not wipe the one we already had', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => 'fresh-access-token',
             'refresh_token' => null,
             'expires_in' => 7200,
@@ -733,8 +634,8 @@ test('a refresh already in flight on a dead token is transient, not something to
 
 test('a billed fallback check counts as a verification like any other', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => []]], 200),
     ]);
 
     $this->account->update([
@@ -745,7 +646,7 @@ test('a billed fallback check counts as a verification like any other', function
 
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
-    // GET /2/users/me is billed and it just proved the token alive. Throwing
+    // GET /user/info/ just proved the token alive. Throwing
     // that away means the pre-publish check pays to ask again minutes later.
     expect($this->account->fresh()->last_verified_at)->not->toBeNull();
 });

@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  * - other HTTP 4xx                                → TokenExpiredException
  *
  * Providers that return rate-limit or transient errors as an ordinary 4xx
- * (Meta: Instagram/Threads) can pass an `$isTokenInvalid` classifier to
+ * (e.g. Meta) can pass an `$isTokenInvalid` classifier to
  * `send()`; only a genuinely dead token then disconnects, while every other
  * 4xx is treated as transient (PlatformUnavailableException).
  *

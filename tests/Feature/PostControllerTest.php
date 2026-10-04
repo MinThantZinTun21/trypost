@@ -13,8 +13,6 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\LinkTlds;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
@@ -27,7 +25,7 @@ beforeEach(function () {
 
     $this->socialAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::LinkedIn,
+        'platform' => Platform::Facebook,
     ]);
 });
 
@@ -373,7 +371,7 @@ test('update post saves changes', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -383,7 +381,7 @@ test('update post saves changes', function () {
     $post->refresh();
     expect($post->content)->toBe('Updated content');
     $postPlatform->refresh();
-    expect($postPlatform->content_type)->toBe(ContentType::LinkedInPost);
+    expect($postPlatform->content_type)->toBe(ContentType::FacebookPost);
 });
 
 test('update post cannot update published posts', function () {
@@ -404,7 +402,7 @@ test('update post cannot update published posts', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -432,7 +430,7 @@ test('cannot re-publish a failed post', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -465,7 +463,7 @@ test('cannot update a post in publishing state', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -498,7 +496,7 @@ test('cannot update a partially published post', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -531,7 +529,7 @@ test('cannot update a published post', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -567,7 +565,7 @@ test('publish now updates scheduled_at to current time', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -601,7 +599,7 @@ test('publish now is allowed when the draft has no scheduled_at', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ])->assertRedirect();
@@ -632,7 +630,7 @@ test('update rejects scheduled status without a future scheduled_at', function (
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ];
@@ -676,7 +674,7 @@ test('update accepts scheduled status reusing an existing future scheduled_at', 
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ])->assertRedirect();
@@ -709,7 +707,7 @@ test('update schedules an unscheduled draft with an explicit future scheduled_at
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ])->assertRedirect();
@@ -739,7 +737,7 @@ test('update keeps an unscheduled draft when saving as draft without scheduled_a
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ])->assertRedirect();
@@ -825,7 +823,7 @@ test('show page renders for non-editable posts', function () {
         'post_id' => $post->id,
         'social_account_id' => $this->socialAccount->id,
         'enabled' => true,
-        'platform_url' => 'https://linkedin.com/posts/abc',
+        'platform_url' => 'https://facebook.com/posts/abc',
     ]);
 
     $response = $this->actingAs($this->user)->get(route('app.posts.show', $post));
@@ -935,7 +933,7 @@ test('update post redirects to show page after publishing', function () {
         'status' => 'publishing',
         'content' => 'Test',
         'platforms' => [
-            ['id' => $postPlatform->id, 'content_type' => ContentType::LinkedInPost->value],
+            ['id' => $postPlatform->id, 'content_type' => ContentType::FacebookPost->value],
         ],
     ]);
 
@@ -983,10 +981,10 @@ test('update post rejects scheduling youtube short with image', function () {
     $response->assertSessionHasErrors('platforms.0.content_type');
 });
 
-test('update post rejects scheduling instagram reel with no media', function () {
-    $instagramAccount = SocialAccount::factory()->create([
+test('update post rejects scheduling facebook reel with no media', function () {
+    $facebookAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
+        'platform' => Platform::Facebook,
     ]);
 
     $post = Post::factory()->create([
@@ -998,7 +996,7 @@ test('update post rejects scheduling instagram reel with no media', function () 
 
     $postPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id,
-        'social_account_id' => $instagramAccount->id,
+        'social_account_id' => $facebookAccount->id,
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
@@ -1007,7 +1005,7 @@ test('update post rejects scheduling instagram reel with no media', function () 
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::InstagramReel->value,
+                'content_type' => ContentType::FacebookReel->value,
             ],
         ],
     ]);
@@ -1015,10 +1013,10 @@ test('update post rejects scheduling instagram reel with no media', function () 
     $response->assertSessionHasErrors('platforms.0.content_type');
 });
 
-test('update post rejects invalid instagram aspect_ratio meta', function () {
-    $instagramAccount = SocialAccount::factory()->create([
+test('update post rejects invalid facebook aspect_ratio meta', function () {
+    $facebookAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
+        'platform' => Platform::Facebook,
     ]);
 
     $post = Post::factory()->create([
@@ -1029,7 +1027,7 @@ test('update post rejects invalid instagram aspect_ratio meta', function () {
 
     $postPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id,
-        'social_account_id' => $instagramAccount->id,
+        'social_account_id' => $facebookAccount->id,
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
@@ -1037,7 +1035,7 @@ test('update post rejects invalid instagram aspect_ratio meta', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::InstagramFeed->value,
+                'content_type' => ContentType::FacebookPost->value,
                 'meta' => ['aspect_ratio' => '2:1'],
             ],
         ],
@@ -1046,10 +1044,10 @@ test('update post rejects invalid instagram aspect_ratio meta', function () {
     $response->assertSessionHasErrors('platforms.0.meta.aspect_ratio');
 });
 
-test('update post accepts valid instagram aspect_ratio meta', function () {
-    $instagramAccount = SocialAccount::factory()->create([
+test('update post accepts valid facebook aspect_ratio meta', function () {
+    $facebookAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
+        'platform' => Platform::Facebook,
     ]);
 
     $post = Post::factory()->create([
@@ -1060,7 +1058,7 @@ test('update post accepts valid instagram aspect_ratio meta', function () {
 
     $postPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id,
-        'social_account_id' => $instagramAccount->id,
+        'social_account_id' => $facebookAccount->id,
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
@@ -1068,7 +1066,7 @@ test('update post accepts valid instagram aspect_ratio meta', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::InstagramFeed->value,
+                'content_type' => ContentType::FacebookPost->value,
                 'meta' => ['aspect_ratio' => '4:5'],
             ],
         ],
@@ -1171,28 +1169,6 @@ test('member can create post', function () {
 
     $response->assertRedirect();
 });
-
-test('the editor receives the tld list only while x link defusing is on', function (bool $enabled, bool $expectsList) {
-    config()->set('trypost.platforms.x.defuse_links', $enabled);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $this->actingAs($this->user)
-        ->get(route('app.posts.edit', $post))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('posts/Edit')
-            ->where('xLinkTlds', fn (Collection $tlds): bool => $expectsList
-                ? $tlds->contains('com') && $tlds->count() === count(LinkTlds::all())
-                : $tlds->isEmpty())
-        );
-})->with([
-    'enabled' => [true, true],
-    'disabled' => [false, false],
-]);
 
 test('analytics page and post metrics endpoint no longer exist', function () {
     $post = Post::factory()->create([

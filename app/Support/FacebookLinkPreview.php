@@ -9,9 +9,7 @@ use Illuminate\Support\Str;
 /**
  * First http(s) URL Facebook will accept as a Page feed `link`. facebook.com,
  * fb.com and fb.me (and their subdomains) are skipped: the API rejects many of
- * them and fails the whole post. The editor mirrors this in
- * `resources/js/lib/facebookLinkPreview.ts`; the parity test keeps the two
- * in step.
+ * them and fails the whole post.
  */
 final class FacebookLinkPreview
 {

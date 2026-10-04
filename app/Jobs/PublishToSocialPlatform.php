@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Actions\Post\FinalizePostPublication;
-use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
@@ -16,22 +15,10 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
-use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\ConnectionVerifier;
-use App\Services\Social\Discord\DiscordPublisher;
 use App\Services\Social\FacebookPublisher;
-use App\Services\Social\GoogleBusinessPublisher;
-use App\Services\Social\InstagramPublisher;
-use App\Services\Social\LinkedInPagePublisher;
-use App\Services\Social\LinkedInPublisher;
-use App\Services\Social\MastodonPublisher;
-use App\Services\Social\PinterestPublisher;
-use App\Services\Social\Telegram\TelegramPublisher;
-use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
-use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
-use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -48,7 +35,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     public int $maxExceptions = 1;
 
-    /** Download/upload + Pinterest poll headroom; keep Horizon/Redis timeouts above this. */
+    /** Download/upload + processing poll headroom; keep Horizon/Redis timeouts above this. */
     public int $timeout = 900;
 
     public int $uniqueFor = 960;
@@ -173,35 +160,11 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * A publisher may answer with a provider-side state instead of a finished
-     * post. Anything it does not report is a plain success, which is every
-     * platform but Google Business Profile.
-     *
      * @param  array<string, mixed>  $result
      */
     private function recordPublishResult(array $result): void
     {
-        $platformPostId = (string) data_get($result, 'id');
-        $platformUrl = data_get($result, 'url');
-
-        // tryFrom, not fromApi: every other publisher omits `state`. fromApi(null)
-        // is Processing, which would hold LinkedIn/X/… in pending review forever.
-        $state = LocalPostState::tryFrom((string) data_get($result, 'state'));
-
-        match ($state) {
-            LocalPostState::Rejected => $this->postPlatform->markAsRejected(
-                $platformPostId,
-                $platformUrl,
-                __('posts.errors.rejected_in_review'),
-                ['provider_state' => $state->value],
-            ),
-            LocalPostState::Processing,
-            LocalPostState::Scheduled,
-            LocalPostState::Unspecified => $this->postPlatform->markAsPendingReview($platformPostId, $platformUrl),
-            LocalPostState::Live,
-            LocalPostState::Recurring,
-            null => $this->postPlatform->markAsPublished($platformPostId, $platformUrl),
-        };
+        $this->postPlatform->markAsPublished((string) data_get($result, 'id'), data_get($result, 'url'));
     }
 
     private function refreshAccountToken(): void
@@ -367,7 +330,6 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 $previousContext,
                 $this->postPlatform->id,
             ),
-            SocialPlatform::GoogleBusiness => app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id),
             default => null,
         };
 
@@ -416,23 +378,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             : 'An unexpected error occurred while publishing. Please try again.';
     }
 
-    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher|GoogleBusinessPublisher
+    private function getPublisher(): TikTokPublisher|YouTubePublisher|FacebookPublisher
     {
         return match ($this->postPlatform->platform) {
-            SocialPlatform::LinkedIn => app(LinkedInPublisher::class),
-            SocialPlatform::LinkedInPage => app(LinkedInPagePublisher::class),
-            SocialPlatform::X => app(XPublisher::class),
             SocialPlatform::TikTok => app(TikTokPublisher::class),
             SocialPlatform::YouTube => app(YouTubePublisher::class),
             SocialPlatform::Facebook => app(FacebookPublisher::class),
-            SocialPlatform::Instagram, SocialPlatform::InstagramFacebook => app(InstagramPublisher::class),
-            SocialPlatform::Threads => app(ThreadsPublisher::class),
-            SocialPlatform::Pinterest => app(PinterestPublisher::class),
-            SocialPlatform::Bluesky => app(BlueskyPublisher::class),
-            SocialPlatform::Mastodon => app(MastodonPublisher::class),
-            SocialPlatform::Telegram => app(TelegramPublisher::class),
-            SocialPlatform::Discord => app(DiscordPublisher::class),
-            SocialPlatform::GoogleBusiness => app(GoogleBusinessPublisher::class),
         };
     }
 

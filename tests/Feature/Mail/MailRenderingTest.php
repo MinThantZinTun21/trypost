@@ -16,7 +16,7 @@ test('the disconnected-connections digest renders every account and reason', fun
         'name' => 'Acme Workspace',
     ]);
 
-    $accounts = collect([Platform::LinkedIn, Platform::X])->map(
+    $accounts = collect([Platform::Facebook, Platform::TikTok])->map(
         fn (Platform $platform) => SocialAccount::factory()->create([
             'workspace_id' => $workspace->id,
             'platform' => $platform,

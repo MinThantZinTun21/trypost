@@ -57,7 +57,7 @@ test('oauth callbacks are not blocked by the workspace gate and self-close the p
     $user = User::factory()->create(['current_workspace_id' => null]);
 
     $this->actingAs($user)
-        ->get(route('app.social.x.callback'))
+        ->get(route('app.social.tiktok.callback'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('accounts/PopupCallback')

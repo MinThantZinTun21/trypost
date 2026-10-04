@@ -69,7 +69,7 @@ test('isTransientFailure classifies a confirmed 4xx rejection as not transient',
 test('classifyVerifyFailure returns PlatformUnavailableException for a transient failure', function () {
     Http::fake(['example.com/*' => Http::response('upstream timeout', 503)]);
 
-    expect(GraphError::classifyVerifyFailure(Http::get('https://example.com/me'), 'Threads'))
+    expect(GraphError::classifyVerifyFailure(Http::get('https://example.com/me'), 'Facebook'))
         ->toBeInstanceOf(PlatformUnavailableException::class);
 });
 
@@ -80,8 +80,8 @@ test('classifyVerifyFailure returns TokenExpiredException for a confirmed reject
         ], 400),
     ]);
 
-    $exception = GraphError::classifyVerifyFailure(Http::get('https://example.com/me'), 'Threads');
+    $exception = GraphError::classifyVerifyFailure(Http::get('https://example.com/me'), 'Facebook');
 
     expect($exception)->toBeInstanceOf(TokenExpiredException::class)
-        ->and($exception->getMessage())->toBe('Threads access token is invalid or expired');
+        ->and($exception->getMessage())->toBe('Facebook access token is invalid or expired');
 });

@@ -6,14 +6,11 @@ namespace App\Models;
 
 use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
-use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\SendNotification;
 use App\Mail\AccountDisconnected;
-use App\Support\GoogleBusinessResourceName;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +22,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class SocialAccount extends Model
@@ -103,7 +99,7 @@ class SocialAccount extends Model
         ?self $reconnect = null,
     ): self {
         // Two popups finishing at once for the same network must not interleave
-        // a reconnect's update-and-realign transaction with a fresh insert.
+        // a reconnect's update with a fresh insert.
         try {
             return Cache::lock("social_connect:{$workspace->id}:{$platform->network()}", 10)
                 ->block(5, fn (): self => static::persistIdentity(
@@ -144,16 +140,8 @@ class SocialAccount extends Model
                 throw NetworkAlreadyConnectedException::identityMismatch($platform);
             }
 
-            $previousPlatform = $reconnect->platform;
-
             try {
-                // The card and the targets that still have to publish through it
-                // move together or not at all.
-                DB::transaction(function () use ($reconnect, $values, $previousPlatform, $platform): void {
-                    $reconnect->update($values);
-
-                    static::realignUnpublishedTargets($reconnect, $previousPlatform, $platform);
-                });
+                $reconnect->update($values);
             } catch (UniqueConstraintViolationException) {
                 throw new NetworkAlreadyConnectedException($platform);
             }
@@ -169,42 +157,6 @@ class SocialAccount extends Model
 
             return $account;
         }
-    }
-
-    /**
-     * Reconnecting through the other variant of a network (Instagram directly
-     * after Facebook, a LinkedIn profile after its page) moves the card to the
-     * new platform. Post targets carry their own `platform` snapshot and that
-     * snapshot is what picks the publisher, the queue and the scopes checked
-     * before publishing, so a stale one fails the post on permissions it never
-     * needed.
-     *
-     * Only targets that still have a publish ahead of them move. Published rows
-     * record what really went out under a platform_post_id from that flavor of
-     * the API; failed ones are terminal; a publishing one has a job mid-flight
-     * that already read the snapshot it is working from.
-     */
-    private static function realignUnpublishedTargets(self $account, SocialPlatform $from, SocialPlatform $to): void
-    {
-        if ($from === $to) {
-            return;
-        }
-
-        $awaitingPublish = [PostPlatformStatus::Pending, PostPlatformStatus::Retrying];
-
-        $supported = array_values(array_map(
-            fn (ContentType $contentType): string => $contentType->value,
-            ContentType::forPlatform($to),
-        ));
-
-        $account->postPlatforms()
-            ->whereIn('status', $awaitingPublish)
-            ->whereNotIn('content_type', $supported)
-            ->update(['content_type' => ContentType::defaultFor($to)->value]);
-
-        $account->postPlatforms()
-            ->whereIn('status', $awaitingPublish)
-            ->update(['platform' => $to->value]);
     }
 
     public function postPlatforms(): HasMany
@@ -229,14 +181,11 @@ class SocialAccount extends Model
     /**
      * Whether the token should be refreshed before use. Rotating-refresh-token
      * platforms are only refreshed once actually expired, to avoid rotating a
-     * still-valid single-use refresh_token; extension-model platforms
-     * (Instagram/Threads) must be refreshed while still valid because their
-     * token can't be extended once expired.
+     * still-valid single-use refresh_token.
      */
     public function needsProactiveTokenRefresh(): bool
     {
-        return $this->is_token_expired
-            || ($this->platform->extendsAccessTokenOnRefresh() && $this->is_token_expiring_soon);
+        return $this->is_token_expired;
     }
 
     protected function avatarUrl(): Attribute
@@ -257,27 +206,8 @@ class SocialAccount extends Model
                     SocialPlatform::Facebook => ($username || $platformUserId)
                         ? 'https://facebook.com/'.($username ?: $platformUserId)
                         : null,
-                    SocialPlatform::LinkedIn => $username ? "https://linkedin.com/in/{$username}" : null,
-                    SocialPlatform::LinkedInPage => $username ? "https://linkedin.com/company/{$username}" : null,
-                    SocialPlatform::X => $username ? "https://x.com/{$username}" : null,
                     SocialPlatform::TikTok => $username ? "https://tiktok.com/@{$username}" : null,
-                    SocialPlatform::Instagram, SocialPlatform::InstagramFacebook => $username
-                        ? "https://instagram.com/{$username}"
-                        : null,
                     SocialPlatform::YouTube => $username ? "https://youtube.com/@{$username}" : null,
-                    SocialPlatform::Threads => $username ? "https://threads.net/@{$username}" : null,
-                    SocialPlatform::Bluesky => $username ? "https://bsky.app/profile/{$username}" : null,
-                    SocialPlatform::Pinterest => $username ? "https://pinterest.com/{$username}" : null,
-                    SocialPlatform::Mastodon => ($username && data_get($this->meta, 'instance'))
-                        ? rtrim((string) data_get($this->meta, 'instance'), '/')."/@{$username}"
-                        : null,
-                    SocialPlatform::Telegram => $username ? "https://t.me/{$username}" : null,
-                    SocialPlatform::GoogleBusiness => filled(data_get($this->meta, 'maps_uri'))
-                        ? (string) data_get($this->meta, 'maps_uri')
-                        : (filled(data_get($this->meta, 'location_id'))
-                            ? GoogleBusinessResourceName::dashboardUrl((string) data_get($this->meta, 'location_id'))
-                            : null),
-                    default => null,
                 };
             },
         );

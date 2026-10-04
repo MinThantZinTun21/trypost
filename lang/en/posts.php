@@ -31,10 +31,6 @@ return [
 
     'form' => [
         'post_type' => 'Post Type',
-        'board' => 'Board',
-        'select_board' => 'Select a board',
-        'search_board' => 'Search board...',
-        'no_board_found' => 'No board found',
         'media' => 'Media',
         'min' => 'Min',
         'uploading' => 'Uploading...',
@@ -96,23 +92,6 @@ return [
                 'branded_policy' => 'Branded Content Policy',
             ],
         ],
-        'instagram' => [
-            'settings' => 'Instagram Settings',
-            'posting_to' => 'Posting to',
-            'variant_label' => 'Post type',
-            'variant' => [
-                'feed' => 'Feed Post',
-                'reel' => 'Reel',
-                'story' => 'Story',
-            ],
-            'aspect_label' => 'Aspect ratio',
-            'aspect' => [
-                'square' => 'Square (1:1)',
-                'portrait' => 'Portrait (4:5)',
-                'landscape' => 'Landscape (16:9)',
-                'original' => 'Original',
-            ],
-        ],
         'facebook' => [
             'settings' => 'Facebook Settings',
             'posting_to' => 'Posting to',
@@ -130,13 +109,6 @@ return [
                 'original' => 'Original',
             ],
         ],
-        'linkedin' => [
-            'settings' => 'LinkedIn Settings',
-            'settings_page' => 'LinkedIn Page Settings',
-            'posting_to' => 'Posting to',
-            'document_title' => 'Document title',
-            'document_title_placeholder' => 'Shown on your PDF document post',
-        ],
         'youtube' => [
             'settings' => 'YouTube settings',
             'posting_to' => 'Posting to',
@@ -145,92 +117,6 @@ return [
             'description_max' => 'The YouTube description must not exceed 5,000 bytes.',
             'description_invalid' => 'The YouTube description must be valid text.',
             'description_bytes' => ':used / :limit bytes',
-        ],
-        'pinterest' => [
-            'settings' => 'Pinterest Settings',
-            'posting_to' => 'Posting to',
-            'variant_label' => 'Pin type',
-            'variant' => [
-                'pin' => 'Pin',
-                'video_pin' => 'Video Pin',
-                'carousel' => 'Carousel',
-            ],
-            'board' => 'Board',
-            'select_board' => 'Select a board',
-            'no_boards' => 'No Pinterest boards found. Create one in your Pinterest account first.',
-            'boards_truncated' => 'Some boards could not be loaded. If yours is missing, open Pinterest and try again.',
-            'search_board' => 'Search boards...',
-            'no_board_found' => 'No board matches your search.',
-            'board_required' => 'Select a Pinterest board to publish this post.',
-            'title' => 'Title',
-            'title_placeholder' => 'Optional pin title',
-            'link' => 'Destination link',
-            'link_placeholder' => 'https://example.com',
-            'link_invalid' => 'Enter a valid destination link (http or https).',
-            'title_max' => 'Title may not be longer than 100 characters.',
-            'link_max' => 'Destination link may not be longer than 2048 characters.',
-        ],
-        'discord' => [
-            'settings' => 'Discord Settings',
-            'posting_to' => 'Posting to',
-            'channel' => 'Channel',
-            'select_channel' => 'Select a channel',
-            'loading_channels' => 'Loading channels…',
-            'search_channel' => 'Search channels…',
-            'no_channels' => 'No channels found.',
-            'channel_required' => 'Select a Discord channel to publish this post.',
-            'mentions' => 'Mentions',
-            'search_mention' => 'Mention a role or member…',
-            'embeds' => 'Embeds',
-            'embed' => 'Embed',
-            'add_embed' => 'Add embed',
-            'embed_title' => 'Embed title',
-            'embed_description' => 'Embed description',
-            'embed_url' => 'Embed URL',
-            'embed_image' => 'Image URL',
-            'embed_color' => 'Color',
-        ],
-        'google_business' => [
-            'settings' => 'Google Business Profile Settings',
-            'posting_to' => 'Posting to',
-            'topic_type_label' => 'Post type',
-            'topic_type' => [
-                'standard' => "What's New",
-                'event' => 'Event',
-                'offer' => 'Offer',
-            ],
-            'cta_label' => 'Button',
-            'cta_none' => 'None',
-            'cta' => [
-                'book' => 'Book',
-                'order' => 'Order online',
-                'shop' => 'Buy',
-                'learn_more' => 'Learn more',
-                'sign_up' => 'Sign up',
-                'call' => 'Call now',
-            ],
-            'cta_url' => 'Button link',
-            'cta_url_placeholder' => 'https://example.com',
-            'cta_url_required' => 'Enter a link for this button, or choose "None".',
-            'event_title' => 'Event title',
-            'event_title_placeholder' => 'Your event title',
-            'event_title_required' => 'Enter an event title.',
-            'event_start_date' => 'Start',
-            'event_start_date_required' => 'Enter an event start date.',
-            'event_end_date' => 'End',
-            'event_end_date_required' => 'Enter an event end date.',
-            'event_end_date_before_start' => 'The end date must be on or after the start date.',
-            'event_end_time_before_start' => 'The end time must be after the start time.',
-            'title_max' => 'Title must be 58 characters or fewer.',
-            'event_start_time' => 'Start time',
-            'event_end_time' => 'End time',
-            'offer_title' => 'Offer title',
-            'offer_title_placeholder' => 'Enter a title for your offer',
-            'offer_title_required' => 'Enter an offer title.',
-            'offer_coupon_code' => 'Coupon code',
-            'offer_redeem_url' => 'Offer link',
-            'offer_terms' => 'Terms & conditions',
-            'event_times_use_location' => "Times follow the location's local time, not your browser.",
         ],
         'warnings' => [
             'no_variant' => 'Pick a post type to continue.',
@@ -282,7 +168,6 @@ return [
         'scheduled_for' => 'Scheduled for :date',
         'draft' => 'Draft',
         'status_pending' => 'Pending',
-        'pending_review' => 'Google is reviewing this post. We will update it when the review finishes.',
     ],
 
     'edit' => [
@@ -383,8 +268,6 @@ return [
             'publishing' => 'Publishing...',
             'retrying' => 'Retrying...',
             'failed' => 'Failed',
-            'pending_review' => 'In review by Google',
-            'rejected' => 'Rejected',
         ],
 
         'delete_modal' => [
@@ -415,7 +298,6 @@ return [
         ],
 
         'validation' => [
-            'select_board' => 'Select a board',
             'images_not_supported' => 'Images not supported',
             'videos_not_supported' => 'Videos not supported',
             'max_images' => 'Max :count images',
@@ -429,26 +311,6 @@ return [
     ],
 
     'content_types' => [
-        'instagram_feed' => [
-            'label' => 'Feed Post',
-            'description' => 'Appears in your feed and profile',
-        ],
-        'instagram_reel' => [
-            'label' => 'Reel',
-            'description' => 'Short video up to 15 minutes',
-        ],
-        'instagram_story' => [
-            'label' => 'Story',
-            'description' => 'Disappears after 24 hours',
-        ],
-        'linkedin_post' => [
-            'label' => 'Post',
-            'description' => 'Standard post — single image, multi-image, video, or PDF',
-        ],
-        'linkedin_page_post' => [
-            'label' => 'Post',
-            'description' => 'Standard post — single image, multi-image, video, or PDF',
-        ],
         'facebook_post' => [
             'label' => 'Post',
             'description' => 'Standard post on your page',
@@ -473,60 +335,12 @@ return [
             'label' => 'Short',
             'description' => 'Vertical video up to 3 minutes',
         ],
-        'x_post' => [
-            'label' => 'Post',
-            'description' => 'Tweet with text and media',
-        ],
-        'threads_post' => [
-            'label' => 'Post',
-            'description' => 'Text post with optional media',
-        ],
-        'pinterest_pin' => [
-            'label' => 'Pin',
-            'description' => 'Standard image pin',
-        ],
-        'pinterest_video_pin' => [
-            'label' => 'Video Pin',
-            'description' => 'Video pin (4s - 15min)',
-        ],
-        'pinterest_carousel' => [
-            'label' => 'Carousel',
-            'description' => 'Multi-image carousel (2-5 images)',
-        ],
-        'bluesky_post' => [
-            'label' => 'Post',
-            'description' => 'Text post with optional images',
-        ],
-        'mastodon_post' => [
-            'label' => 'Post',
-            'description' => 'Text post with optional media',
-        ],
-        'telegram_post' => [
-            'label' => 'Post',
-            'description' => 'Text post with optional media',
-        ],
-        'discord_message' => [
-            'label' => 'Message',
-            'description' => 'Message to a Discord channel with optional media & embeds',
-        ],
-        'google_business_post' => [
-            'label' => 'Post',
-            'description' => 'Appears on your Business Profile in Search and Maps',
-        ],
     ],
 
     'platforms' => [
-        'linkedin' => 'LinkedIn',
-        'linkedin-page' => 'LinkedIn Page',
-        'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',
         'facebook' => 'Facebook Page',
-        'instagram' => 'Instagram',
-        'threads' => 'Threads',
-        'pinterest' => 'Pinterest',
-        'bluesky' => 'Bluesky',
-        'mastodon' => 'Mastodon',
     ],
 
     'flash' => [
@@ -541,25 +355,10 @@ return [
     'errors' => [
         'account_disconnected' => 'Social account is disconnected',
         'account_inactive' => 'Social account is deactivated',
-        'target_disabled' => 'This destination was switched off',
         'account_token_expired' => 'Social account session expired — please reconnect',
         'platform_unavailable' => 'The platform is temporarily unavailable. We\'ll retry shortly.',
         'platform_unavailable_exhausted' => 'The platform stayed unavailable after several retries. Please try again later.',
         'publishing_timed_out' => 'Publishing timed out. Please try again.',
-        'rejected_in_review' => 'Google rejected this post in review. Edit the content or image and try again.',
-        'review_unconfirmed' => 'Google never confirmed this post. Check your Business Profile and try again.',
-        'google_business' => [
-            'no_location' => 'This Google Business Profile account has no location configured. Please reconnect it.',
-            'permission_denied' => 'Permission denied. Please reconnect and confirm access to this business location.',
-            'not_found' => 'Business location not found. It may have been deleted — please reconnect.',
-            'invalid_content' => 'Invalid post content. Please check your post details.',
-            'rate_limited' => 'Rate limit exceeded. Please try again later.',
-            'server_error' => 'Google Business Profile server error. Please try again.',
-            'rejected' => 'Google Business Profile rejected this post. Please try again.',
-            'event_dates_required' => 'This post needs a start and end date. Please add them and try again.',
-            'token_expired' => 'Google Business Profile access token is invalid or expired',
-            'no_refresh_token' => 'No refresh token available for Google Business Profile account',
-        ],
     ],
 
     'delete' => [

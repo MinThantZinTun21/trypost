@@ -24,7 +24,6 @@ import {
     destroy as destroyPost,
     update as updatePost,
 } from '@/routes/app/posts';
-import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
 import { PostStatus } from '@/types/post';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
@@ -87,7 +86,6 @@ const props = defineProps<{
     post: Post;
     socialAccounts: SocialAccount[];
     platformConfigs: Record<string, any>;
-    pinterestBoards: Record<string, PinterestBoardsPayload>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
 }>();
 
@@ -116,7 +114,7 @@ const selectedPlatformIds = ref<string[]>(
     post.value.post_platforms.filter((pp) => pp.enabled).map((pp) => pp.id),
 );
 
-// Per-platform meta (TikTok settings, Pinterest board, etc.)
+// Per-platform meta (TikTok settings, YouTube description, etc.)
 const platformMeta = ref<Record<string, Record<string, any>>>(
     Object.fromEntries(
         post.value.post_platforms.map((pp) => [pp.id, { ...(pp.meta ?? {}) }]),
@@ -127,7 +125,7 @@ const updatePlatformMeta = (platformId: string, meta: Record<string, any>) => {
     platformMeta.value = { ...platformMeta.value, [platformId]: meta };
 };
 
-// Per-platform content_type (Instagram Feed/Reel/Story, Facebook Post/Reel/Story, etc.)
+// Per-platform content_type (Facebook Post/Reel/Story, TikTok Video/Photo, etc.)
 const platformContentTypes = ref<Record<string, string>>(
     Object.fromEntries(
         post.value.post_platforms.map((pp) => [pp.id, pp.content_type ?? '']),
@@ -449,7 +447,6 @@ usePostEcho(post.value.id, '.post.platform.status.updated', () => {
                             :platform-issues="platformIssues"
                             :platform-configs="platformConfigs"
                             :tiktok-creator-infos="tiktokCreatorInfos"
-                            :pinterest-boards="pinterestBoards"
                             :is-read-only="isLocked"
                             :posted-at="scheduledDateTime || null"
                             @toggle-platform="togglePlatform"

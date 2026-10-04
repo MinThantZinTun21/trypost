@@ -251,7 +251,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
 
     /**
      * Mirrors `formatBytes` in useMedia.ts: a cap declared in decimal megabytes
-     * (Bluesky) renders both numbers in decimal units — "300 MB", not "286 MB".
+     * renders both numbers in decimal units — "300 MB", not "286 MB".
      */
     private function formatBytes(int $bytes, int $cap, int $precision = 0): string
     {
@@ -261,7 +261,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     }
 
     /**
-     * A cap built with ContentType::bytesFromDecimalMb(): a whole number of
+     * A cap declared in decimal megabytes: a whole number of
      * megabytes that is not also a whole number of mebibytes.
      */
     private function isDecimalCap(int $cap): bool

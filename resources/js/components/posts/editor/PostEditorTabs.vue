@@ -5,7 +5,6 @@ import PreviewTab from '@/components/posts/editor/PreviewTab.vue';
 import ScheduleTab from '@/components/posts/editor/ScheduleTab.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { PlatformIssue } from '@/composables/usePostCompliance';
-import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
@@ -63,7 +62,6 @@ const props = defineProps<{
     platformIssues: Record<string, PlatformIssue>;
     platformConfigs: Record<string, any>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
-    pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     isReadOnly: boolean;
     postedAt?: string | null;
 }>();
@@ -133,7 +131,6 @@ const previewablePlatforms = computed(() =>
                 :platform-content-types="platformContentTypes"
                 :platform-issues="platformIssues"
                 :tiktok-creator-infos="tiktokCreatorInfos"
-                :pinterest-boards="pinterestBoards"
                 :media="media"
                 @toggle-platform="(id) => emit('toggle-platform', id)"
                 @update:platform-meta="

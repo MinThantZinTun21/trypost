@@ -14,7 +14,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->socialAccount = SocialAccount::factory()->linkedin()->create([
+    $this->socialAccount = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $this->workspace->id,
     ]);
     $this->post = Post::factory()->create([
@@ -22,7 +22,7 @@ beforeEach(function () {
         'user_id' => $this->user->id,
         'status' => PostStatus::Scheduled,
     ]);
-    $this->postPlatform = PostPlatform::factory()->linkedin()->create([
+    $this->postPlatform = PostPlatform::factory()->facebook()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $this->socialAccount->id,
     ]);

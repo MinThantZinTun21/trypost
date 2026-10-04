@@ -33,7 +33,6 @@ import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
-import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
 import {
@@ -95,12 +94,9 @@ const openPreview = (item: MediaItem) => {
     );
 };
 
-/** What each network will actually receive — X publishes its links defused. */
-const { contentFor } = useXLinkDefuser();
-
 const limitsWithUsage = computed(() =>
     props.platformLimits.map((p) => {
-        const used = contentFor(content.value, p.platform).length;
+        const used = content.value.length;
         const ratio = p.maxLength > 0 ? used / p.maxLength : 0;
         const state = ratio > 1 ? 'over' : ratio >= 0.9 ? 'warn' : 'ok';
         return { ...p, used, state };
@@ -114,23 +110,10 @@ const limitClass = (state: string): string => {
     return 'border-foreground bg-card text-foreground';
 };
 
-/**
- * The limit expressed against the draft the user is typing. When a network rewrites
- * the text before publishing, the allowance in draft characters shifts by whatever
- * the rewrite adds or removes, so the highlight lands on the text that truly spills.
- */
 const smallestLimit = computed(() => {
     if (props.platformLimits.length === 0) return null;
 
-    const draftLength = content.value.length;
-
-    return Math.min(
-        ...props.platformLimits.map(
-            (p) =>
-                p.maxLength +
-                (draftLength - contentFor(content.value, p.platform).length),
-        ),
-    );
+    return Math.min(...props.platformLimits.map((p) => p.maxLength));
 });
 
 const overflowParts = computed(() => {

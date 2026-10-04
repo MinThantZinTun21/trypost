@@ -112,18 +112,18 @@ test('notificationLabel falls back to display name when username is empty', func
 });
 
 test('notificationLabel uses username when display name is empty', function () {
-    $account = SocialAccount::factory()->bluesky()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
-        'username' => 'inboxplacementio.bsky.social',
+        'username' => 'inboxplacementio',
         'display_name' => '',
     ]);
-    $postPlatform = PostPlatform::factory()->bluesky()->create([
+    $postPlatform = PostPlatform::factory()->tiktok()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $account->id,
         'platform' => $account->platform,
     ]);
 
-    expect($postPlatform->notificationLabel())->toBe('Bluesky (@inboxplacementio.bsky.social)');
+    expect($postPlatform->notificationLabel())->toBe('TikTok (@inboxplacementio)');
 });
 
 test('notificationLabel omits empty parentheses when both identifiers are missing', function () {

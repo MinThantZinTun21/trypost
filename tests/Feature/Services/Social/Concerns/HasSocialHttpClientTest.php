@@ -82,14 +82,14 @@ it('returns successful response normally', function () {
 test('validateContentLength passes when content is within limit', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $socialAccount = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => str_repeat('a', 100)]);
 
     $postPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id,
         'social_account_id' => $socialAccount->id,
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
+        'platform' => Platform::TikTok,
+        'content_type' => ContentType::TikTokVideo,
     ]);
 
     expect(fn () => $this->client->callValidateContentLength($postPlatform))->not->toThrow(Exception::class);
@@ -98,16 +98,16 @@ test('validateContentLength passes when content is within limit', function () {
 test('validateContentLength throws when content exceeds limit', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $socialAccount = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => str_repeat('a', 4000)]);
 
     $postPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id,
         'social_account_id' => $socialAccount->id,
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
+        'platform' => Platform::TikTok,
+        'content_type' => ContentType::TikTokVideo,
     ]);
 
     expect(fn () => $this->client->callValidateContentLength($postPlatform))
-        ->toThrow(Exception::class, '3000');
+        ->toThrow(Exception::class, '2200');
 });

@@ -9,8 +9,6 @@ test('a finished target counts toward settling the parent post', function (Statu
 })->with([
     [Status::Published, true],
     [Status::Failed, true],
-    [Status::Rejected, true],
-    [Status::PendingReview, false],
     [Status::Pending, false],
     [Status::Publishing, false],
     [Status::Retrying, false],
@@ -21,8 +19,6 @@ test('a closed target must not be published again', function (Status $status, bo
 })->with([
     [Status::Published, true],
     [Status::Failed, true],
-    [Status::Rejected, true],
-    [Status::PendingReview, true],
     [Status::Pending, false],
     [Status::Publishing, false],
     [Status::Retrying, false],

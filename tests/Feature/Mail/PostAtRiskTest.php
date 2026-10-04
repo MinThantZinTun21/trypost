@@ -10,7 +10,7 @@ use App\Models\Workspace;
 
 test('renders subject and body listing the at-risk account and its post times', function () {
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->setTime(14, 30),
@@ -31,7 +31,7 @@ test('renders subject and body listing the at-risk account and its post times', 
 
 test('renders plural subject and postsLabel when multiple posts are at risk', function () {
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
 
     $postPlatformIds = collect([
         ['time' => [14, 30]],
@@ -57,17 +57,17 @@ test('renders plural subject and postsLabel when multiple posts are at risk', fu
 
 test('groups post_platforms by account when rehydrating for send', function () {
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
-    $threadsAccount = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $youtubeAccount = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $facebookAccount = SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
 
-    $threadsPost = Post::factory()->scheduled()->create([
+    $youtubePost = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->setTime(9, 0),
     ]);
-    $threadsPostPlatform = PostPlatform::factory()->create([
-        'post_id' => $threadsPost->id,
-        'social_account_id' => $threadsAccount->id,
-        'platform' => $threadsAccount->platform,
+    $youtubePostPlatform = PostPlatform::factory()->create([
+        'post_id' => $youtubePost->id,
+        'social_account_id' => $youtubeAccount->id,
+        'platform' => $youtubeAccount->platform,
     ]);
 
     $facebookPost = Post::factory()->scheduled()->create([
@@ -80,7 +80,7 @@ test('groups post_platforms by account when rehydrating for send', function () {
         'platform' => $facebookAccount->platform,
     ]);
 
-    $mailable = new PostAtRisk($workspace, [$threadsPostPlatform->id, $facebookPostPlatform->id], 2);
+    $mailable = new PostAtRisk($workspace, [$youtubePostPlatform->id, $facebookPostPlatform->id], 2);
 
     $mailable->assertHasSubject('2 posts are at risk in Acme Co');
     $mailable->assertSeeInHtml('1 post scheduled: 09:00 UTC');
@@ -89,7 +89,7 @@ test('groups post_platforms by account when rehydrating for send', function () {
 
 test('only carries the workspace, post_platform IDs, and count on the queue payload, not full model graphs', function () {
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->youtube()->create([
         'workspace_id' => $workspace->id,
         'access_token' => 'super-secret-token-value',
     ]);
@@ -115,7 +115,7 @@ test('only carries the workspace, post_platform IDs, and count on the queue payl
 
 test('footer links to notification preferences instead of an unsubscribe link', function () {
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->setTime(14, 30),
@@ -135,7 +135,7 @@ test('footer links to notification preferences instead of an unsubscribe link', 
 
 test('subject and previewText stay locked to the dispatch-time count even if a row disappears before send', function () {
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->setTime(14, 30),
@@ -169,7 +169,7 @@ test('renders without crashing when none of the post_platform ids resolve', func
 
 test('renders without crashing when the account is deleted before send', function () {
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->setTime(14, 30),

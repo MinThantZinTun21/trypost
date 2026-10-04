@@ -18,9 +18,8 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  * pass them in — keeps the rule decoupled from the FormRequest payload shape.
  *
  * Each platform is measured against its own sanitized content, matching what the
- * publisher will actually send: the editor stores HTML, and per-platform rules
- * (X link defusing, Telegram entity escaping) change the length again. Measuring
- * the raw draft would block saving a post that publishes fine, and vice versa.
+ * publisher will actually send: the editor stores HTML, which the sanitizer
+ * strips. Measuring the raw draft would block saving a post that publishes fine.
  */
 class ContentFitsPlatformLimits implements ValidationRule
 {

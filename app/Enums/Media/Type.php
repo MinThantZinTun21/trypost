@@ -30,15 +30,12 @@ enum Type: string
      * if PHP reports `video/quicktime`. Accepting MOV avoids forcing
      * iPhone users to transcode before uploading.
      *
-     * WebM is rejected: X / IG / FB / Pinterest / Threads refuse the
-     * Matroska + VP8/VP9 stack outright, and only TikTok and Bluesky
-     * would transcode it. Without server-side transcoding, accepting
-     * WebM would just produce platform-specific publish failures.
+     * WebM is rejected: Facebook refuses the Matroska + VP8/VP9 stack
+     * outright. Without server-side transcoding, accepting WebM would
+     * just produce platform-specific publish failures.
      *
-     * Document accepts PDF only — the swipeable LinkedIn document
-     * (carousel) format. PPTX/DOCX are also valid LinkedIn documents
-     * but are converted server-side by LinkedIn and lose fonts, so we
-     * keep the surface to PDF.
+     * Document accepts PDF only. No kept platform publishes documents;
+     * the type stays so existing library assets still classify.
      *
      * @return array<int, string>
      */

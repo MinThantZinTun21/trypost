@@ -26,10 +26,6 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
-
-        $middleware->preventRequestForgery(except: [
-            'telegram/webhook',
-        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->renderable(function (TooManyRequestsHttpException $e, Request $request) {

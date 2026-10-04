@@ -18,13 +18,11 @@ function runMediaRule(string $contentType, array $media): array
 }
 
 test('passes when content type does not require media and none provided', function () {
-    expect(runMediaRule(ContentType::LinkedInPost->value, []))->toBe([]);
     expect(runMediaRule(ContentType::FacebookPost->value, []))->toBe([]);
-    expect(runMediaRule(ContentType::XPost->value, []))->toBe([]);
 });
 
 test('fails when content type requires media and none provided', function () {
-    $errors = runMediaRule(ContentType::InstagramReel->value, []);
+    $errors = runMediaRule(ContentType::FacebookReel->value, []);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('requires at least one image or video');
@@ -42,7 +40,7 @@ test('fails when content type does not support images and an image is present', 
 test('fails when content type does not support video and a video is present', function () {
     $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4']];
 
-    $errors = runMediaRule(ContentType::PinterestPin->value, $media);
+    $errors = runMediaRule(ContentType::TikTokPhoto->value, $media);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('does not accept videos');
@@ -59,7 +57,7 @@ test('youtube short rejects images', function () {
 test('passes when image-only content type receives an image', function () {
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/png']];
 
-    expect(runMediaRule(ContentType::PinterestPin->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::TikTokPhoto->value, $media))->toBe([]);
 });
 
 test('passes when video-only content type receives a video', function () {
@@ -67,7 +65,7 @@ test('passes when video-only content type receives a video', function () {
 
     expect(runMediaRule(ContentType::TikTokVideo->value, $media))->toBe([]);
     expect(runMediaRule(ContentType::YouTubeShort->value, $media))->toBe([]);
-    expect(runMediaRule(ContentType::InstagramReel->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::FacebookReel->value, $media))->toBe([]);
     expect(runMediaRule(ContentType::FacebookStory->value, $media))->toBe([]);
 });
 
@@ -80,12 +78,6 @@ test('facebook story rejects images', function () {
     expect($errors[0])->toContain('accepts only videos');
 });
 
-test('instagram story accepts images', function () {
-    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg']];
-
-    expect(runMediaRule(ContentType::InstagramStory->value, $media))->toBe([]);
-});
-
 test('detects media type from mime when type field is missing', function () {
     $media = [['mime_type' => 'image/jpeg']];
 
@@ -96,10 +88,10 @@ test('detects media type from mime when type field is missing', function () {
 
 test('detects media type from the filename when both type and mime are missing', function () {
     // Same fallback as MediaItem::fromArray(): a video is measured against the video cap, not the image one.
-    $overVideoCap = ContentType::MastodonPost->maxVideoBytes() + 1;
+    $overVideoCap = ContentType::TikTokVideo->maxVideoBytes() + 1;
 
-    $byPath = runMediaRule(ContentType::MastodonPost->value, [['path' => 'medias/clip.mp4', 'size' => $overVideoCap]]);
-    $byName = runMediaRule(ContentType::MastodonPost->value, [['original_filename' => 'Clip.MOV', 'size' => $overVideoCap]]);
+    $byPath = runMediaRule(ContentType::TikTokVideo->value, [['path' => 'medias/clip.mp4', 'size' => $overVideoCap]]);
+    $byName = runMediaRule(ContentType::TikTokVideo->value, [['original_filename' => 'Clip.MOV', 'size' => $overVideoCap]]);
     $imageOnly = runMediaRule(ContentType::TikTokVideo->value, [['path' => 'medias/photo.png']]);
 
     expect($byPath)->toHaveCount(1)->and($byPath[0])->toContain('Video exceeds')
@@ -112,81 +104,47 @@ test('an explicit type wins over a contradicting mime', function () {
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'video/mp4']];
 
     expect(runMediaRule(ContentType::TikTokVideo->value, $media))->toHaveCount(1)
-        ->and(runMediaRule(ContentType::InstagramStory->value, $media))->toBe([]);
+        ->and(runMediaRule(ContentType::TikTokPhoto->value, $media))->toBe([]);
 });
 
-test('bluesky rejects an image and a video in the same post', function () {
-    $media = [
-        ['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg'],
-        ['type' => MediaType::Video->value, 'mime_type' => 'video/mp4'],
-    ];
+test('every content type accepts a mov video', function (ContentType $type) {
+    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/quicktime']];
 
-    $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
+    expect(runMediaRule($type->value, $media))->toBe([]);
+})->with([
+    ContentType::FacebookPost,
+    ContentType::FacebookReel,
+    ContentType::TikTokVideo,
+    ContentType::YouTubeShort,
+]);
+
+test('a gif is rejected on every content type', function (ContentType $type) {
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
+
+    $errors = runMediaRule($type->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain("can't be combined in the same post");
-});
-
-test('bluesky still accepts an image-only or video-only post', function () {
-    $image = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg']];
-    $video = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4']];
-
-    expect(runMediaRule(ContentType::BlueskyPost->value, $image))->toBe([]);
-    expect(runMediaRule(ContentType::BlueskyPost->value, $video))->toBe([]);
-});
-
-test('bluesky accepts a mov video', function () {
-    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/quicktime']];
-
-    expect(runMediaRule(ContentType::BlueskyPost->value, $media))->toBe([]);
-});
-
-test('bluesky accepts a mov video identified only by filename', function () {
-    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mov']];
-
-    expect(runMediaRule(ContentType::BlueskyPost->value, $media))->toBe([]);
-});
-
-test('x still accepts a mov video', function () {
-    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/quicktime']];
-
-    expect(runMediaRule(ContentType::XPost->value, $media))->toBe([]);
-});
-
-test('a gif is rejected on content types that do not accept gifs', function () {
-    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
-
-    foreach ([ContentType::InstagramFeed, ContentType::LinkedInPost, ContentType::PinterestPin, ContentType::FacebookPost, ContentType::GoogleBusinessPost] as $type) {
-        $errors = runMediaRule($type->value, $media);
-
-        expect($errors)->toHaveCount(1, $type->value);
-        expect($errors[0])->toContain('does not accept GIF');
-    }
-});
-
-test('a gif passes on content types that accept gifs', function () {
-    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
-
-    foreach ([ContentType::XPost, ContentType::BlueskyPost, ContentType::MastodonPost, ContentType::DiscordMessage, ContentType::TelegramPost] as $type) {
-        expect(runMediaRule($type->value, $media))->toBe([], $type->value);
-    }
-});
+    expect($errors[0])->toContain('does not accept GIF');
+})->with([
+    ContentType::FacebookPost,
+    ContentType::TikTokPhoto,
+]);
 
 test('an image over the content type cap is rejected by size', function () {
-    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg', 'size' => 5 * 1024 * 1024 + 1]];
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg', 'size' => 4 * 1024 * 1024 + 1]];
 
-    $errors = runMediaRule(ContentType::XPost->value, $media);
+    $errors = runMediaRule(ContentType::FacebookPost->value, $media);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('Image exceeds the');
-    expect($errors[0])->toContain('5 MB');
+    expect($errors[0])->toContain('4 MB');
 });
 
 test('a kind violation is reported alone and is not overwritten by a size violation on the same item', function () {
-    // A 6 MB GIF on LinkedIn breaks two rules; the root cause ("does not accept GIF") must be the one message.
+    // A 6 MB GIF on Facebook breaks two rules; the root cause ("does not accept GIF") must be the one message.
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif', 'size' => 6 * 1024 * 1024]];
 
-    $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
+    $errors = runMediaRule(ContentType::FacebookPost->value, $media);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('GIF');
@@ -196,69 +154,43 @@ test('an item that cannot be classified is not measured against any cap', functi
     // An API `url`-only entry before download: no type, mime or filename, but a stray size.
     $media = [['url' => 'https://example.com/asset', 'size' => 999_999_999]];
 
-    expect(runMediaRule(ContentType::XPost->value, $media))->toBe([]);
-});
-
-test('bluesky does not cap the original image because the publisher re-encodes it under the blob limit', function () {
-    // A phone JPEG well over Bluesky's 2 MB blob limit published fine before caps existed; it must still schedule.
-    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg', 'size' => 8 * 1024 * 1024]];
-
-    expect(runMediaRule(ContentType::BlueskyPost->value, $media))->toBe([]);
-});
-
-test('decimal caps are reported in decimal units for both the cap and the file', function () {
-    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'size' => 305_000_000]];
-
-    $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
-
-    expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('300 MB limit for this post type (yours is 305.0 MB)');
+    expect(runMediaRule(ContentType::FacebookPost->value, $media))->toBe([]);
 });
 
 test('binary caps keep binary units', function () {
-    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'size' => 320 * 1024 * 1024]];
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg', 'size' => 5 * 1024 * 1024]];
 
-    $errors = runMediaRule(ContentType::InstagramReel->value, $media);
+    $errors = runMediaRule(ContentType::FacebookPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('300 MB limit for this post type (yours is 320.0 MB)');
+    expect($errors[0])->toContain('4 MB limit for this post type (yours is 5.0 MB)');
 });
 
 test('an image exactly at the content type cap passes', function () {
-    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg', 'size' => 5 * 1024 * 1024]];
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg', 'size' => 4 * 1024 * 1024]];
 
-    expect(runMediaRule(ContentType::XPost->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::FacebookPost->value, $media))->toBe([]);
 });
 
 test('a video over the content type cap is rejected by size', function () {
-    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'size' => 300 * 1024 * 1024 + 1]];
+    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'size' => ContentType::FacebookReel->maxVideoBytes() + 1]];
 
-    $errors = runMediaRule(ContentType::InstagramReel->value, $media);
+    $errors = runMediaRule(ContentType::FacebookReel->value, $media);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('Video exceeds the');
 });
 
-test('a pdf over the content type cap is rejected by size', function () {
-    $max = ContentType::LinkedInPost->maxDocumentBytes();
-    $media = [['type' => MediaType::Document->value, 'mime_type' => 'application/pdf', 'size' => $max + 1]];
-
-    $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
-
-    expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('PDF exceeds the');
-});
-
 test('media without a size is not checked against byte caps', function () {
     $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4']];
 
-    expect(runMediaRule(ContentType::InstagramReel->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::FacebookReel->value, $media))->toBe([]);
 });
 
 test('a video longer than the content type cap is rejected by duration', function () {
     $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'meta' => ['duration' => 61.4]]];
 
-    $errors = runMediaRule(ContentType::InstagramStory->value, $media);
+    $errors = runMediaRule(ContentType::FacebookStory->value, $media);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('allows up to 1min');
@@ -269,28 +201,8 @@ test('a video within the duration cap passes and a video without duration is not
     $within = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'meta' => ['duration' => 60]]];
     $unknown = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'meta' => []]];
 
-    expect(runMediaRule(ContentType::InstagramStory->value, $within))->toBe([]);
-    expect(runMediaRule(ContentType::InstagramStory->value, $unknown))->toBe([]);
-});
-
-test('duration is ignored on content types without a duration cap', function () {
-    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'meta' => ['duration' => 3 * 60 * 60]]];
-
-    expect(ContentType::DiscordMessage->maxVideoDurationSec())->toBeNull();
-    expect(runMediaRule(ContentType::DiscordMessage->value, $media))->toBe([]);
-});
-
-test('bluesky rejects an animated gif combined with a video', function () {
-    // A GIF counts as an image, so gif + video is still mixed media.
-    $media = [
-        ['type' => MediaType::Image->value, 'mime_type' => 'image/gif'],
-        ['type' => MediaType::Video->value, 'mime_type' => 'video/mp4'],
-    ];
-
-    $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
-
-    expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain("can't be combined in the same post");
+    expect(runMediaRule(ContentType::FacebookStory->value, $within))->toBe([]);
+    expect(runMediaRule(ContentType::FacebookStory->value, $unknown))->toBe([]);
 });
 
 test('a mixed-media content type accepts an image and a video together', function () {
@@ -299,47 +211,10 @@ test('a mixed-media content type accepts an image and a video together', functio
         ['type' => MediaType::Video->value, 'mime_type' => 'video/mp4'],
     ];
 
-    expect(runMediaRule(ContentType::DiscordMessage->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::FacebookPost->value, $media))->toBe([]);
 });
 
-test('linkedin post accepts a pdf on its own', function () {
-    $media = [['type' => MediaType::Document->value, 'mime_type' => 'application/pdf']];
-
-    expect(runMediaRule(ContentType::LinkedInPost->value, $media))->toBe([]);
-    expect(runMediaRule(ContentType::LinkedInPagePost->value, $media))->toBe([]);
-});
-
-test('linkedin post detects a pdf from mime when type field is missing', function () {
-    $media = [['mime_type' => 'application/pdf']];
-
-    expect(runMediaRule(ContentType::LinkedInPost->value, $media))->toBe([]);
-});
-
-test('a pdf must be the only attachment on linkedin', function () {
-    $media = [
-        ['type' => MediaType::Document->value, 'mime_type' => 'application/pdf'],
-        ['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg'],
-    ];
-
-    $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
-
-    expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('must be posted on its own');
-});
-
-test('linkedin rejects mixing an image and a video', function () {
-    $media = [
-        ['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg'],
-        ['type' => MediaType::Video->value, 'mime_type' => 'video/mp4'],
-    ];
-
-    $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
-
-    expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain("can't be combined in the same post");
-});
-
-test('a pdf is rejected on content types that do not support documents', function (ContentType $type) {
+test('a pdf is rejected on every content type', function (ContentType $type) {
     $media = [['type' => MediaType::Document->value, 'mime_type' => 'application/pdf']];
 
     $errors = runMediaRule($type->value, $media);
@@ -347,48 +222,35 @@ test('a pdf is rejected on content types that do not support documents', functio
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('does not accept PDF documents');
 })->with([
-    ContentType::XPost,
-    ContentType::GoogleBusinessPost,
+    ContentType::FacebookPost,
+    ContentType::TikTokPhoto,
 ]);
 
 test('falls back to stored media when the request omits the media key', function () {
-    // A PDF fallback on a document-capable type passes.
     $errors = [];
-    (new ContentTypeCompatibleWithMedia([['type' => 'document', 'mime_type' => 'application/pdf']]))
+    (new ContentTypeCompatibleWithMedia([['type' => 'image', 'mime_type' => 'image/jpeg']]))
         ->setData([]) // no 'media' key in the request -> use the fallback
-        ->validate('platforms.0.content_type', ContentType::LinkedInPost->value, function (string $message) use (&$errors): void {
-            $errors[] = $message;
-        });
-
-    expect($errors)->toBe([]);
-
-    // The same PDF fallback on X (no document support) is rejected — proving the fallback is used.
-    $xErrors = [];
-    (new ContentTypeCompatibleWithMedia([['type' => 'document', 'mime_type' => 'application/pdf']]))
-        ->setData([])
-        ->validate('platforms.0.content_type', ContentType::XPost->value, function (string $message) use (&$xErrors): void {
-            $xErrors[] = $message;
-        });
-
-    expect($xErrors)->toHaveCount(1);
-    expect($xErrors[0])->toContain('does not accept PDF documents');
-});
-
-test('request media takes precedence over the stored fallback', function () {
-    // Fallback is a lone PDF (would pass), but the request carries a PDF + image,
-    // which must be rejected — proving the request media is used over the fallback.
-    $errors = [];
-    (new ContentTypeCompatibleWithMedia([['type' => 'document', 'mime_type' => 'application/pdf']]))
-        ->setData(['media' => [
-            ['type' => 'document', 'mime_type' => 'application/pdf'],
-            ['type' => 'image', 'mime_type' => 'image/jpeg'],
-        ]])
-        ->validate('platforms.0.content_type', ContentType::LinkedInPost->value, function (string $message) use (&$errors): void {
+        ->validate('platforms.0.content_type', ContentType::TikTokVideo->value, function (string $message) use (&$errors): void {
             $errors[] = $message;
         });
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('must be posted on its own');
+    expect($errors[0])->toContain('accepts only videos');
+});
+
+test('request media takes precedence over the stored fallback', function () {
+    // Fallback is an image (would fail on a video-only type), but the request
+    // carries a video, which passes — proving the request media is used.
+    $errors = [];
+    (new ContentTypeCompatibleWithMedia([['type' => 'image', 'mime_type' => 'image/jpeg']]))
+        ->setData(['media' => [
+            ['type' => 'video', 'mime_type' => 'video/mp4'],
+        ]])
+        ->validate('platforms.0.content_type', ContentType::TikTokVideo->value, function (string $message) use (&$errors): void {
+            $errors[] = $message;
+        });
+
+    expect($errors)->toBe([]);
 });
 
 test('does nothing for invalid content type values', function () {

@@ -59,7 +59,7 @@ test('execute skips platform rows whose social account was removed', function ()
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $liveAccount = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::X,
+        'platform' => Platform::Facebook,
         'display_name' => 'Live Account',
         'username' => 'live_user',
     ]);
@@ -70,7 +70,7 @@ test('execute skips platform rows whose social account was removed', function ()
         'status' => PostStatus::Published,
     ]);
 
-    PostPlatform::factory()->x()->published()->create([
+    PostPlatform::factory()->facebook()->published()->create([
         'post_id' => $original->id,
         'social_account_id' => $liveAccount->id,
         'platform_name' => 'Live Account',
@@ -95,7 +95,7 @@ test('execute skips platform rows whose social account was removed', function ()
 
     expect($copiedPlatforms)->toHaveCount(1)
         ->and($copiedPlatforms->first()->social_account_id)->toBe($liveAccount->id)
-        ->and($copiedPlatforms->first()->platform)->toBe(Platform::X)
+        ->and($copiedPlatforms->first()->platform)->toBe(Platform::Facebook)
         ->and($copiedPlatforms->first()->platform_name)->toBe('Live Account')
         ->and($copiedPlatforms->first()->status)->toBe(PostPlatformStatus::Pending)
         ->and($copiedPlatforms->first()->enabled)->toBeTrue();

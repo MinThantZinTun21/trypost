@@ -29,42 +29,29 @@ function runMatchesPlatformRule(string $contentType, ?string $accountId, array $
 
 test('passes when content_type matches the social account platform', function () {
     $workspace = Workspace::factory()->create();
-    $linkedin = SocialAccount::factory()->create([
+    $facebook = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::LinkedIn,
+        'platform' => Platform::Facebook,
     ]);
 
-    expect(runMatchesPlatformRule(ContentType::LinkedInPost->value, $linkedin->id))->toBe([]);
+    expect(runMatchesPlatformRule(ContentType::FacebookPost->value, $facebook->id))->toBe([]);
 });
 
 test('fails when content_type belongs to a different platform', function () {
     $workspace = Workspace::factory()->create();
-    $linkedin = SocialAccount::factory()->create([
+    $facebook = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::LinkedIn,
+        'platform' => Platform::Facebook,
     ]);
 
-    $errors = runMatchesPlatformRule(ContentType::XPost->value, $linkedin->id);
+    $errors = runMatchesPlatformRule(ContentType::TikTokVideo->value, $facebook->id);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('not compatible');
 });
 
-test('passes when an instagram content_type is paired with an instagram-facebook account', function () {
-    $workspace = Workspace::factory()->create();
-    $igFacebook = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
-        'platform' => Platform::InstagramFacebook,
-    ]);
-
-    // instagram_feed lists Instagram as its primary platform but is also
-    // compatible with InstagramFacebook accounts via compatiblePlatforms().
-    expect(runMatchesPlatformRule(ContentType::InstagramFeed->value, $igFacebook->id))->toBe([]);
-    expect(runMatchesPlatformRule(ContentType::InstagramReel->value, $igFacebook->id))->toBe([]);
-});
-
 test('skips validation when social_account_id is missing', function () {
-    expect(runMatchesPlatformRule(ContentType::XPost->value, null))->toBe([]);
+    expect(runMatchesPlatformRule(ContentType::TikTokVideo->value, null))->toBe([]);
 });
 
 test('skips validation without querying the database when social_account_id is not a uuid', function () {
@@ -72,17 +59,17 @@ test('skips validation without querying the database when social_account_id is n
     // placeholder string) must not reach SocialAccount::find(), which throws
     // a QueryException on Postgres for invalid uuid input instead of
     // returning no rows.
-    expect(runMatchesPlatformRule(ContentType::XPost->value, 'threads-account'))->toBe([]);
+    expect(runMatchesPlatformRule(ContentType::TikTokVideo->value, 'tiktok-account'))->toBe([]);
 });
 
 test('skips validation when content_type is not a known enum value', function () {
     $workspace = Workspace::factory()->create();
-    $linkedin = SocialAccount::factory()->create([
+    $facebook = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::LinkedIn,
+        'platform' => Platform::Facebook,
     ]);
 
     // Unknown content_types are caught by Rule::in elsewhere; this rule
     // intentionally no-ops so it doesn't double-report.
-    expect(runMatchesPlatformRule('completely_made_up', $linkedin->id))->toBe([]);
+    expect(runMatchesPlatformRule('completely_made_up', $facebook->id))->toBe([]);
 });

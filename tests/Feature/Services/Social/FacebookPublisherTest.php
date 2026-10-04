@@ -685,7 +685,7 @@ test('facebook publisher throws token expired exception on session expired subco
 });
 
 test('facebook publisher throws exception for unsupported content type', function () {
-    $this->postPlatform->update(['content_type' => ContentType::InstagramFeed]);
+    $this->postPlatform->update(['content_type' => ContentType::TikTokVideo]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(Exception::class, 'Unsupported Facebook content type');

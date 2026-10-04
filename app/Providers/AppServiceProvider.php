@@ -13,9 +13,6 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Socialite\DiscordProvider;
-use App\Socialite\InstagramProvider;
-use App\Socialite\LinkedInPageExtendSocialite;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -25,12 +22,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-use Laravel\Socialite\Facades\Socialite;
-use Laravel\Socialite\Two\GoogleProvider;
 use SocialiteProviders\Facebook\FacebookExtendSocialite;
-use SocialiteProviders\LinkedIn\LinkedInExtendSocialite;
 use SocialiteProviders\Manager\SocialiteWasCalled;
-use SocialiteProviders\Pinterest\PinterestExtendSocialite;
 use SocialiteProviders\TikTok\TikTokExtendSocialite;
 
 class AppServiceProvider extends ServiceProvider
@@ -62,30 +55,7 @@ class AppServiceProvider extends ServiceProvider
 
     protected function configureSocialite(): void
     {
-        // Google Business Profile — dedicated app, separate from 'google' (YouTube).
-        Socialite::extend('google-business', function ($app) {
-            $config = $app['config']['services.google-business'];
-
-            return Socialite::buildProvider(GoogleProvider::class, $config);
-        });
-
-        // Instagram Business Login
-        Socialite::extend('instagram', function ($app) {
-            $config = $app['config']['services.instagram'];
-
-            return Socialite::buildProvider(InstagramProvider::class, $config);
-        });
-
-        Socialite::extend('discord', function ($app) {
-            $config = $app['config']['services.discord'];
-
-            return Socialite::buildProvider(DiscordProvider::class, $config);
-        });
-
         Event::listen(SocialiteWasCalled::class, FacebookExtendSocialite::class);
-        Event::listen(SocialiteWasCalled::class, LinkedInExtendSocialite::class);
-        Event::listen(SocialiteWasCalled::class, LinkedInPageExtendSocialite::class);
-        Event::listen(SocialiteWasCalled::class, PinterestExtendSocialite::class);
         Event::listen(SocialiteWasCalled::class, TikTokExtendSocialite::class);
     }
 

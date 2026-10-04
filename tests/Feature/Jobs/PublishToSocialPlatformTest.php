@@ -2,11 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\GoogleBusiness\LocalPostState;
-use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\Notification\Type;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
@@ -15,8 +12,7 @@ use App\Enums\UserWorkspace\Role;
 use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
-use App\Exceptions\Social\InstagramPublishException;
-use App\Exceptions\Social\LinkedInPublishException;
+use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\SendNotification;
@@ -28,10 +24,6 @@ use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\FacebookPublisher;
-use App\Services\Social\LinkedInPagePublisher;
-use App\Services\Social\LinkedInPublisher;
-use App\Services\Social\PinterestPublisher;
-use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Log\Events\MessageLogged;
@@ -45,20 +37,19 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Sleep;
 
 beforeEach(function () {
     Mail::fake();
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->socialAccount = SocialAccount::factory()->linkedin()->create([
+    $this->socialAccount = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $this->workspace->id,
     ]);
     $this->post = Post::factory()->scheduled()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
-    $this->postPlatform = PostPlatform::factory()->linkedin()->create([
+    $this->postPlatform = PostPlatform::factory()->facebook()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $this->socialAccount->id,
         'enabled' => true,
@@ -68,13 +59,13 @@ beforeEach(function () {
 test('publish to social platform marks platform as publishing', function () {
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andReturn([
         'id' => 'post-123',
-        'url' => 'https://linkedin.com/post/123',
+        'url' => 'https://facebook.com/post/123',
     ]);
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -84,115 +75,29 @@ test('publish to social platform marks platform as publishing', function () {
 test('publish to social platform marks platform as published on success', function () {
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andReturn([
         'id' => 'post-123',
-        'url' => 'https://linkedin.com/post/123',
+        'url' => 'https://facebook.com/post/123',
     ]);
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
     $this->postPlatform->refresh();
     expect($this->postPlatform->status)->toBe(PlatformStatus::Published);
     expect($this->postPlatform->platform_post_id)->toBe('post-123');
-    expect($this->postPlatform->platform_url)->toBe('https://linkedin.com/post/123');
-});
-
-test('publish job dispatches a linkedin-page post to the page publisher', function () {
-    Event::fake();
-
-    $workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $pageAccount = SocialAccount::factory()->linkedinPage()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $pagePostPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $pageAccount->id,
-        'platform' => Platform::LinkedInPage,
-        'content_type' => ContentType::LinkedInPagePost,
-        'enabled' => true,
-    ]);
-
-    $publisher = Mockery::mock(LinkedInPagePublisher::class);
-    $publisher->shouldReceive('publish')->once()->andReturn([
-        'id' => 'org-post-1',
-        'url' => 'https://linkedin.com/company/post/1',
-    ]);
-    $this->app->instance(LinkedInPagePublisher::class, $publisher);
-
-    (new PublishToSocialPlatform($pagePostPlatform))->handle();
-
-    $pagePostPlatform->refresh();
-    expect($pagePostPlatform->status)->toBe(PlatformStatus::Published);
-    expect($pagePostPlatform->platform_post_id)->toBe('org-post-1');
-});
-
-test('publish job runs the real document flow end-to-end for a LinkedIn PDF post', function () {
-    Event::fake();
-
-    // Real publisher (no mock) — exercise the full job -> getPublisher -> publishDocument chain.
-    $this->socialAccount->update([
-        'platform_user_id' => 'person-xyz',
-        'token_expires_at' => now()->addDays(60),
-    ]);
-    $this->postPlatform->update(['content_type' => ContentType::LinkedInPost]);
-    $this->post->update([
-        'content' => 'Our deck',
-        'media' => [[
-            'id' => 'doc-1', 'path' => 'media/deck.pdf', 'url' => 'https://example.com/deck.pdf',
-            'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
-        ]],
-    ]);
-
-    $uploadUrl = 'https://www.linkedin.com/dms-uploads/document/e2e';
-
-    Http::fake(function ($request) use ($uploadUrl) {
-        $url = $request->url();
-
-        if (str_contains($url, '/rest/documents') && str_contains($url, 'initializeUpload')) {
-            return Http::response(['value' => ['uploadUrl' => $uploadUrl, 'document' => 'urn:li:document:E2E']], 200);
-        }
-
-        if ($url === $uploadUrl) {
-            return Http::response(null, 201);
-        }
-
-        if (str_contains($url, '/rest/documents/')) {
-            return Http::response(['status' => 'AVAILABLE'], 200);
-        }
-
-        if (str_contains($url, '/rest/posts')) {
-            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:e2e']);
-        }
-
-        return Http::response('fake-pdf-bytes', 200);
-    });
-
-    (new PublishToSocialPlatform($this->postPlatform))->handle();
-
-    $this->postPlatform->refresh();
-    expect($this->postPlatform->status)->toBe(PlatformStatus::Published);
-    expect($this->postPlatform->platform_post_id)->toBe('urn:li:share:e2e');
-
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/documents') && str_contains($request->url(), 'initializeUpload'));
-    Http::assertSent(function ($request) {
-        return str_contains($request->url(), '/rest/posts')
-            && data_get($request->data(), 'content.media.id') === 'urn:li:document:E2E'
-            && data_get($request->data(), 'content.media.title') === 'deck.pdf';
-    });
+    expect($this->postPlatform->platform_url)->toBe('https://facebook.com/post/123');
 });
 
 test('publish to social platform marks platform as failed on error', function () {
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new Exception('API Error'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -204,46 +109,46 @@ test('publish to social platform marks platform as failed on error', function ()
 test('publish keeps the vetted user message from a publish exception', function () {
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
-    $publisher->shouldReceive('publish')->andThrow(new LinkedInPublishException(
-        userMessage: 'LinkedIn rejected this post.',
+    $publisher = Mockery::mock(FacebookPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new FacebookPublishException(
+        userMessage: 'Facebook rejected this post.',
         category: ErrorCategory::ContentPolicy,
     ));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
     $this->postPlatform->refresh();
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
-    expect($this->postPlatform->error_message)->toBe('LinkedIn rejected this post.');
+    expect($this->postPlatform->error_message)->toBe('Facebook rejected this post.');
 });
 
-test('publish reports caught publish exceptions so the exception handler sees them', function (LinkedInPublishException $exception) {
+test('publish reports caught publish exceptions so the exception handler sees them', function (FacebookPublishException $exception) {
     Event::fake();
     Exceptions::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow($exception);
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
     Exceptions::assertReportedCount(1);
-    Exceptions::assertReported(LinkedInPublishException::class);
+    Exceptions::assertReported(FacebookPublishException::class);
     $this->postPlatform->refresh();
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
         ->and($this->postPlatform->error_message)->toBe($exception->userMessage);
 })->with([
-    'server error' => fn () => new LinkedInPublishException(
-        userMessage: 'LinkedIn could not process the media.',
+    'server error' => fn () => new FacebookPublishException(
+        userMessage: 'Facebook could not process the media.',
         category: ErrorCategory::ServerError,
         platformErrorCode: 'media-processing-timeout',
         rawResponse: '{"status":"ERROR"}',
     ),
-    'content policy' => fn () => new LinkedInPublishException(
-        userMessage: 'LinkedIn rejected this post.',
+    'content policy' => fn () => new FacebookPublishException(
+        userMessage: 'Facebook rejected this post.',
         category: ErrorCategory::ContentPolicy,
     ),
 ]);
@@ -252,10 +157,10 @@ test('publish reports unexpected errors so the exception handler sees them', fun
     Event::fake();
     Exceptions::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TypeError('API Error'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -270,10 +175,10 @@ test('publish reports token expiry so the exception handler sees it', function (
     Exceptions::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TokenExpiredException('Token expired', '401'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -286,9 +191,9 @@ test('publish reports a failed token refresh once', function () {
     Exceptions::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TokenExpiredException('Token expired', '190'));
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     $verifier = Mockery::mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')->andThrow(new TokenExpiredException('Refresh failed'));
@@ -307,11 +212,11 @@ test('publish does not report a platform-unavailable retry', function () {
     Exceptions::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn 503', 503)
+        new PlatformUnavailableException('Facebook 503', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -337,15 +242,15 @@ test('publish log includes media so logs can tell a CDN miss from an API rejecti
         $logs[] = $event;
     });
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new InstagramPublishException(
-            userMessage: 'Instagram media processing failed',
+        new FacebookPublishException(
+            userMessage: 'Facebook media processing failed',
             category: ErrorCategory::ServerError,
             rawResponse: '{"status":"ERROR","detail":"download failed"}',
         )
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
 
@@ -355,12 +260,12 @@ test('publish log includes media so logs can tell a CDN miss from an API rejecti
 
     expect($entry)->not->toBeNull()
         ->and($entry->level)->toBe('error')
-        ->and(data_get($entry->context, 'platform'))->toBe('linkedin')
+        ->and(data_get($entry->context, 'platform'))->toBe('facebook')
         ->and(data_get($entry->context, 'media.0.url'))->toBe('https://cdn.trypost.it/media/2026-01/clip.mp4')
         ->and(data_get($entry->context, 'media.0.mime_type'))->toBe('video/mp4')
         ->and(data_get($entry->context, 'media.0.size'))->toBe(4_194_304)
         ->and(data_get($entry->context, 'media.0.type'))->toBe('video')
-        ->and(data_get($entry->context, 'content_type'))->toBe('linkedin_post')
+        ->and(data_get($entry->context, 'content_type'))->toBe('facebook_post')
         ->and(data_get($entry->context, 'raw_response'))->toBe('{"status":"ERROR","detail":"download failed"}');
 });
 
@@ -370,11 +275,11 @@ test('publish reports when platform-unavailable retries are exhausted', function
     Exceptions::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
         new PlatformUnavailableException('TikTok is still processing publish_id pub_stuck', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     $this->postPlatform->update([
         'error_context' => ['retry_count' => PublishToSocialPlatform::MAX_PLATFORM_UNAVAILABLE_RETRIES],
@@ -390,12 +295,12 @@ test('publish reports when platform-unavailable retries are exhausted', function
 test('publish never leaks a raw internal error to the failure record (and the email)', function () {
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TypeError(
         'X::getMediaCategory(): Argument #1 ($mimeType) must be of type string, null given, called in /home/forge/app.trypost.it/releases/72198060/app/Services/Social/XPublisher.php on line 130'
     ));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -423,10 +328,10 @@ test('publish to social platform marks account as token expired on auth failure'
     Event::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TokenExpiredException('Token expired', '401'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -442,16 +347,16 @@ test('publish reschedules platform unavailable retry via Bus dispatch (not marke
     Event::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
         new PlatformUnavailableException(
-            'LinkedIn API returned 503 during token refresh',
+            'Facebook API returned 503 during token refresh',
             503,
             ['operation_id' => 'operation-123'],
         )
     );
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -464,56 +369,13 @@ test('publish reschedules platform unavailable retry via Bus dispatch (not marke
     expect($this->postPlatform->error_context['retry_count'] ?? null)->toBe(1);
     expect($this->postPlatform->error_context['operation_id'] ?? null)->toBe('operation-123');
     expect($this->postPlatform->error_message)->toBe(__('posts.errors.platform_unavailable'));
-    expect($this->postPlatform->error_context['detail'] ?? null)->toContain('LinkedIn API returned 503');
+    expect($this->postPlatform->error_context['detail'] ?? null)->toContain('Facebook API returned 503');
     expect($this->socialAccount->status)->toBe(AccountStatus::Connected);
 
     Bus::assertDispatched(PublishToSocialPlatform::class, function ($job) {
         return $job->postPlatform->id === $this->postPlatform->id
             && $job->uniqueAttempt === 1
             && $job->uniqueId() === "{$this->postPlatform->id}:1";
-    });
-});
-
-test('publish reschedules when pinterest video processing times out', function () {
-    Bus::fake([PublishToSocialPlatform::class]);
-    Event::fake();
-    Mail::fake();
-
-    $pinterestAccount = SocialAccount::factory()->pinterest()->create([
-        'workspace_id' => $this->workspace->id,
-        'meta' => ['default_board_id' => 'board_123'],
-    ]);
-
-    $postPlatform = PostPlatform::factory()->pinterest()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $pinterestAccount->id,
-        'platform' => Platform::Pinterest,
-        'content_type' => ContentType::PinterestVideoPin,
-        'enabled' => true,
-        'status' => PlatformStatus::Pending,
-        'meta' => ['board_id' => 'board_123'],
-    ]);
-
-    $publisher = Mockery::mock(PinterestPublisher::class);
-    $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException(
-            'Pinterest media processing timeout after 60 attempts (media_id=media_abc, last_status=processing)'
-        )
-    );
-    $this->app->instance(PinterestPublisher::class, $publisher);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    $postPlatform->refresh();
-
-    expect($postPlatform->status)->toBe(PlatformStatus::Retrying)
-        ->and($postPlatform->error_context['category'] ?? null)->toBe('platform_unavailable')
-        ->and($postPlatform->error_message)->toBe(__('posts.errors.platform_unavailable'))
-        ->and($postPlatform->error_context['detail'] ?? null)->toContain('Pinterest media processing timeout');
-
-    Bus::assertDispatched(PublishToSocialPlatform::class, function ($job) use ($postPlatform) {
-        return $job->postPlatform->id === $postPlatform->id
-            && $job->uniqueAttempt === 1;
     });
 });
 
@@ -525,15 +387,15 @@ test('publish reschedules retry when retry-refresh path hits platform unavailabl
     // Publisher first throws TokenExpired (401-style), the retry-refresh
     // path goes through ConnectionVerifier::verify which can in turn raise
     // PlatformUnavailable if the platform is down.
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TokenExpiredException('Token expired', '401'));
 
     $verifier = Mockery::mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')->andThrow(
-        new PlatformUnavailableException('LinkedIn API returned 503 during token refresh', 503)
+        new PlatformUnavailableException('Facebook API returned 503 during token refresh', 503)
     );
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
     $this->app->instance(ConnectionVerifier::class, $verifier);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
@@ -556,11 +418,11 @@ test('publish reschedules retry exactly 10 minutes into the future', function ()
     $now = now()->startOfMinute();
     Carbon::setTestNow($now);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn 503', 503)
+        new PlatformUnavailableException('Facebook 503', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -592,14 +454,14 @@ test('publish honors a platform-specific retry delay and retry limit', function 
     $now = now()->startOfSecond();
     Carbon::setTestNow($now);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new PlatformUnavailableException(
         message: 'Remote operation is still processing',
         context: ['operation_id' => 'operation-123'],
         retryDelaySeconds: 30,
         maxRetries: 2,
     ));
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -629,11 +491,11 @@ test('publish records last_attempt_at when rescheduling for retry', function () 
     $now = now()->startOfMinute();
     Carbon::setTestNow($now);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn 503', 503)
+        new PlatformUnavailableException('Facebook 503', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -651,28 +513,23 @@ test('publish preserves resumable context when a later transient error has no co
     Mail::fake();
 
     $checkpoint = [
-        'instagram_workflow' => [
-            'stage' => 'final_container',
-            'container_id' => 'container-123',
-        ],
         'tiktok_publish_id' => 'publish-123',
         'tiktok_derivative_paths' => ['social-tiktok-photos/pending.jpg'],
         'retry_count' => 2,
     ];
     $this->postPlatform->update(['error_context' => $checkpoint]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
         new PlatformUnavailableException('Token refresh service unavailable', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
 
     $context = $this->postPlatform->fresh()->error_context;
 
-    expect($context['instagram_workflow'] ?? null)->toBe($checkpoint['instagram_workflow'])
-        ->and($context['tiktok_publish_id'] ?? null)->toBe('publish-123')
+    expect($context['tiktok_publish_id'] ?? null)->toBe('publish-123')
         ->and($context['tiktok_derivative_paths'] ?? null)->toBe(['social-tiktok-photos/pending.jpg'])
         ->and($context['retry_count'] ?? null)->toBe(3)
         ->and($context['http_status'] ?? null)->toBe(503);
@@ -685,21 +542,18 @@ test('publish preserves a resumable retry policy after the global retry limit', 
 
     $this->postPlatform->update([
         'error_context' => [
-            'instagram_workflow' => [
-                'stage' => 'final_container',
-                'container_id' => 'container-123',
-            ],
+            'tiktok_publish_id' => 'publish-123',
             'retry_count' => 7,
             'max_retries' => 90,
             'retry_delay_seconds' => 10,
         ],
     ]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
         new PlatformUnavailableException('Token refresh service unavailable', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
 
@@ -708,7 +562,8 @@ test('publish preserves a resumable retry policy after the global retry limit', 
     expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
         ->and($context['retry_count'] ?? null)->toBe(8)
         ->and($context['max_retries'] ?? null)->toBe(90)
-        ->and($context['retry_delay_seconds'] ?? null)->toBe(10);
+        ->and($context['retry_delay_seconds'] ?? null)->toBe(10)
+        ->and($context['tiktok_publish_id'] ?? null)->toBe('publish-123');
 });
 
 test('post stays in Publishing while one platform is still Retrying', function () {
@@ -716,10 +571,10 @@ test('post stays in Publishing while one platform is still Retrying', function (
     Event::fake();
     Mail::fake();
 
-    // Second LinkedIn account on the same post — first one will publish OK,
+    // Second Facebook account on the same post — first one will publish OK,
     // second one will hit PlatformUnavailable and reschedule.
-    $secondAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
-    $secondPlatform = PostPlatform::factory()->linkedin()->create([
+    $secondAccount = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $secondPlatform = PostPlatform::factory()->facebook()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $secondAccount->id,
         'enabled' => true,
@@ -730,11 +585,11 @@ test('post stays in Publishing while one platform is still Retrying', function (
     // Start the post as Publishing so updatePostStatus sees the in-flight context
     $this->post->update(['status' => PostStatus::Publishing]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn 503', 503)
+        new PlatformUnavailableException('Facebook 503', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -755,12 +610,12 @@ test('successful publish after a retry transitions the platform to Published', f
 
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andReturn([
         'id' => 'post-after-retry',
-        'url' => 'https://linkedin.com/post/after-retry',
+        'url' => 'https://facebook.com/post/after-retry',
     ]);
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -775,11 +630,11 @@ test('publish retry count increments across successive platform_unavailable atte
     Event::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn 503', 503)
+        new PlatformUnavailableException('Facebook 503', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     // Simulate prior attempts
     $this->postPlatform->update([
@@ -799,11 +654,11 @@ test('publish hard-fails when platform unavailable retries are exhausted', funct
     Event::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn 503', 503)
+        new PlatformUnavailableException('Facebook 503', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     $this->postPlatform->update([
         'error_context' => ['retry_count' => PublishToSocialPlatform::MAX_PLATFORM_UNAVAILABLE_RETRIES],
@@ -817,7 +672,7 @@ test('publish hard-fails when platform unavailable retries are exhausted', funct
         ->and($this->postPlatform->error_message)->toBe(__('posts.errors.platform_unavailable_exhausted'))
         ->and($this->postPlatform->error_context['category'] ?? null)->toBe('platform_unavailable')
         ->and($this->postPlatform->error_context['retry_count'] ?? null)->toBe(PublishToSocialPlatform::MAX_PLATFORM_UNAVAILABLE_RETRIES + 1)
-        ->and($this->postPlatform->error_context['detail'] ?? null)->toContain('LinkedIn 503');
+        ->and($this->postPlatform->error_context['detail'] ?? null)->toContain('Facebook 503');
 
     Bus::assertNotDispatched(PublishToSocialPlatform::class);
 });
@@ -827,23 +682,18 @@ test('publish keeps a resumable checkpoint when platform unavailable retries are
     Event::fake();
     Mail::fake();
 
-    $workflow = [
-        'stage' => 'final_container',
-        'container_id' => 'container-123',
-    ];
     $this->postPlatform->update([
         'error_context' => [
             'tiktok_publish_id' => 'pub_in_flight',
-            'instagram_workflow' => $workflow,
             'retry_count' => PublishToSocialPlatform::MAX_PLATFORM_UNAVAILABLE_RETRIES,
         ],
     ]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn 503', 503)
+        new PlatformUnavailableException('Facebook 503', 503)
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
 
@@ -851,7 +701,6 @@ test('publish keeps a resumable checkpoint when platform unavailable retries are
 
     expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed)
         ->and($context['tiktok_publish_id'] ?? null)->toBe('pub_in_flight')
-        ->and($context['instagram_workflow'] ?? null)->toBe($workflow)
         ->and($context['category'] ?? null)->toBe('platform_unavailable');
 
     Bus::assertNotDispatched(PublishToSocialPlatform::class);
@@ -866,9 +715,9 @@ test('publish skips platforms that are already failed', function () {
         'error_message' => __('posts.errors.publishing_timed_out'),
     ]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldNotReceive('publish');
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -876,20 +725,6 @@ test('publish skips platforms that are already failed', function () {
 
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
         ->and($this->postPlatform->error_message)->toBe(__('posts.errors.publishing_timed_out'));
-});
-
-test('publish job timeout leaves headroom above the pinterest media poll budget', function () {
-    $job = new PublishToSocialPlatform($this->postPlatform);
-    $horizonTimeout = (int) config('horizon.defaults.social-publishing.timeout');
-    $retryAfter = (int) config('queue.connections.redis.retry_after');
-
-    expect($job->timeout)->toBe(900)
-        ->and($horizonTimeout)->toBe(930)
-        ->and($retryAfter)->toBe(960)
-        ->and($job->uniqueFor)->toBe(960)
-        ->and($job->timeout)->toBeLessThan($horizonTimeout)
-        ->and($horizonTimeout)->toBeLessThan($retryAfter)
-        ->and($job->uniqueFor)->toBeGreaterThanOrEqual($job->timeout);
 });
 
 test('publish job unique id includes the platform and attempt', function () {
@@ -1220,93 +1055,16 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
         ->toHaveCount(1);
 });
 
-test('pinterest media status 401 marks the account token expired and notifies to reconnect', function () {
-    Event::fake();
-    Queue::fake();
-    Mail::fake();
-    Sleep::fake();
-
-    $pinterestAccount = SocialAccount::factory()->pinterest()->create([
-        'workspace_id' => $this->workspace->id,
-        'status' => AccountStatus::Connected,
-        'token_expires_at' => now()->addDays(30),
-        'meta' => ['default_board_id' => 'board_123'],
-    ]);
-
-    $postPlatform = PostPlatform::factory()->pinterest()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $pinterestAccount->id,
-        'platform' => Platform::Pinterest,
-        'content_type' => ContentType::PinterestVideoPin,
-        'enabled' => true,
-        'status' => PlatformStatus::Pending,
-        'meta' => ['board_id' => 'board_123'],
-    ]);
-
-    $this->post->update([
-        'media' => [[
-            'id' => 'test-media-video',
-            'path' => 'media/2026-01/video.mp4',
-            'url' => 'https://example.com/media/2026-01/video.mp4',
-            'mime_type' => 'video/mp4',
-            'original_filename' => 'video.mp4',
-        ]],
-    ]);
-
-    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
-
-    Http::fake(function ($request) use ($s3UploadUrl) {
-        $url = $request->url();
-
-        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
-            return Http::response([
-                'media_id' => 'media_video_401_job',
-                'upload_url' => $s3UploadUrl,
-                'upload_parameters' => [],
-            ], 201);
-        }
-
-        if ($url === $s3UploadUrl) {
-            return Http::response('', 204);
-        }
-
-        if (str_contains($url, '/v5/media/media_video_401_job')) {
-            return Http::response(['message' => 'Access token has expired or been revoked'], 401);
-        }
-
-        return Http::response('fake-video-content', 200);
-    });
-
-    $verifier = Mockery::mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new Exception('Refresh failed'));
-    $this->app->instance(ConnectionVerifier::class, $verifier);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    $postPlatform->refresh();
-    $pinterestAccount->refresh();
-
-    expect($postPlatform->status)->toBe(PlatformStatus::Failed)
-        ->and($postPlatform->error_context['category'] ?? null)->toBe('token_expired')
-        ->and($pinterestAccount->status)->toBe(AccountStatus::TokenExpired);
-
-    Queue::assertPushed(SendNotification::class, function ($job) use ($pinterestAccount) {
-        return $job->type === Type::AccountDisconnected
-            && data_get($job->data, 'social_account_id') === $pinterestAccount->id
-            && str_contains($job->title, 'needs to be reconnected');
-    });
-});
-
 test('publish to social platform updates post status when all platforms finished', function () {
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andReturn([
         'id' => 'post-123',
-        'url' => 'https://linkedin.com/post/123',
+        'url' => 'https://facebook.com/post/123',
     ]);
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1317,23 +1075,23 @@ test('publish to social platform updates post status when all platforms finished
 test('publish to social platform marks post as partially published when some fail', function () {
     Event::fake();
 
-    $socialAccount2 = SocialAccount::factory()->x()->create([
+    $socialAccount2 = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
     ]);
 
-    $postPlatform2 = PostPlatform::factory()->x()->failed()->create([
+    $postPlatform2 = PostPlatform::factory()->tiktok()->failed()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $socialAccount2->id,
         'enabled' => true,
     ]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andReturn([
         'id' => 'post-123',
-        'url' => 'https://linkedin.com/post/123',
+        'url' => 'https://facebook.com/post/123',
     ]);
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1344,10 +1102,10 @@ test('publish to social platform marks post as partially published when some fai
 test('publish to social platform marks post as failed when all platforms fail', function () {
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new Exception('API Error'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1363,10 +1121,10 @@ test('publish to social platform skips publishing when account is disconnected',
         'disconnected_at' => now(),
     ]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldNotReceive('publish');
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1383,10 +1141,10 @@ test('publish to social platform skips publishing when account token is expired'
         'disconnected_at' => now(),
     ]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldNotReceive('publish');
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1401,10 +1159,10 @@ test('publish to social platform skips publishing when account is inactive', fun
 
     $this->socialAccount->update(['is_active' => false]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldNotReceive('publish');
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1417,13 +1175,13 @@ test('publish to social platform dispatches success notification when all platfo
     Event::fake();
     Queue::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andReturn([
         'id' => 'post-123',
-        'url' => 'https://linkedin.com/post/123',
+        'url' => 'https://facebook.com/post/123',
     ]);
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 
@@ -1438,10 +1196,10 @@ test('publish to social platform dispatches failure notification when platform f
     Event::fake();
     Queue::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new Exception('API error'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 
@@ -1531,7 +1289,7 @@ test('it retries with token refresh when token expires during publish', function
     Event::fake();
 
     $callCount = 0;
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')
         ->twice()
         ->andReturnUsing(function () use (&$callCount) {
@@ -1540,10 +1298,10 @@ test('it retries with token refresh when token expires during publish', function
                 throw new TokenExpiredException('Token expired', '401');
             }
 
-            return ['id' => 'post-123', 'url' => 'https://linkedin.com/post/123'];
+            return ['id' => 'post-123', 'url' => 'https://facebook.com/post/123'];
         });
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     $verifier = Mockery::mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')->once()->andReturn(true);
@@ -1562,12 +1320,12 @@ test('it retries with token refresh when token expires during publish', function
 test('it marks account as token expired when refresh fails during publish retry', function () {
     Event::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')
         ->once()
         ->andThrow(new TokenExpiredException('Token expired', '401'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     $verifier = Mockery::mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')->once()->andThrow(new Exception('Refresh failed'));
@@ -1592,10 +1350,10 @@ test('publish to social platform skips if already published (idempotency)', func
         'platform_post_id' => 'existing-123',
     ]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldNotReceive('publish');
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1609,10 +1367,10 @@ test('publish to social platform saves error context on generic failure', functi
 
     $this->post->update(['content' => 'Test content here']);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new Exception('Something broke'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1629,9 +1387,9 @@ test('publish to social platform saves error context on social publish exception
 
     $this->post->update(['content' => 'Hello world']);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new LinkedInPublishException(
+        new FacebookPublishException(
             'Not authorized to post',
             ErrorCategory::Permission,
             '403',
@@ -1639,7 +1397,7 @@ test('publish to social platform saves error context on social publish exception
         )
     );
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1654,27 +1412,22 @@ test('publish to social platform saves error context on social publish exception
 test('publish keeps a resumable checkpoint when a later publish exception is terminal', function () {
     Event::fake();
 
-    $workflow = [
-        'stage' => 'final_container',
-        'container_id' => 'container-123',
-    ];
     $this->postPlatform->update([
         'error_context' => [
             'tiktok_publish_id' => 'pub_dead',
-            'instagram_workflow' => $workflow,
         ],
     ]);
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new LinkedInPublishException(
+        new FacebookPublishException(
             'Video rejected',
             ErrorCategory::ContentPolicy,
             'video_rejected',
             '{"status":"FAILED"}',
         )
     );
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
 
@@ -1682,14 +1435,13 @@ test('publish keeps a resumable checkpoint when a later publish exception is ter
 
     expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed)
         ->and($context['tiktok_publish_id'] ?? null)->toBe('pub_dead')
-        ->and($context['instagram_workflow'] ?? null)->toBe($workflow)
         ->and($context['category'] ?? null)->toBe('content_policy');
 });
 
 test('publish to social platform fails when scopes are missing', function () {
     Event::fake();
 
-    $this->socialAccount->update(['scopes' => ['user.info.basic']]); // missing w_member_social
+    $this->socialAccount->update(['scopes' => ['user.info.basic']]); // missing pages_manage_posts
     $this->postPlatform->refresh();
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
@@ -1698,17 +1450,17 @@ test('publish to social platform fails when scopes are missing', function () {
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
     expect($this->postPlatform->error_message)->toContain('Missing permissions');
     expect($this->postPlatform->error_context['category'])->toBe('permission');
-    expect($this->postPlatform->error_context['missing_scopes'])->toContain('w_member_social');
+    expect($this->postPlatform->error_context['missing_scopes'])->toContain('pages_manage_posts');
 });
 
 test('publish to social platform saves error context on token expired', function () {
     Event::fake();
     Mail::fake();
 
-    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher = Mockery::mock(FacebookPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TokenExpiredException('Token expired', '190'));
 
-    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $this->app->instance(FacebookPublisher::class, $publisher);
 
     $verifier = Mockery::mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')->andThrow(new TokenExpiredException('Refresh failed'));
@@ -1720,416 +1472,4 @@ test('publish to social platform saves error context on token expired', function
     expect($this->postPlatform->error_context)->toBeArray();
     expect($this->postPlatform->error_context['category'])->toBe('token_expired');
     expect($this->postPlatform->error_context['platform_error_code'])->toBe('190');
-});
-
-test('dispatches google business posts to GoogleBusinessPublisher', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => LocalPostState::Live->value,
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Published);
-});
-
-test('a google business post rejected in review is not reported as published', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => 'STANDARD'],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => 'REJECTED',
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    $this->assertDatabaseHas('post_platforms', [
-        'id' => $postPlatform->id,
-        'status' => 'rejected',
-    ]);
-    expect($postPlatform->fresh()->error_message)
-        ->toBe(__('posts.errors.rejected_in_review'))
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('accounts/1/locations/2/localPosts/3')
-        ->and($postPlatform->fresh()->platform_url)->toBe('https://business.google.com/dashboard/l/u987654321');
-});
-
-test('a rejected google business target finalizes the post instead of leaving it publishing', function () {
-    Queue::fake([SendNotification::class]);
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    // Its own post: the shared one carries a LinkedIn target that never finishes.
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => 'STANDARD'],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => 'REJECTED',
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($post->fresh()->status)->toBe(PostStatus::Failed);
-    Queue::assertPushed(SendNotification::class);
-});
-
-test('a google business post still in review is held, not reported as published', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => 'STANDARD'],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => 'PROCESSING',
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    $this->assertDatabaseHas('post_platforms', [
-        'id' => $postPlatform->id,
-        'status' => 'pending_review',
-    ]);
-    expect($postPlatform->fresh()->submitted_at)->not->toBeNull()
-        ->and($postPlatform->fresh()->published_at)->toBeNull();
-});
-
-test('a google business post Google scheduled is held in review', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => 'STANDARD'],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => 'SCHEDULED',
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('accounts/1/locations/2/localPosts/3');
-});
-
-test('a google business post that Google reports as recurring is published', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => LocalPostState::Recurring->value,
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Published);
-});
-
-test('an unspecified google business create state is held in review and keeps the jpeg', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
-
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => LocalPostState::Unspecified->value,
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($postPlatform->fresh()->published_at)->toBeNull();
-    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($postPlatform->id));
-});
-
-test('a failed google business publish prunes the jpeg derivative', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
-
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'error' => ['status' => 'INVALID_ARGUMENT', 'message' => 'summary too long'],
-        ], 400),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
-    Storage::assertMissing(GoogleBusinessDerivativeCleaner::pathFor($postPlatform->id));
-});
-
-test('an unknown google business create state is held in review and keeps the jpeg', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
-
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => 'NOT_A_REAL_STATE',
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($postPlatform->fresh()->published_at)->toBeNull();
-    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($postPlatform->id));
-});
-
-test('a publishing parent stays publishing while google business is in review', function () {
-    Queue::fake([SendNotification::class]);
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Publishing,
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => LocalPostState::Processing->value,
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($post->fresh()->status)->toBe(PostStatus::Publishing);
-    Queue::assertNotPushed(SendNotification::class);
-});
-
-test('a google business target in review on its own post does not settle or notify', function () {
-    Queue::fake([SendNotification::class]);
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => LocalPostState::Processing->value,
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
-    Queue::assertNotPushed(SendNotification::class);
-});
-
-test('a published sibling stays unpublished at the post while google business is in review', function () {
-    Queue::fake([SendNotification::class]);
-    $linkedin = SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $gbp = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    PostPlatform::factory()->linkedin()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $linkedin->id,
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $gbp->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/1/locations/2/localPosts/3',
-            'state' => LocalPostState::Processing->value,
-        ], 200),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($post->fresh()->status)->toBe(PostStatus::Scheduled)
-        ->and($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview);
-    Queue::assertNotPushed(SendNotification::class);
-});
-
-test('a google business create that is rate limited fails the target', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'meta' => ['topic_type' => TopicType::Standard->value],
-    ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'error' => ['status' => 'RESOURCE_EXHAUSTED'],
-        ], 429),
-    ]);
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Failed)
-        ->and($post->fresh()->status)->toBe(PostStatus::Failed);
-});
-
-test('a google business target already in review is not published a second time', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addHour(),
-    ]);
-    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'status' => PlatformStatus::PendingReview,
-        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
-        'meta' => ['topic_type' => 'STANDARD'],
-    ]);
-
-    Http::fake();
-
-    (new PublishToSocialPlatform($postPlatform))->handle();
-
-    Http::assertNothingSent();
-    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('accounts/1/locations/2/localPosts/3');
 });

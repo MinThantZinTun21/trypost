@@ -1,4 +1,3 @@
-import type { PinterestBoard } from '@/types';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
 export interface ChannelAccount {
@@ -38,6 +37,4 @@ export interface Channel {
     contentTypeError?: string;
     publishConfig?: Record<string, any> | null;
     creatorInfo?: ChannelTikTokCreatorInfo | null;
-    boards?: PinterestBoard[];
-    boardsTruncated?: boolean;
 }
