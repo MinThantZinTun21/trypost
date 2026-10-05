@@ -109,3 +109,15 @@ test('destroy other sessions removes other rows for the user', function () {
 
     expect(DB::table($sessionsTable)->where('id', 'other-session-id')->exists())->toBeFalse();
 });
+
+test('destroy other sessions requires the current password', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->from(route('app.authentication.edit'))
+        ->delete(route('app.authentication.destroy-other-sessions'), [
+            'password' => 'wrong-password',
+        ])
+        ->assertRedirect(route('app.authentication.edit'))
+        ->assertSessionHasErrors('password');
+});

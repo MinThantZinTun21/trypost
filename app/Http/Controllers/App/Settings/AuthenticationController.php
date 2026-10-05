@@ -6,6 +6,7 @@ namespace App\Http\Controllers\App\Settings;
 
 use App\Http\Controllers\App\Controller;
 use App\Http\Requests\App\Settings\AuthenticationPasswordRequest;
+use App\Http\Requests\App\Settings\DestroyOtherSessionsRequest;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,12 +32,8 @@ class AuthenticationController extends Controller
         return back()->with('flash.success', __('settings.flash.password_updated'));
     }
 
-    public function destroyOtherSessions(Request $request): RedirectResponse
+    public function destroyOtherSessions(DestroyOtherSessionsRequest $request): RedirectResponse
     {
-        $request->validate([
-            'password' => ['required', 'string', 'current_password'],
-        ]);
-
         DB::table(config('session.table', 'sessions'))
             ->where('user_id', $request->user()->id)
             ->where('id', '!=', $request->session()->getId())

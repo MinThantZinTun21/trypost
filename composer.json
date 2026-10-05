@@ -43,7 +43,6 @@
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.9",
         "league/flysystem-aws-s3-v3": "^3.0",
-        "sendkit/sendkit-laravel": "^1.1",
         "socialiteproviders/facebook": "^4.1",
         "socialiteproviders/tiktok": "^5.2",
         "symfony/dom-crawler": "^8.0"

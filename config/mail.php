@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'sendkit'),
+    'default' => env('MAIL_MAILER', 'log'),
 
     /*
     |--------------------------------------------------------------------------

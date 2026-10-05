@@ -26,3 +26,11 @@ test('only the three in-app notification types remain', function () {
     expect(array_map(fn (Type $type): string => $type->value, Type::cases()))
         ->toBe(['post_failed', 'account_disconnected', 'post_at_risk']);
 });
+
+test('no mail provider package is installed and mail defaults to the log mailer', function () {
+    $composer = json_decode(file_get_contents(base_path('composer.json')), true);
+
+    expect(array_keys(data_get($composer, 'require', [])))->not->toContain('sendkit/sendkit-laravel')
+        ->and(file_get_contents(config_path('mail.php')))->toContain("env('MAIL_MAILER', 'log')")
+        ->not->toContain('sendkit');
+});
