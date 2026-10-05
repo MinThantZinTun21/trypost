@@ -39,12 +39,10 @@
         "intervention/image": "^4.0",
         "laravel/boost": "^2.5",
         "laravel/framework": "^13.0",
-        "laravel/horizon": "^5.45",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.9",
         "league/flysystem-aws-s3-v3": "^3.0",
-        "predis/predis": "^3.3",
         "sendkit/sendkit-laravel": "^1.1",
         "socialiteproviders/facebook": "^4.1",
         "socialiteproviders/tiktok": "^5.2",
@@ -87,7 +85,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#86efac,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --queue=default,social-facebook,social-tiktok,social-youtube --tries=1 --timeout=930\" \"php artisan schedule:work\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,scheduler,logs,vite --kill-others"
         ],
         "lint": [
             "pint --parallel"

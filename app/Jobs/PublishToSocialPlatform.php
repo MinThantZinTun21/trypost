@@ -34,7 +34,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     public int $maxExceptions = 1;
 
-    /** Download/upload + processing poll headroom; keep Horizon/Redis timeouts above this. */
+    /** Download/upload + processing poll headroom; keep the database queue's retry_after above this. */
     public int $timeout = 900;
 
     public int $uniqueFor = 960;

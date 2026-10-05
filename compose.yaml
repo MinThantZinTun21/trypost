@@ -17,10 +17,9 @@ services:
             GID: ${GID:-1000}
             # Real env vars take precedence over .env.testing (which pins
             # DB_HOST=127.0.0.1, DB_USERNAME=root). Without these, the test
-            # suite can't see Postgres / Redis from inside the container.
+            # suite can't see Postgres from inside the container.
             DB_HOST: pgsql
             DB_USERNAME: postgres
-            REDIS_HOST: redis
         volumes:
             - .:/var/www/html
             - app-vendor:/var/www/html/vendor
@@ -29,8 +28,6 @@ services:
             - 'host.docker.internal:host-gateway'
         depends_on:
             pgsql:
-                condition: service_healthy
-            redis:
                 condition: service_healthy
         healthcheck:
             test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1/up']
@@ -56,21 +53,7 @@ services:
             timeout: 5s
             retries: 5
 
-    redis:
-        image: redis:7-alpine
-        command: redis-server --appendonly yes
-        volumes:
-            - redisdata:/data
-        ports:
-            - '${FORWARD_REDIS_PORT:-6379}:6379'
-        healthcheck:
-            test: ['CMD', 'redis-cli', 'ping']
-            interval: 10s
-            timeout: 3s
-            retries: 5
-
 volumes:
     pgdata:
-    redisdata:
     app-vendor:
     app-node-modules:

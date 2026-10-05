@@ -5,8 +5,8 @@
 #   2. Edit APP_URL and the passwords marked "change me".
 #   3. Start:                 docker compose -f compose.prod.yaml up -d
 #
-# This pulls the published image — no local build. Postgres, Redis, the queue
-# workers, the scheduler and the WebSocket server all run for you.
+# This pulls the published image — no local build. Postgres, the queue worker
+# and the scheduler all run for you.
 
 services:
   app:
@@ -30,11 +30,9 @@ services:
       DB_USERNAME: trypost
       DB_PASSWORD: trypost-password     # <- change me (must match POSTGRES_PASSWORD below)
 
-      # ===== Redis / queue / cache =====
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      QUEUE_CONNECTION: redis
-      CACHE_STORE: redis
+      # ===== Queue / cache (both on Postgres) =====
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
       SESSION_DRIVER: database
 
       # ===== Storage =====
@@ -100,8 +98,6 @@ services:
     depends_on:
       pgsql:
         condition: service_healthy
-      redis:
-        condition: service_healthy
 
   pgsql:
     image: postgres:16-alpine
@@ -117,19 +113,6 @@ services:
       test: ['CMD-SHELL', 'pg_isready -U trypost -d trypost']
       interval: 10s
       timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: trypost-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
-      timeout: 3s
       retries: 5
 
   # Optional reverse proxy with automatic HTTPS (Let's Encrypt).
@@ -158,7 +141,6 @@ services:
 
 volumes:
   pgdata:
-  redisdata:
   storage:
   caddy-data:
   caddy-config:

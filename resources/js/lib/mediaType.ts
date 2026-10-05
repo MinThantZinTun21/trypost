@@ -25,14 +25,43 @@ const PDF_MIME = 'application/pdf';
 
 const MEDIA_TYPES = Object.values(MediaType);
 
-const isMediaType = (value: unknown): value is MediaType => MEDIA_TYPES.includes(value as MediaType);
+const isMediaType = (value: unknown): value is MediaType =>
+    MEDIA_TYPES.includes(value as MediaType);
 
 // Broader than the upload allow-list so already-stored files in legacy formats
 // still resolve. The backend (Type::fromExtension) consults the MIME registry;
 // the browser has none, so this is the subset of formats we have seen stored.
 const CLASSIFIABLE_EXTENSIONS: Record<MediaType, readonly string[]> = {
-    [MediaType.Image]: ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'avif', 'bmp', 'tif', 'tiff', 'svg', 'psd', 'heic', 'heif'],
-    [MediaType.Video]: ['mp4', 'm4v', 'mov', 'avi', 'wmv', 'webm', 'mkv', 'mpeg', 'mpg', '3gp', 'flv', 'ogv'],
+    [MediaType.Image]: [
+        'jpg',
+        'jpeg',
+        'jfif',
+        'png',
+        'gif',
+        'webp',
+        'avif',
+        'bmp',
+        'tif',
+        'tiff',
+        'svg',
+        'psd',
+        'heic',
+        'heif',
+    ],
+    [MediaType.Video]: [
+        'mp4',
+        'm4v',
+        'mov',
+        'avi',
+        'wmv',
+        'webm',
+        'mkv',
+        'mpeg',
+        'mpg',
+        '3gp',
+        'flv',
+        'ogv',
+    ],
     [MediaType.Document]: ['pdf'],
 };
 
@@ -44,7 +73,7 @@ const CLASSIFIABLE_EXTENSIONS: Record<MediaType, readonly string[]> = {
 const pathOf = (nameOrPath: string | null | undefined): string => {
     const value = (nameOrPath ?? '').toLowerCase();
 
-    if (! value.includes('://')) {
+    if (!value.includes('://')) {
         return value;
     }
 
@@ -60,14 +89,18 @@ const hasExtension = (path: string, extensions: readonly string[]): boolean =>
     extensions.some((extension) => path.endsWith(`.${extension}`));
 
 /** Lower-cased `type/subtype` with any `; codecs=…` parameters dropped, so comparisons are exact. */
-const normalizeMime = (mime: string | null | undefined): string => (mime ?? '').split(';')[0].trim().toLowerCase();
+const normalizeMime = (mime: string | null | undefined): string =>
+    (mime ?? '').split(';')[0].trim().toLowerCase();
 
 /** Image and video own their MIME family (`image/*`, `video/*`); Document is `application/pdf` alone. */
 const ownsMime = (type: MediaType, mime: string): boolean =>
-    type === MediaType.Document ? mime === PDF_MIME : mime.startsWith(`${type}/`);
+    type === MediaType.Document
+        ? mime === PDF_MIME
+        : mime.startsWith(`${type}/`);
 
 /** The `accept` attribute value for a file input that takes any media we allow. */
-export const acceptAttribute = (): string => Object.values(ALLOWED_MIME_TYPES).flat().join(',');
+export const acceptAttribute = (): string =>
+    Object.values(ALLOWED_MIME_TYPES).flat().join(',');
 
 /** The structural shape every classifiable media item satisfies. */
 interface ClassifiableMedia {
@@ -78,17 +111,25 @@ interface ClassifiableMedia {
 }
 
 /** Resolve a MediaType from a raw MIME string (e.g. a browser `File.type`). */
-export const fromMimeType = (mime: string | null | undefined): MediaType | null => {
+export const fromMimeType = (
+    mime: string | null | undefined,
+): MediaType | null => {
     const normalized = normalizeMime(mime);
 
     return MEDIA_TYPES.find((type) => ownsMime(type, normalized)) ?? null;
 };
 
 /** Resolve a MediaType from a filename or path extension. */
-export const fromExtension = (nameOrPath: string | null | undefined): MediaType | null => {
+export const fromExtension = (
+    nameOrPath: string | null | undefined,
+): MediaType | null => {
     const path = pathOf(nameOrPath);
 
-    return MEDIA_TYPES.find((type) => hasExtension(path, CLASSIFIABLE_EXTENSIONS[type])) ?? null;
+    return (
+        MEDIA_TYPES.find((type) =>
+            hasExtension(path, CLASSIFIABLE_EXTENSIONS[type]),
+        ) ?? null
+    );
 };
 
 /**
@@ -96,7 +137,10 @@ export const fromExtension = (nameOrPath: string | null | undefined): MediaType 
  * own (an unrecognised one is null, never overridden by the extension); the
  * extension is consulted only when there is no MIME at all.
  */
-export const classifyBy = (mime: string | null | undefined, nameOrPath: string | null | undefined): MediaType | null =>
+export const classifyBy = (
+    mime: string | null | undefined,
+    nameOrPath: string | null | undefined,
+): MediaType | null =>
     normalizeMime(mime) === '' ? fromExtension(nameOrPath) : fromMimeType(mime);
 
 /**
@@ -104,20 +148,30 @@ export const classifyBy = (mime: string | null | undefined, nameOrPath: string |
  * then falls back to the filename extension so already-stored items still
  * resolve. Returns null only when nothing identifies the item.
  */
-export const classify = (item: ClassifiableMedia | null | undefined): MediaType | null => {
-    if (! item) return null;
+export const classify = (
+    item: ClassifiableMedia | null | undefined,
+): MediaType | null => {
+    if (!item) return null;
 
-    return isMediaType(item.type) ? item.type : classifyBy(item.mime_type, item.original_filename ?? item.path);
+    return isMediaType(item.type)
+        ? item.type
+        : classifyBy(item.mime_type, item.original_filename ?? item.path);
 };
 
-export const isImage = (item: ClassifiableMedia | null | undefined): boolean => classify(item) === MediaType.Image;
+export const isImage = (item: ClassifiableMedia | null | undefined): boolean =>
+    classify(item) === MediaType.Image;
 
-export const isVideo = (item: ClassifiableMedia | null | undefined): boolean => classify(item) === MediaType.Video;
+export const isVideo = (item: ClassifiableMedia | null | undefined): boolean =>
+    classify(item) === MediaType.Video;
 
-export const isDocument = (item: ClassifiableMedia | null | undefined): boolean => classify(item) === MediaType.Document;
+export const isDocument = (
+    item: ClassifiableMedia | null | undefined,
+): boolean => classify(item) === MediaType.Document;
 
 /** Whether the item is an animated GIF — several platforms treat it specially. */
-export const isGif = (item: ClassifiableMedia | null | undefined): boolean => normalizeMime(item?.mime_type) === GIF_MIME;
+export const isGif = (item: ClassifiableMedia | null | undefined): boolean =>
+    normalizeMime(item?.mime_type) === GIF_MIME;
 
 export const isMov = (item: ClassifiableMedia | null | undefined): boolean =>
-    normalizeMime(item?.mime_type) === MOV_MIME || hasExtension(pathOf(item?.original_filename ?? item?.path), ['mov']);
+    normalizeMime(item?.mime_type) === MOV_MIME ||
+    hasExtension(pathOf(item?.original_filename ?? item?.path), ['mov']);

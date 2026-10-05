@@ -122,9 +122,15 @@ test('disabling every platform yields no enabled queues', function () {
     expect(Platform::enabledQueues())->toBe([]);
 });
 
-test('horizon social publishing queues match enabledQueues', function () {
-    expect(config('horizon.defaults.social-publishing.queue'))->toBe(Platform::enabledQueues());
-});
+test('every queue worker listens on default plus each platform queue', function (string $path) {
+    $queues = implode(',', ['default', ...Platform::allQueues()]);
+
+    expect(file_get_contents(base_path($path)))->toContain("--queue={$queues} ");
+})->with([
+    'docker/supervisord.prod.conf',
+    'docker/supervisord.dev.conf',
+    'composer.json',
+]);
 
 test('isEnabled falls back to env when enabled config is missing', function (Platform $platform, string $envKey) {
     $platforms = config('trypost.platforms');

@@ -50,8 +50,6 @@ RUN apk add --no-cache \
         pcntl \
         intl \
         sockets \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
     && apk del $PHPIZE_DEPS \
     && rm -rf /tmp/* /var/cache/apk/*
 

@@ -32,10 +32,12 @@ const highlighted = computed(() => {
 </script>
 
 <template>
-    <div class="json-viewer group relative overflow-hidden rounded-lg border-2 border-foreground">
+    <div
+        class="json-viewer group relative overflow-hidden rounded-lg border-2 border-foreground"
+    >
         <TooltipProvider v-if="serialized" :delay-duration="200">
             <div
-                class="absolute right-2 top-2 z-10 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
+                class="absolute top-2 right-2 z-10 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
             >
                 <Tooltip>
                     <TooltipTrigger as-child>
@@ -48,10 +50,14 @@ const highlighted = computed(() => {
                             <IconCopy class="size-3.5" stroke-width="2.5" />
                         </button>
                     </TooltipTrigger>
-                    <TooltipContent>{{ $t('common.actions.copy') }}</TooltipContent>
+                    <TooltipContent>{{
+                        $t('common.actions.copy')
+                    }}</TooltipContent>
                 </Tooltip>
             </div>
         </TooltipProvider>
-        <pre class="json-viewer__body overflow-x-auto p-3 text-xs leading-relaxed"><code class="hljs language-json" v-html="highlighted" /></pre>
+        <pre
+            class="json-viewer__body overflow-x-auto p-3 text-xs leading-relaxed"
+        ><code class="hljs language-json" v-html="highlighted" /></pre>
     </div>
 </template>

@@ -58,16 +58,6 @@ jobs:
           --health-timeout=5s
           --health-retries=20
 
-      redis:
-        image: redis:7
-        ports:
-          - 6379/tcp
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -76,12 +66,10 @@ jobs:
         uses: ./.github/actions/setup-laravel
         with:
           db-port: ${{ job.services.database.ports[matrix.port] }}
-          redis-port: ${{ job.services.redis.ports['6379'] }}
 
       - name: Run backend tests
         env:
           DB_PORT: ${{ job.services.database.ports[matrix.port] }}
-          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: php artisan test --compact --parallel
 
   backend:
@@ -112,16 +100,6 @@ jobs:
           --health-timeout=5s
           --health-retries=3
 
-      redis:
-        image: redis:7
-        ports:
-          - 6379/tcp
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -131,7 +109,6 @@ jobs:
         with:
           node: 'true'
           db-port: ${{ job.services.postgres.ports['5432'] }}
-          redis-port: ${{ job.services.redis.ports['6379'] }}
 
       - name: Build assets
         run: npm run build
@@ -142,7 +119,6 @@ jobs:
       - name: Run browser tests
         env:
           DB_PORT: ${{ job.services.postgres.ports['5432'] }}
-          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: php artisan test tests/Browser --compact
 
       - name: Upload Playwright artifacts
