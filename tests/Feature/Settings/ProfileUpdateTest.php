@@ -2,11 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
-use App\Models\Account;
-use App\Models\Media;
 use App\Models\User;
-use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -55,40 +51,6 @@ test('email verification status is unchanged when the email address is unchanged
         ->assertRedirect(route('app.profile.edit'));
 
     expect($user->refresh()->email_verified_at)->not->toBeNull();
-});
-
-test('user can delete their account', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->delete(route('app.profile.destroy'), [
-            'password' => 'password',
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('app.home'));
-
-    $this->assertGuest();
-    expect($user->fresh())->toBeNull();
-});
-
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->from(route('app.profile.edit'))
-        ->delete(route('app.profile.destroy'), [
-            'password' => 'wrong-password',
-        ]);
-
-    $response
-        ->assertSessionHasErrors('password')
-        ->assertRedirect(route('app.profile.edit'));
-
-    expect($user->fresh())->not->toBeNull();
 });
 
 test('user can upload profile photo', function () {
@@ -167,135 +129,4 @@ test('user cannot upload photo exceeding max size', function () {
         ]);
 
     $response->assertSessionHasErrors('photo');
-});
-
-test('delete account requires authentication', function () {
-    $response = $this->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    $response->assertRedirect(route('login'));
-});
-
-test('member deleting profile does NOT destroy the shared account', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create(['account_id' => $owner->account_id]);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $owner->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-    $member->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-
-    $this->actingAs($member)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect($member->fresh())->toBeNull();
-    expect(Account::find($owner->account_id))->not->toBeNull();
-    expect(Workspace::find($workspace->id))->not->toBeNull();
-    expect($owner->fresh())->not->toBeNull();
-});
-
-test('member deleting profile does not delete shared workspaces they created', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create(['account_id' => $owner->account_id]);
-
-    $sharedWorkspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $member->id,
-    ]);
-    $sharedWorkspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
-    $sharedWorkspace->members()->attach($member->id, ['role' => Role::Member->value]);
-
-    $this->actingAs($member)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect(User::find($member->id))->toBeNull();
-    expect(Workspace::find($sharedWorkspace->id))->not->toBeNull();
-    expect(Account::find($owner->account_id))->not->toBeNull();
-});
-
-test('member deleting profile detaches them from workspaces', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create(['account_id' => $owner->account_id]);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $member->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-
-    $this->actingAs($member)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect($workspace->fresh()->members()->where('users.id', $member->id)->exists())->toBeFalse();
-});
-
-test('owner deleting profile destroys the account and cascades', function () {
-    $owner = User::factory()->create();
-    $accountId = $owner->account_id;
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $accountId,
-        'user_id' => $owner->id,
-    ]);
-    $owner->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-
-    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect(Account::find($accountId))->toBeNull();
-    expect(Workspace::find($workspace->id))->toBeNull();
-});
-
-test('owner deleting profile clears media for account workspaces not owned by user_id', function () {
-    Storage::fake();
-
-    $owner = User::factory()->create();
-    $accountId = $owner->account_id;
-
-    $memberCreated = Workspace::factory()->create([
-        'account_id' => $accountId,
-        'user_id' => User::factory()->create(['account_id' => $accountId])->id,
-    ]);
-    $media = $memberCreated->addMedia(
-        UploadedFile::fake()->image('logo.jpg'),
-        'logo',
-    );
-    $mediaPath = $media->path;
-    Storage::assertExists($mediaPath);
-
-    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect(Account::find($accountId))->toBeNull();
-    expect(Workspace::find($memberCreated->id))->toBeNull();
-    expect(Media::find($media->id))->toBeNull();
-    Storage::assertMissing($mediaPath);
-});
-
-test('owner deleting profile clears avatar media', function () {
-    Storage::fake();
-
-    $owner = User::factory()->create();
-    $avatar = $owner->addMedia(
-        UploadedFile::fake()->image('avatar.jpg', 200, 200),
-        'avatar',
-    );
-    $avatarPath = $avatar->path;
-    Storage::assertExists($avatarPath);
-
-    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect($owner->fresh())->toBeNull();
-    expect(Media::find($avatar->id))->toBeNull();
-    Storage::assertMissing($avatarPath);
 });

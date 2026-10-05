@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App\Settings;
 
-use App\Actions\User\DeleteUser;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
 use App\Http\Requests\App\Settings\UploadPhotoRequest;
 use Illuminate\Http\RedirectResponse;
@@ -54,12 +52,5 @@ class ProfileController extends Controller
         session()->flash('flash.bannerStyle', 'success');
 
         return back();
-    }
-
-    public function destroy(ProfileDeleteRequest $request): RedirectResponse
-    {
-        DeleteUser::execute($request->user(), $request);
-
-        return redirect('/');
     }
 }

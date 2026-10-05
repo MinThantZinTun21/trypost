@@ -60,20 +60,6 @@ return [
         ],
     ],
 
-    'delete_account' => [
-        'heading' => 'Delete account',
-        'description' => 'Delete your account and all of its resources',
-        'warning' => 'Warning',
-        'warning_message' => 'Please proceed with caution, this cannot be undone.',
-        'button' => 'Delete account',
-        'modal_title' => 'Are you sure you want to delete your account?',
-        'modal_description_password' => 'Once your account is deleted, all of its resources and data will also be permanently deleted. Please enter your password to confirm.',
-        'password' => 'Password',
-        'password_placeholder' => 'Password',
-        'cancel' => 'Cancel',
-        'confirm' => 'Delete account',
-    ],
-
     'flash' => [
         'profile_updated' => 'Profile updated successfully!',
         'password_updated' => 'Password updated successfully!',
