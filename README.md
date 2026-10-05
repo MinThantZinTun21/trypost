@@ -2,95 +2,88 @@
   <img src="public/images/trypost/logo-dark.png" alt="TryPost" width="190">
 </p>
 
-<h1 align="center">Run your whole social presence from one calendar</h1>
+<h1 align="center">TryPost (minimal fork)</h1>
 
 <p align="center">
-  An open-source social media scheduler with an AI copilot, native publishing to 12 networks,<br/>
-  and an MCP server so your AI assistant can post for you. Self-host it, or skip the setup on cloud.
-</p>
-
-<p align="center">
-  <a href="https://github.com/trypostit/trypost/stargazers"><img src="https://img.shields.io/github/stars/trypostit/trypost?style=flat-square&color=7c3aed&labelColor=0a0a0a" alt="Stars"></a>
-  <a href="https://github.com/trypostit/trypost/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-AGPL--3.0-7c3aed?style=flat-square&labelColor=0a0a0a" alt="License"></a>
-  <a href="https://github.com/trypostit/trypost/releases"><img src="https://img.shields.io/github/v/release/trypostit/trypost?style=flat-square&color=7c3aed&labelColor=0a0a0a" alt="Release"></a>
-  <a href="https://github.com/trypostit/trypost/discussions"><img src="https://img.shields.io/github/discussions/trypostit/trypost?style=flat-square&color=7c3aed&labelColor=0a0a0a" alt="Discussions"></a>
-</p>
-
-<p align="center">
-  <a href="https://trypost.it"><b>Try on Cloud</b></a> &nbsp;&bull;&nbsp;
-  <a href="https://docs.trypost.it">Documentation</a> &nbsp;&bull;&nbsp;
-  <a href="https://github.com/trypostit/trypost/discussions">Community</a>
-</p>
-
-<p align="center">
-  <img src="public/images/github/hero.png" alt="TryPost — plan, write, and publish from one calendar" width="100%">
+  A personal scheduler that publishes one person's posts to Facebook Pages, TikTok and YouTube Shorts at the time they choose.
 </p>
 
 ---
 
-## What you get
+This is a hard fork of [trypostit/trypost](https://github.com/trypostit/trypost), cut down to the parts one Owner needs to schedule posts. AI, Repurpose, analytics, billing, teams, the REST API and MCP server, webhooks, email, live websockets, Redis and the extra languages were removed. [ADR 0001](docs/adr/0001-hard-fork-to-minimal-three-platform-scheduler.md) explains why, and [ADR 0002](docs/adr/0002-postgres-only-no-redis.md) explains the Postgres-only setup. Pulling updates from upstream is no longer practical.
 
-|  |  |
+## What it does
+
+- **One Owner.** The seeder creates the account. There is no sign-up page, and `php artisan owner:reset-password` resets the password on the server.
+- **Three platforms.** Facebook Pages (Post, Reel, Story), TikTok (Video, Photo) and YouTube Shorts.
+- **Write once, schedule anywhere.** Pick the accounts, upload images or videos from your computer (large files upload in chunks), and save as a draft or schedule the post.
+- **Calendar.** Month, week and day views, with drag and drop to reschedule, plus lists of scheduled, draft and posted posts.
+- **Publishing you can see.** Each platform's result shows a link or a failure reason, and the post page refreshes while it publishes.
+- **In-app notifications** when a post fails, when an account disconnects, or when an upcoming post's account needs reconnecting. Expiring tokens are refreshed automatically.
+
+## Requirements
+
+- PHP 8.5 and Composer
+- Node.js 22 and npm
+- PostgreSQL 16 (the only external service — the queue and cache run on it too)
+- Developer apps for the platforms you use: [Meta](https://developers.facebook.com), [TikTok](https://developers.tiktok.com) and [Google Cloud](https://console.cloud.google.com) (YouTube Data API v3)
+
+## Run it locally
+
+```bash
+composer setup
+```
+
+This installs dependencies, copies `.env.example` to `.env`, generates the app key, runs the migrations and builds the frontend. Then:
+
+1. Set the database credentials and `APP_URL` in `.env`.
+2. Fill in `FACEBOOK_*`, `TIKTOK_*` and `GOOGLE_*` and register the callback URLs shown there (`${APP_URL}/accounts/<platform>/callback`) with each platform.
+3. Set `OWNER_EMAIL` (and `OWNER_PASSWORD`, or leave it empty to have one generated and printed), then create the Owner:
+
+   ```bash
+   php artisan db:seed
+   ```
+
+4. Start everything:
+
+   ```bash
+   composer run dev
+   ```
+
+   This runs the web server, the queue worker, the scheduler, the log tail and Vite.
+
+## Deploy
+
+The app runs three processes next to Postgres:
+
+| Process | Command |
 | --- | --- |
-| 📅&nbsp; **One calendar, every network** | Plan a month at a glance, drag any post to a new slot, and publish natively to 12 platforms. No redirects, no "finish in the mobile app." |
-| ✨&nbsp; **An AI copilot that knows your brand** | Captions, hooks, full drafts, and multi-slide carousels in your tone, voice, and colors. It reads your brand profile on every generation. |
-| 🤖&nbsp; **Built for AI agents** | A first-class MCP server and REST API. Claude, Cursor, ChatGPT, or your own scripts can draft, schedule, and publish for you. |
-| 🗂️&nbsp; **Made for many clients** | Workspaces, roles, and approval flows so an agency or freelancer can run a roster of brands without the spreadsheets. |
+| Web | PHP-FPM + nginx (or `php artisan serve`) |
+| Queue worker | `php artisan queue:work --queue=default,social-facebook,social-tiktok,social-youtube --tries=1 --timeout=930` |
+| Scheduler | `php artisan schedule:work` (or `schedule:run` from cron every minute) |
 
-## Features
+The scheduler publishes due posts every minute, refreshes expiring tokens, recovers posts stuck in publishing, and checks account connections.
 
-|  |  |
-| --- | --- |
-| **Visual calendar** | Month, week, and day views. Drag and drop to reschedule across networks. |
-| **Multi-platform composer** | Write once, then tailor the preview per network in parallel. |
-| **AI generate &amp; review** | Draft from a prompt, get inline feedback before you publish. |
-| **AI carousel builder** | Prompt to a multi-slide carousel with images, on-brand. |
-| **Brand profile** | Tone, voice, language, and colors applied to every AI call. |
-| **Repurpose** | Auto-replicate the videos you post outside TryPost to your other networks. |
-| **Asset library** | Reusable workspace media, plus Unsplash and Giphy search built in. |
-| **Signatures &amp; labels** | Reusable hashtag and CTA blocks, color-coded post tags. |
-| **Team collaboration** | Owner / Admin / Member roles, comments with @mentions on drafts. |
-| **Workspaces** | Isolate each brand, client, or project in its own space. |
-| **REST API + MCP** | Full programmatic control; AI assistants integrate natively. |
-| **Native analytics** | Per-account reach and engagement across every connected platform. |
-| **Multi-language** | English, Ukrainian, Spanish, Portuguese, French, German, Italian, Dutch, Polish, Greek, Japanese, Korean, Chinese, Russian, Turkish, and Arabic. |
+With Docker, `compose.prod.yaml` builds the app image from this repository (nginx, PHP-FPM, the queue worker and the scheduler under supervisor) and runs it next to Postgres. Set `APP_KEY`, `APP_URL`, `OWNER_EMAIL`, the passwords marked "change me" and your platform credentials, then:
 
-## Supported platforms
+```bash
+docker compose -f compose.prod.yaml up -d --build
+```
 
-Posts publish natively through each platform's official API.
+The first boot runs the migrations and creates the Owner. If `OWNER_PASSWORD` is empty, the generated password is printed once in `docker compose -f compose.prod.yaml logs app`.
 
-<table>
-  <tr>
-    <td align="center"><img src="public/images/accounts/facebook.png" width="38"><br><sub><b>Facebook</b></sub></td>
-    <td align="center"><img src="public/images/accounts/tiktok.png" width="38"><br><sub><b>TikTok</b></sub></td>
-    <td align="center"><img src="public/images/accounts/youtube.png" width="38"><br><sub><b>YouTube</b></sub></td>
-  </tr>
-</table>
+For local development in Docker, use `compose.yaml` with `docker/.env.docker.example`.
 
-## Get started
+## Tests
 
-| | |
-| --- | --- |
-| ☁️&nbsp; **Cloud** | The fastest way in. We host, update, and scale it for you. [Start at trypost.it &rarr;](https://trypost.it) |
-| 🛠️&nbsp; **Self-host** | Free forever, your servers, your data. [Installation guide &rarr;](https://docs.trypost.it/self-hosting/overview) |
-| 🤖&nbsp; **Drive it with AI** | Connect Claude, Cursor, or ChatGPT over MCP. [MCP setup &rarr;](https://docs.trypost.it/ai/introduction) |
+```bash
+php artisan test --compact
+```
 
-## Own your stack
-
-TryPost is open source on purpose. Self-host it and your posts, drafts, and metrics stay on your infrastructure, under a license that is yours to keep. No seat tax, no feature gates, no vendor deciding when to lock you out. Read every line, fork it, and ship it. When you would rather not run servers, the same product is one click away on [cloud](https://trypost.it).
-
-## Contributing
-
-Contributions of any size are welcome. Pick an [issue](https://github.com/trypostit/trypost/issues), say hi in [Discussions](https://github.com/trypostit/trypost/discussions), or open a PR with what you would like to see.
-
-Short on time? A star is the most valuable thing you can give. It helps more people find the project.
+```bash
+npm run lint && npm run format:check && npm run build
+```
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE.md). Use, modify, fork, self-host, and redistribute, including commercially. If you run a modified version as a network service, make your changes available to its users (AGPL §13).
-
----
-
-<p align="center">
-  Built in the open. <a href="https://github.com/trypostit/trypost/stargazers">Star TryPost on GitHub</a> and tell a friend.
-</p>
+[GNU Affero General Public License v3.0](LICENSE.md), the same as upstream TryPost. If you run a modified version as a network service, make your changes available to its users (AGPL §13). Built on [TryPost](https://github.com/trypostit/trypost) by its contributors.

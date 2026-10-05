@@ -61,9 +61,3 @@ If you hit `Illuminate\Foundation\ViteException: Unable to locate file in Vite m
 ## Deployment
 
 Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/) — the fastest path to production for Laravel apps.
-
-## AI agents (`app/Ai/Agents`)
-
-- Do not write prompts inside agent classes (no heredocs, no long strings in `instructions()`).
-- Store prompt copy in `resources/views/prompts/**/*.blade.php` and render with `view('prompts....', $vars)->render()`.
-- Follow `PostContentStreamer`, `PostContentReviewer`, or `BrandAnalyzer` for structure.

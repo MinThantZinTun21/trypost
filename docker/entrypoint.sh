@@ -78,6 +78,10 @@ done
 echo "[entrypoint] running migrations"
 php artisan migrate --force
 
+# 7b) Create the Owner on first boot (the seeder skips when one exists). A
+#     generated password is printed once to the container log.
+php artisan db:seed --force
+
 # 8) storage:link if missing.
 if [ ! -L public/storage ]; then
     echo "[entrypoint] linking storage"

@@ -2,15 +2,21 @@
 #
 #   1. Generate an app key:   docker compose -f compose.prod.yaml run --rm app php artisan key:generate --show
 #      Paste the value into APP_KEY below.
-#   2. Edit APP_URL and the passwords marked "change me".
-#   3. Start:                 docker compose -f compose.prod.yaml up -d
+#   2. Edit APP_URL, OWNER_EMAIL and the passwords marked "change me".
+#   3. Start:                 docker compose -f compose.prod.yaml up -d --build
 #
-# This pulls the published image — no local build. Postgres, the queue worker
-# and the scheduler all run for you.
+# This builds the image from this repository. Postgres, the queue worker and
+# the scheduler all run for you. The first boot creates the Owner; with
+# OWNER_PASSWORD empty, the generated password is printed once in the log
+# (docker compose -f compose.prod.yaml logs app).
 
 services:
   app:
-    image: ghcr.io/trypostit/trypost:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    image: trypost-app:latest
     container_name: trypost
     restart: unless-stopped
     environment:
@@ -21,6 +27,11 @@ services:
       APP_KEY: ""                       # <- run key:generate (see header) and paste here
       APP_URL: http://localhost:8000    # <- your public URL, e.g. https://post.yourdomain.com
       TRYPOST_TARGET: production
+
+      # ===== Owner (created on first boot) =====
+      OWNER_NAME: Owner
+      OWNER_EMAIL: owner@example.com    # <- change me
+      OWNER_PASSWORD: ""                # <- change me, or leave empty to generate one
 
       # ===== Database (bundled postgres service below) =====
       DB_CONNECTION: pgsql

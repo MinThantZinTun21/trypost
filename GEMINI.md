@@ -8,27 +8,21 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 ## Foundational Context
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
-- php - 8.4.17
-- inertiajs/inertia-laravel (INERTIA) - v2
-- laravel/cashier (CASHIER) - v16
-- laravel/framework (LARAVEL) - v12
-- laravel/horizon (HORIZON) - v5
-- laravel/nightwatch (NIGHTWATCH) - v1
+- php - 8.5
+- inertiajs/inertia-laravel (INERTIA) - v3
+- laravel/framework (LARAVEL) - v13
 - laravel/prompts (PROMPTS) - v0
-- laravel/reverb (REVERB) - v1
 - laravel/socialite (SOCIALITE) - v5
 - laravel/wayfinder (WAYFINDER) - v0
-- laravel/mcp (MCP) - v0
 - laravel/pint (PINT) - v1
 - laravel/sail (SAIL) - v1
 - pestphp/pest (PEST) - v5
 - phpunit/phpunit (PHPUNIT) - v13
-- @inertiajs/vue3 (INERTIA) - v2
+- @inertiajs/vue3 (INERTIA) - v3
 - tailwindcss (TAILWINDCSS) - v4
 - vue (VUE) - v3
 - @laravel/vite-plugin-wayfinder (WAYFINDER) - v0
 - eslint (ESLINT) - v9
-- laravel-echo (ECHO) - v2
 - prettier (PRETTIER) - v3
 
 ## Conventions
