@@ -9,21 +9,17 @@ use App\Enums\Media\Type;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
-use App\Observers\PostObserver;
 use Database\Factories\PostFactory;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-#[ObservedBy([PostObserver::class])]
 class Post extends Model
 {
     /** @use HasFactory<PostFactory> */
@@ -36,7 +32,6 @@ class Post extends Model
         'media',
         'status',
         'created_via',
-        'repurpose_item_id',
         'scheduled_at',
         'published_at',
     ];
@@ -77,16 +72,6 @@ class Post extends Model
     public function postPlatforms(): HasMany
     {
         return $this->hasMany(PostPlatform::class)->orderBy('id');
-    }
-
-    public function comments(): HasMany
-    {
-        return $this->hasMany(PostComment::class);
-    }
-
-    public function labels(): BelongsToMany
-    {
-        return $this->belongsToMany(WorkspaceLabel::class);
     }
 
     public function scopeScheduled(Builder $query): Builder

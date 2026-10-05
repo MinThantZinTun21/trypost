@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
 import {
     IconBrandDiscord,
     IconGift,
     IconLifebuoy,
     IconLifebuoyFilled,
-    IconMessageChatbot,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import type { Component } from 'vue';
@@ -21,7 +19,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { SharedData } from '@/types';
 
 interface HelpLink {
     key: string;
@@ -29,10 +26,6 @@ interface HelpLink {
     href: string;
     icon: Component;
 }
-
-const page = usePage<SharedData>();
-
-const showChatSupport = computed(() => page.props.selfHosted === false);
 
 const helpLinks = computed<HelpLink[]>(() => [
     {
@@ -57,17 +50,6 @@ const communityLinks = computed<HelpLink[]>(() => [
         icon: IconGift,
     },
 ]);
-
-const openChat = (): void => {
-    const crisp = window.$crisp;
-
-    if (!crisp) {
-        return;
-    }
-
-    crisp.push(['do', 'chat:show']);
-    crisp.push(['do', 'chat:open']);
-};
 </script>
 
 <template>
@@ -100,15 +82,6 @@ const openChat = (): void => {
                     {{ $t('sidebar.help') }}
                 </DropdownMenuLabel>
                 <DropdownMenuGroup>
-                    <DropdownMenuItem
-                        v-if="showChatSupport"
-                        class="cursor-pointer"
-                        data-testid="help-menu-chat"
-                        @click="openChat"
-                    >
-                        <IconMessageChatbot class="size-4" />
-                        <span>{{ $t('sidebar.support.chat') }}</span>
-                    </DropdownMenuItem>
                     <DropdownMenuItem
                         v-for="link in helpLinks"
                         :key="link.key"

@@ -9,26 +9,18 @@ use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
 use App\Actions\Post\SyncPostPlatforms;
 use App\Actions\Post\UpdatePost;
-use App\Actions\SocialAccount\ListPinterestBoards;
-use App\Ai\Templates\AiContentTemplate;
-use App\Ai\Templates\AiTemplateRegistry;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
-use App\Http\Resources\Api\PostResource;
 use App\Http\Resources\App\PlatformConfigResource;
-use App\Http\Resources\App\SocialAccountResource;
+use App\Http\Resources\App\PostResource;
 use App\Models\Post;
-use App\Models\PostPlatform;
-use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokCreatorInfo;
-use App\Support\LinkTlds;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -36,18 +28,14 @@ use Inertia\Response;
 
 class PostController extends Controller
 {
-    public function index(Request $request, ?string $status = null): Response|RedirectResponse
+    public function index(Request $request, ?string $status = null): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $workspace);
 
         $query = $workspace->posts()
-            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'user', 'labels']);
+            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'user']);
 
         if ($status) {
             $query = match ($status) {
@@ -62,35 +50,19 @@ class PostController extends Controller
             $query->whereLike('content', "%{$search}%");
         }
 
-        $labelIds = $request->collect('labels')
-            ->filter(fn ($id) => is_string($id) && $id !== '')
-            ->values()
-            ->all();
-
-        $query->when($labelIds, fn ($q) => $q->whereHas(
-            'labels',
-            fn ($q) => $q->whereIn('workspace_labels.id', $labelIds),
-        ));
-
         return Inertia::render('posts/Index', [
             'workspace' => $workspace,
             'posts' => Inertia::scroll(fn () => $query->latest('scheduled_at')->paginate(config('app.pagination.default'))),
             'currentStatus' => $status,
-            'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => [
                 'search' => $request->input('search', ''),
-                'labels' => $labelIds,
             ],
         ]);
     }
 
-    public function calendar(Request $request): Response|RedirectResponse
+    public function calendar(Request $request): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $workspace);
 
@@ -140,40 +112,9 @@ class PostController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
-    {
-        $workspace = $request->user()->currentWorkspace;
-
-        $this->authorize('createPost', $workspace);
-
-        $registry = app(AiTemplateRegistry::class);
-
-        $templates = array_map(fn (AiContentTemplate $t) => [
-            'key' => $t->key(),
-            'name' => trans($t->name()),
-            'description' => trans($t->description()),
-            'preview' => $t->previewAsset(),
-            'needs_account' => $t->needsAccount(),
-            'supported_formats' => $t->supportedFormats(),
-            'applies_brand_visuals' => $t->appliesBrandVisuals(),
-        ], $registry->all());
-
-        return Inertia::render('posts/Create', [
-            'date' => $request->query('date'),
-            'socialAccounts' => SocialAccountResource::collection(
-                $workspace->socialAccounts()->active()->get()
-            ),
-            'templates' => $templates,
-        ]);
-    }
-
     public function store(StorePostRequest $request): RedirectResponse|\Symfony\Component\HttpFoundation\Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 
@@ -183,9 +124,7 @@ class PostController extends Controller
             session()->flash('flash.banner', __('posts.flash.connect_first'));
             session()->flash('flash.bannerStyle', 'danger');
 
-            return $request->user()->can('manageAccounts', $workspace)
-                ? redirect()->route('app.accounts')
-                : redirect()->route('app.calendar');
+            return redirect()->route('app.accounts');
         }
 
         $post = CreatePost::execute($workspace, $request->user(), [
@@ -197,24 +136,9 @@ class PostController extends Controller
         return Inertia::location(route('app.posts.edit', $post));
     }
 
-    public function platformMetrics(Request $request, Post $post, PostPlatform $postPlatform): JsonResponse
-    {
-        $this->authorize('view', $post);
-
-        if ($postPlatform->post_id !== $post->id) {
-            abort(404);
-        }
-
-        return response()->json(app(PostMetricsFetcher::class)->forPlatform($postPlatform));
-    }
-
     public function show(Request $request, Post $post): Response|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $post);
 
@@ -222,7 +146,7 @@ class PostController extends Controller
             return redirect()->route('app.posts.edit', $post);
         }
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load('postPlatforms.socialAccount');
 
         return Inertia::render('posts/Show', [
             'workspace' => $workspace,
@@ -234,10 +158,6 @@ class PostController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('view', $post);
 
         if (PostStatusRules::blocksEditing($post)) {
@@ -248,24 +168,12 @@ class PostController extends Controller
             SyncPostPlatforms::execute($post);
         }
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load('postPlatforms.socialAccount');
         $socialAccounts = $workspace->socialAccounts()->active()->get();
-        $labels = $workspace->labels;
-        $signatures = $workspace->signatures;
 
         $platformConfigs = $socialAccounts->mapWithKeys(fn ($account) => [
             $account->id => new PlatformConfigResource($account),
         ]);
-
-        $pinterestBoards = $socialAccounts
-            ->where('platform', Platform::Pinterest)
-            ->mapWithKeys(fn ($account) => [
-                $account->id => rescue(
-                    fn () => ListPinterestBoards::execute($account),
-                    ['boards' => [], 'truncated' => false],
-                    report: false,
-                ),
-            ]);
 
         $tiktokCreatorInfos = $socialAccounts
             ->where('platform', Platform::TikTok)
@@ -283,22 +191,13 @@ class PostController extends Controller
             'post' => $post,
             'socialAccounts' => $socialAccounts,
             'platformConfigs' => $platformConfigs,
-            'pinterestBoards' => $pinterestBoards,
             'tiktokCreatorInfos' => $tiktokCreatorInfos,
-            'labels' => $labels,
-            'signatures' => $signatures,
-            'authUserId' => $request->user()->id,
-            'xLinkTlds' => config('trypost.platforms.x.defuse_links') ? LinkTlds::all() : [],
         ]);
     }
 
     public function update(UpdatePostRequest $request, Post $post): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('update', $post);
 
@@ -331,10 +230,6 @@ class PostController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('delete', $post);
 
         if (PostStatusRules::blocksDeletion($post)) {
@@ -364,7 +259,7 @@ class PostController extends Controller
     {
         $this->authorize('duplicate', $post);
 
-        $post->load(['postPlatforms', 'labels']);
+        $post->load('postPlatforms');
 
         $copy = DuplicatePost::execute($post, $request->user());
 

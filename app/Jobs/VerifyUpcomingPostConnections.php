@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
-use App\Mail\PostAtRisk;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -108,8 +106,8 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             // time; this job can take real wall-clock time working through
             // a workspace, so re-check fresh (paused/deleted since then
             // shouldn't burn an API call or warn about it). Keep workspace
-            // eager-loaded — SocialAccountObserver reads it when
-            // markAsTokenExpired() below updates the account (#255).
+            // eager-loaded — markAsTokenExpired() below reads it to notify
+            // the workspace owner (#255).
             $account = SocialAccount::active()->with('workspace')->find($account->id);
 
             if (! $account) {
@@ -333,9 +331,8 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                     ->whereBetween('scheduled_at', [now(), now()->addHour()]);
             })
             // socialAccount.workspace is eager-loaded even though this job
-            // never reads it directly — SocialAccountObserver::syncUsage()
-            // (fired by the ->update() calls below via markAsTokenExpired())
-            // reads $account->workspace. Without this eager load every
+            // never reads it directly — markAsTokenExpired() below reads
+            // $account->workspace to notify the owner. Without this eager load every
             // account in the batch triggers its own extra query there.
             ->with(['socialAccount.workspace', 'post'])
             ->get();
@@ -354,11 +351,13 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             user: $owner,
             workspaceId: $workspace->id,
             type: Type::PostAtRisk,
-            channel: Channel::Both,
             title: trans_choice('notifications.post_at_risk.title', $postCount, ['count' => $postCount]),
             body: $atRisk->map(fn (array $group) => $group['account']->platform->label().' ('.$group['account']->handle().')')->implode(', '),
-            data: ['workspace_id' => $workspace->id],
-            mailable: new PostAtRisk($workspace, $postPlatformIds, $postCount),
+            data: [
+                'workspace_id' => $workspace->id,
+                'post_platform_ids' => $postPlatformIds,
+                'post_count' => $postCount,
+            ],
         );
     }
 }

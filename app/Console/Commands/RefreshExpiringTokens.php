@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\RefreshSocialToken;
 use App\Models\SocialAccount;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Builder;
 
 class RefreshExpiringTokens extends Command
 {
@@ -18,9 +16,8 @@ class RefreshExpiringTokens extends Command
     protected $description = 'Proactively refresh social tokens before they expire';
 
     /**
-     * Rotating platforms get a short lead — a wider window would only rotate
-     * more often. Instagram and Threads can't be refreshed once expired, so
-     * theirs is wide enough to survive queue backlog.
+     * Tokens get a short lead — a wider window would only rotate the
+     * refresh_token more often.
      */
     public function handle(): void
     {
@@ -29,15 +26,7 @@ class RefreshExpiringTokens extends Command
         SocialAccount::query()
             ->where('status', Status::Connected)
             ->whereNotNull('token_expires_at')
-            ->where(function (Builder $query) {
-                $query->where(function (Builder $extension) {
-                    $extension->whereIn('platform', Platform::accessTokenExtendingPlatformValues())
-                        ->where('token_expires_at', '<=', now()->addDay());
-                })->orWhere(function (Builder $rotating) {
-                    $rotating->whereNotIn('platform', Platform::accessTokenExtendingPlatformValues())
-                        ->where('token_expires_at', '<=', now()->addMinutes(30));
-                });
-            })
+            ->where('token_expires_at', '<=', now()->addMinutes(30))
             ->chunk(50, function ($accounts) use (&$count) {
                 foreach ($accounts as $account) {
                     RefreshSocialToken::dispatch($account);

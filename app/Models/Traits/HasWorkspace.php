@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 trait HasWorkspace
 {
     /**
-     * Get all workspaces the user belongs to (as owner or member).
+     * Get all workspaces the user belongs to.
      */
     public function workspaces(): BelongsToMany
     {
@@ -29,23 +29,11 @@ trait HasWorkspace
     }
 
     /**
-     * Switch to a different workspace.
+     * Make the given workspace the user's current one.
      */
     public function switchWorkspace(Workspace $workspace): void
     {
         $this->update(['current_workspace_id' => $workspace->id]);
-    }
-
-    /**
-     * Check if user belongs to a workspace on their current account.
-     */
-    public function belongsToWorkspace(Workspace $workspace): bool
-    {
-        if ($workspace->account_id !== $this->account_id) {
-            return false;
-        }
-
-        return $this->workspaces()->where('workspaces.id', $workspace->id)->exists();
     }
 
     /**
@@ -60,10 +48,26 @@ trait HasWorkspace
     }
 
     /**
-     * Get the count of workspaces the user owns.
+     * The Owner has a single workspace. When `current_workspace_id` is unset
+     * (or points at a row that no longer exists), fall back to that workspace
+     * and remember it as the current one.
      */
-    public function ownedWorkspacesCount(): int
+    public function resolveCurrentWorkspace(): ?Workspace
     {
-        return Workspace::where('user_id', $this->id)->count();
+        if ($this->currentWorkspace) {
+            return $this->currentWorkspace;
+        }
+
+        $workspace = $this->accountWorkspaces()->oldest('workspaces.created_at')->first()
+            ?? Workspace::query()->where('user_id', $this->id)->oldest()->first();
+
+        if (! $workspace) {
+            return null;
+        }
+
+        $this->switchWorkspace($workspace);
+        $this->setRelation('currentWorkspace', $workspace);
+
+        return $workspace;
     }
 }

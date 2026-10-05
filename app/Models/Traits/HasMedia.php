@@ -82,7 +82,7 @@ trait HasMedia
         $type = $this->getMediaType($mimeType);
 
         // Normalize non-JPEG still images to JPEG q100 for universal platform compatibility.
-        // GIF is preserved (animation kept for X/Bluesky/Mastodon).
+        // GIF is preserved so its animation survives.
         [$normalizedBytes, $normalizedMime, $normalizedExt] = $this->normalizeImageFormat(
             $file->getPathname(),
             $mimeType,
@@ -301,7 +301,7 @@ trait HasMedia
             return [file_get_contents($filePath), $mimeType, $originalExtension];
         }
 
-        // Formats that publish safely everywhere (JPEG is universal, GIF needed for X/Bluesky/Mastodon).
+        // Formats that publish safely everywhere (JPEG is universal, GIF keeps its animation).
         if (in_array($mimeType, ['image/jpeg', 'image/jpg', 'image/gif'], true)) {
             return [file_get_contents($filePath), $mimeType, $originalExtension];
         }

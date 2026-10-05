@@ -595,10 +595,10 @@ test('facebook connect ignores a reconnect id from another workspace', function 
 });
 
 test('facebook connect ignores a reconnect id from another network', function () {
-    $linkedin = SocialAccount::factory()->create([
+    $tiktok = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::LinkedIn,
-        'platform_user_id' => 'linkedin-member',
+        'platform' => Platform::TikTok,
+        'platform_user_id' => 'tiktok-member',
     ]);
 
     $driverMock = Mockery::mock();
@@ -614,7 +614,7 @@ test('facebook connect ignores a reconnect id from another network', function ()
         ->andReturn($driverMock);
 
     $this->actingAs($this->user)
-        ->get(route('app.social.facebook.connect', ['reconnect' => $linkedin->id]))
+        ->get(route('app.social.facebook.connect', ['reconnect' => $tiktok->id]))
         ->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
 
     expect(session('social_reconnect_id'))->toBeNull();
@@ -735,10 +735,10 @@ test('facebook reconnect shows page_not_found when the page is missing from grap
 });
 
 test('facebook select ignores a stored reconnect id from another network', function () {
-    $linkedin = SocialAccount::factory()->create([
+    $tiktok = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::LinkedIn,
-        'platform_user_id' => 'linkedin-member',
+        'platform' => Platform::TikTok,
+        'platform_user_id' => 'tiktok-member',
     ]);
 
     session([
@@ -746,7 +746,7 @@ test('facebook select ignores a stored reconnect id from another network', funct
         'facebook_oauth' => [
             'user_token' => 'test-user-token',
             'user_id' => 'facebook_user_123',
-            'reconnect_id' => $linkedin->id,
+            'reconnect_id' => $tiktok->id,
             'pages' => [
                 [
                     'id' => 'page_123',
@@ -764,7 +764,7 @@ test('facebook select ignores a stored reconnect id from another network', funct
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
-    expect($linkedin->fresh()->platform)->toBe(Platform::LinkedIn)
+    expect($tiktok->fresh()->platform)->toBe(Platform::TikTok)
         ->and($this->workspace->socialAccounts()->where('platform', Platform::Facebook)->count())->toBe(1);
 });
 

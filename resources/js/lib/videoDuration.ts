@@ -18,7 +18,12 @@ export const probeVideoDuration = (file: File): Promise<number | null> =>
         const timer = setTimeout(() => finish(null), PROBE_TIMEOUT_MS);
 
         video.preload = 'metadata';
-        video.onloadedmetadata = () => finish(Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null);
+        video.onloadedmetadata = () =>
+            finish(
+                Number.isFinite(video.duration) && video.duration > 0
+                    ? video.duration
+                    : null,
+            );
         video.onerror = () => finish(null);
         video.src = url;
     });

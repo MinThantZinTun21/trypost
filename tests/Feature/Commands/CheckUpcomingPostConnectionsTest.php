@@ -42,7 +42,7 @@ test('dispatches nothing when no workspace has posts in the window', function ()
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addHours(5),
@@ -64,7 +64,7 @@ test('dispatches nothing when the only at-risk post_platform was already warned 
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addMinutes(30),
@@ -88,7 +88,7 @@ test('dispatches nothing when the only at-risk post_platform is disabled', funct
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addMinutes(30),
@@ -111,7 +111,7 @@ test('dispatches nothing when the only at-risk post_platform is on a paused acco
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->youtube()->create([
         'workspace_id' => $workspace->id,
         'is_active' => false,
     ]);
@@ -137,7 +137,7 @@ test('dispatches nothing when the only at-risk post is still a draft', function 
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->draft()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addMinutes(30),
@@ -163,7 +163,7 @@ test('dispatches one job per distinct workspace when multiple workspaces have at
     $workspaceB = Workspace::factory()->create();
 
     foreach ([$workspaceA, $workspaceB] as $workspace) {
-        $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+        $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
         $post = Post::factory()->scheduled()->create([
             'workspace_id' => $workspace->id,
             'scheduled_at' => now()->addMinutes(30),

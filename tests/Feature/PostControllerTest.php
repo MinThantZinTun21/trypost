@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PublishPost;
@@ -14,12 +13,9 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Models\WorkspaceLabel;
-use App\Support\LinkTlds;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     $this->user = User::factory()->create([]);
@@ -29,7 +25,7 @@ beforeEach(function () {
 
     $this->socialAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::LinkedIn,
+        'platform' => Platform::Facebook,
     ]);
 });
 
@@ -55,99 +51,13 @@ test('posts index shows posts for current workspace', function () {
     );
 });
 
-test('posts index exposes workspace labels for filter dropdown', function () {
-    WorkspaceLabel::factory()->count(3)->create(['workspace_id' => $this->workspace->id]);
-    WorkspaceLabel::factory()->create(); // belongs to a different workspace; must not leak.
-
-    $response = $this->actingAs($this->user)->get(route('app.posts.index'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->has('labels', 3)
-        ->where('filters.labels', [])
-    );
-});
-
-test('posts index filters posts by a single label id', function () {
-    $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $taggedPost = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $taggedPost->labels()->attach($label);
-
-    Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->get(route('app.posts.index', ['labels' => [$label->id]]));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->has('posts.data', 1)
-        ->where('posts.data.0.id', $taggedPost->id)
-        ->where('filters.labels', [$label->id])
-    );
-});
-
-test('posts index filters posts by multiple labels (OR semantics)', function () {
-    $marketing = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
-    $sales = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
-    $unrelated = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $postWithMarketing = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $postWithMarketing->labels()->attach($marketing);
-
-    $postWithSales = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $postWithSales->labels()->attach($sales);
-
-    $postWithUnrelated = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $postWithUnrelated->labels()->attach($unrelated);
-
-    $response = $this->actingAs($this->user)
-        ->get(route('app.posts.index', ['labels' => [$marketing->id, $sales->id]]));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->has('posts.data', 2)
-        ->where('filters.labels', [$marketing->id, $sales->id])
-    );
-});
-
-test('posts index ignores blank label query params', function () {
-    Post::factory()->count(2)->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->get(route('app.posts.index', ['labels' => ['']]));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->has('posts.data', 2)
-        ->where('filters.labels', [])
-    );
-});
-
-test('posts index redirects to create workspace if no workspace', function () {
+test('posts index falls back to the single workspace when none is current', function () {
     $this->user->update(['current_workspace_id' => null]);
 
     $response = $this->actingAs($this->user)->get(route('app.posts.index'));
 
-    $response->assertRedirect(route('app.workspaces.create'));
+    $response->assertOk();
+    expect($this->user->fresh()->current_workspace_id)->toBe($this->workspace->id);
 });
 
 // Calendar tests
@@ -231,40 +141,46 @@ test('calendar does not include unscheduled drafts', function () {
 });
 
 // Create tests
-test('create requires authentication', function () {
-    $response = $this->get(route('app.posts.create'));
-
-    $response->assertRedirect(route('login'));
+test('the old wizard route is gone', function () {
+    expect(Route::has('app.posts.create'))->toBeFalse();
 });
 
-test('create renders the wizard page', function () {
-    $response = $this->actingAs($this->user)->get(route('app.posts.create'));
+test('new post creates a draft and lands on the editor with no AI', function () {
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'));
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('posts/Create', false)
-        ->where('date', null)
-        ->has('socialAccounts', 1)
-        ->where('socialAccounts.0.id', $this->socialAccount->id)
-    );
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect($post->status)->toBe(PostStatus::Draft);
+
+    $response->assertRedirect(route('app.posts.edit', $post));
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.edit', $post))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Edit', false)
+            ->where('post.id', $post->id)
+            ->missing('templates')
+            ->missing('aiEnabled')
+        );
 });
 
-test('create forwards date query param to the page', function () {
-    $response = $this->actingAs($this->user)->get(route('app.posts.create', ['date' => '2026-06-01']));
+test('new post from a calendar day creates a draft on that day and lands on the editor', function () {
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'), ['date' => '2026-06-15']);
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('posts/Create', false)
-        ->where('date', '2026-06-01')
-    );
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect($post->status)->toBe(PostStatus::Draft);
+    expect($post->scheduled_at->utc()->format('Y-m-d'))->toBe('2026-06-15');
+
+    $response->assertRedirect(route('app.posts.edit', $post));
 });
 
-test('create redirects to workspaces.create when user has no workspace', function () {
+test('new post gives a user with no workspace one and sends them to connect accounts', function () {
     $newUser = User::factory()->create();
 
-    $response = $this->actingAs($newUser)->get(route('app.posts.create'));
+    $response = $this->actingAs($newUser)->post(route('app.posts.store'));
 
-    $response->assertRedirect(route('app.workspaces.create'));
+    $response->assertRedirect(route('app.accounts'));
+    expect($newUser->fresh()->current_workspace_id)->not->toBeNull();
 });
 
 // Store tests
@@ -455,7 +371,7 @@ test('update post saves changes', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -465,7 +381,7 @@ test('update post saves changes', function () {
     $post->refresh();
     expect($post->content)->toBe('Updated content');
     $postPlatform->refresh();
-    expect($postPlatform->content_type)->toBe(ContentType::LinkedInPost);
+    expect($postPlatform->content_type)->toBe(ContentType::FacebookPost);
 });
 
 test('update post cannot update published posts', function () {
@@ -486,7 +402,7 @@ test('update post cannot update published posts', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -514,7 +430,7 @@ test('cannot re-publish a failed post', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -547,7 +463,7 @@ test('cannot update a post in publishing state', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -580,7 +496,7 @@ test('cannot update a partially published post', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -613,7 +529,7 @@ test('cannot update a published post', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -649,7 +565,7 @@ test('publish now updates scheduled_at to current time', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ]);
@@ -683,7 +599,7 @@ test('publish now is allowed when the draft has no scheduled_at', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ])->assertRedirect();
@@ -714,7 +630,7 @@ test('update rejects scheduled status without a future scheduled_at', function (
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ];
@@ -758,7 +674,7 @@ test('update accepts scheduled status reusing an existing future scheduled_at', 
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ])->assertRedirect();
@@ -791,7 +707,7 @@ test('update schedules an unscheduled draft with an explicit future scheduled_at
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ])->assertRedirect();
@@ -821,7 +737,7 @@ test('update keeps an unscheduled draft when saving as draft without scheduled_a
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
+                'content_type' => ContentType::FacebookPost->value,
             ],
         ],
     ])->assertRedirect();
@@ -895,365 +811,6 @@ test('destroy post returns 404 for post from different workspace', function () {
     $response->assertNotFound();
 });
 
-// Label tests
-test('edit post includes workspace labels', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $label = WorkspaceLabel::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'name' => 'Marketing',
-        'color' => '#FF0000',
-    ]);
-
-    $response = $this->actingAs($this->user)->get(route('app.posts.edit', $post));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('posts/Edit')
-        ->has('labels', 1)
-        ->where('labels.0.name', 'Marketing')
-    );
-});
-
-test('update post can attach labels', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $label = WorkspaceLabel::factory()->create([
-        'workspace_id' => $this->workspace->id,
-    ]);
-
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
-        'platforms' => [
-            [
-                'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
-            ],
-        ],
-        'label_ids' => [$label->id],
-    ]);
-
-    $response->assertRedirect();
-
-    $post->refresh();
-    expect($post->labels)->toHaveCount(1);
-    expect($post->labels->first()->id)->toBe($label->id);
-});
-
-test('update post can detach labels', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $label = WorkspaceLabel::factory()->create([
-        'workspace_id' => $this->workspace->id,
-    ]);
-
-    $post->labels()->attach($label);
-
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
-        'platforms' => [
-            [
-                'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
-            ],
-        ],
-        'label_ids' => [],
-    ]);
-
-    $response->assertRedirect();
-
-    $post->refresh();
-    expect($post->labels)->toHaveCount(0);
-});
-
-test('update post can sync multiple labels', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $label1 = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
-    $label2 = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
-    $label3 = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    // Attach initial label
-    $post->labels()->attach($label1);
-
-    // Update with different labels
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
-        'platforms' => [
-            [
-                'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
-            ],
-        ],
-        'label_ids' => [$label2->id, $label3->id],
-    ]);
-
-    $response->assertRedirect();
-
-    $post->refresh();
-    expect($post->labels)->toHaveCount(2);
-    expect($post->labels->pluck('id')->toArray())->toEqualCanonicalizing([$label2->id, $label3->id]);
-});
-
-test('platform metrics returns unsupported when post not published', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'status' => Status::Pending,
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJson(['unsupported' => true, 'reason' => 'not_published']);
-});
-
-test('platform metrics returns 404 for post in another workspace', function () {
-    $otherWorkspace = Workspace::factory()->create();
-    $otherPost = Post::factory()->create(['workspace_id' => $otherWorkspace->id]);
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $otherPost->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $otherPost->id, 'postPlatform' => $pp->id]))
-        ->assertNotFound();
-});
-
-test('platform metrics returns 404 when post platform belongs to different post', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $otherPost = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $otherPost->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]))
-        ->assertNotFound();
-});
-
-test('platform metrics dispatches X analytics for X platform', function () {
-    $xAccount = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::X,
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $xAccount->id,
-        'platform' => Platform::X,
-        'status' => Status::Published,
-        'platform_post_id' => '1234567890',
-    ]);
-
-    Http::fake([
-        'https://api.x.com/2/tweets/1234567890*' => Http::response([
-            'data' => [
-                'public_metrics' => [
-                    'impression_count' => 500,
-                    'like_count' => 42,
-                    'retweet_count' => 7,
-                    'reply_count' => 3,
-                    'quote_count' => 1,
-                    'bookmark_count' => 4,
-                ],
-            ],
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJsonFragment(['label' => 'Impressions', 'value' => 500]);
-    $response->assertJsonFragment(['label' => 'Likes', 'value' => 42]);
-});
-
-test('platform metrics dispatches TikTok analytics for TikTok platform', function () {
-    $tiktokAccount = SocialAccount::factory()->tiktok()->create([
-        'workspace_id' => $this->workspace->id,
-        'username' => 'tiktoker',
-        'token_expires_at' => now()->addDays(1),
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->tiktok()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $tiktokAccount->id,
-        'platform' => Platform::TikTok,
-        'status' => Status::Published,
-        'platform_post_id' => '7685359243088103444',
-    ]);
-
-    $api = config('trypost.platforms.tiktok.api');
-
-    Http::fake([
-        $api.'/video/query/*' => Http::response([
-            'data' => [
-                'videos' => [[
-                    'id' => '7685359243088103444',
-                    'view_count' => 220,
-                    'like_count' => 11,
-                    'comment_count' => 2,
-                    'share_count' => 1,
-                ]],
-            ],
-            'error' => ['code' => 'ok'],
-        ]),
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJsonFragment(['label' => 'Views', 'value' => 220]);
-    $response->assertJsonFragment(['label' => 'Likes', 'value' => 11]);
-});
-
-test('platform metrics dispatches LinkedIn analytics for LinkedIn platform', function () {
-    $linkedinAccount = SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addDay(),
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $linkedinAccount->id,
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
-        'status' => Status::Published,
-        'platform_post_id' => 'urn:li:share:7503082467755646976',
-    ]);
-
-    $api = config('trypost.platforms.linkedin.api');
-
-    Http::fake([
-        "{$api}/v2/socialActions/*" => Http::response([
-            'likesSummary' => ['totalLikes' => 1],
-            'commentsSummary' => ['aggregatedTotalComments' => 0],
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJsonFragment(['label' => 'Likes', 'value' => 1]);
-    $response->assertJsonFragment(['label' => 'Comments', 'value' => 0]);
-});
-
-test('platform metrics dispatches LinkedIn Page analytics for LinkedIn Page platform', function () {
-    $pageAccount = SocialAccount::factory()->linkedinPage()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addDay(),
-        'platform_user_id' => '99920311',
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $pp = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $pageAccount->id,
-        'platform' => Platform::LinkedInPage,
-        'content_type' => ContentType::LinkedInPagePost,
-        'status' => Status::Published,
-        'platform_post_id' => 'urn:li:ugcPost:7504988143797075969',
-    ]);
-
-    $api = config('trypost.platforms.linkedin-page.api');
-
-    Http::fake([
-        "{$api}/rest/organizationalEntityShareStatistics*" => Http::response([
-            'elements' => [[
-                'totalShareStatistics' => [
-                    'impressionCount' => 99,
-                    'clickCount' => 14,
-                    'likeCount' => 0,
-                    'commentCount' => 0,
-                    'shareCount' => 0,
-                ],
-            ]],
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
-
-    $response->assertOk();
-    $response->assertJsonFragment(['label' => 'Impressions', 'value' => 99]);
-    $response->assertJsonFragment(['label' => 'Clicks', 'value' => 14]);
-});
-
 test('show page renders for non-editable posts', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -1266,7 +823,7 @@ test('show page renders for non-editable posts', function () {
         'post_id' => $post->id,
         'social_account_id' => $this->socialAccount->id,
         'enabled' => true,
-        'platform_url' => 'https://linkedin.com/posts/abc',
+        'platform_url' => 'https://facebook.com/posts/abc',
     ]);
 
     $response = $this->actingAs($this->user)->get(route('app.posts.show', $post));
@@ -1376,7 +933,7 @@ test('update post redirects to show page after publishing', function () {
         'status' => 'publishing',
         'content' => 'Test',
         'platforms' => [
-            ['id' => $postPlatform->id, 'content_type' => ContentType::LinkedInPost->value],
+            ['id' => $postPlatform->id, 'content_type' => ContentType::FacebookPost->value],
         ],
     ]);
 
@@ -1424,10 +981,10 @@ test('update post rejects scheduling youtube short with image', function () {
     $response->assertSessionHasErrors('platforms.0.content_type');
 });
 
-test('update post rejects scheduling instagram reel with no media', function () {
-    $instagramAccount = SocialAccount::factory()->create([
+test('update post rejects scheduling facebook reel with no media', function () {
+    $facebookAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
+        'platform' => Platform::Facebook,
     ]);
 
     $post = Post::factory()->create([
@@ -1439,7 +996,7 @@ test('update post rejects scheduling instagram reel with no media', function () 
 
     $postPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id,
-        'social_account_id' => $instagramAccount->id,
+        'social_account_id' => $facebookAccount->id,
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
@@ -1448,7 +1005,7 @@ test('update post rejects scheduling instagram reel with no media', function () 
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::InstagramReel->value,
+                'content_type' => ContentType::FacebookReel->value,
             ],
         ],
     ]);
@@ -1456,10 +1013,10 @@ test('update post rejects scheduling instagram reel with no media', function () 
     $response->assertSessionHasErrors('platforms.0.content_type');
 });
 
-test('update post rejects invalid instagram aspect_ratio meta', function () {
-    $instagramAccount = SocialAccount::factory()->create([
+test('update post rejects invalid facebook aspect_ratio meta', function () {
+    $facebookAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
+        'platform' => Platform::Facebook,
     ]);
 
     $post = Post::factory()->create([
@@ -1470,7 +1027,7 @@ test('update post rejects invalid instagram aspect_ratio meta', function () {
 
     $postPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id,
-        'social_account_id' => $instagramAccount->id,
+        'social_account_id' => $facebookAccount->id,
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
@@ -1478,7 +1035,7 @@ test('update post rejects invalid instagram aspect_ratio meta', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::InstagramFeed->value,
+                'content_type' => ContentType::FacebookPost->value,
                 'meta' => ['aspect_ratio' => '2:1'],
             ],
         ],
@@ -1487,10 +1044,10 @@ test('update post rejects invalid instagram aspect_ratio meta', function () {
     $response->assertSessionHasErrors('platforms.0.meta.aspect_ratio');
 });
 
-test('update post accepts valid instagram aspect_ratio meta', function () {
-    $instagramAccount = SocialAccount::factory()->create([
+test('update post accepts valid facebook aspect_ratio meta', function () {
+    $facebookAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
+        'platform' => Platform::Facebook,
     ]);
 
     $post = Post::factory()->create([
@@ -1501,7 +1058,7 @@ test('update post accepts valid instagram aspect_ratio meta', function () {
 
     $postPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id,
-        'social_account_id' => $instagramAccount->id,
+        'social_account_id' => $facebookAccount->id,
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
@@ -1509,7 +1066,7 @@ test('update post accepts valid instagram aspect_ratio meta', function () {
         'platforms' => [
             [
                 'id' => $postPlatform->id,
-                'content_type' => ContentType::InstagramFeed->value,
+                'content_type' => ContentType::FacebookPost->value,
                 'meta' => ['aspect_ratio' => '4:5'],
             ],
         ],
@@ -1588,32 +1145,6 @@ test('draft post does not enforce media-vs-content-type compatibility', function
     $response->assertSessionDoesntHaveErrors('platforms.0.content_type');
 });
 
-test('update post validates label_ids exist', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
-        'platforms' => [
-            [
-                'id' => $postPlatform->id,
-                'content_type' => ContentType::LinkedInPost->value,
-            ],
-        ],
-        'label_ids' => ['non-existent-uuid'],
-    ]);
-
-    $response->assertSessionHasErrors('label_ids.0');
-});
-
 // Member authorization tests
 test('member can view posts index', function () {
     $member = User::factory()->create([
@@ -1639,24 +1170,18 @@ test('member can create post', function () {
     $response->assertRedirect();
 });
 
-test('the editor receives the tld list only while x link defusing is on', function (bool $enabled, bool $expectsList) {
-    config()->set('trypost.platforms.x.defuse_links', $enabled);
-
+test('analytics page and post metrics endpoint no longer exist', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
+    $postPlatform = PostPlatform::factory()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
 
+    $this->actingAs($this->user)->get('/analytics')->assertNotFound();
     $this->actingAs($this->user)
-        ->get(route('app.posts.edit', $post))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('posts/Edit')
-            ->where('xLinkTlds', fn (Collection $tlds): bool => $expectsList
-                ? $tlds->contains('com') && $tlds->count() === count(LinkTlds::all())
-                : $tlds->isEmpty())
-        );
-})->with([
-    'enabled' => [true, true],
-    'disabled' => [false, false],
-]);
+        ->getJson("/posts/{$post->id}/platforms/{$postPlatform->id}/metrics")
+        ->assertNotFound();
+});

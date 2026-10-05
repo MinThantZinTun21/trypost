@@ -3,33 +3,31 @@ description: Foundational context, package versions, conventions, replies, docs 
 alwaysApply: true
 ---
 
-# TryPost — Project Context
+# TryPost (minimal fork) — Project Context
+
+A single-Owner scheduler that publishes to Facebook Pages, TikTok and YouTube Shorts. Read `CONTEXT.md` and `docs/adr/` before adding anything; the removed features (AI, billing, teams, API/MCP, analytics, email, websockets, Redis/Horizon, extra locales) stay removed.
 
 Laravel + Inertia v3 + Vue 3 + Tailwind v4 application. You are an expert on these specific package versions:
 
-- php 8.4, laravel/framework v13
+- php 8.5, laravel/framework v13
 - inertiajs/inertia-laravel v3, @inertiajs/vue3 v3
-- laravel/cashier v16, laravel/horizon v5, laravel/passport v13
-- laravel/pennant v1, laravel/reverb v1, laravel/socialite v5
-- laravel/wayfinder v0, laravel/ai v0, laravel/boost v2.5, laravel/mcp v0.9
-- laravel/nightwatch v1, laravel/telescope v5, laravel/pail v1, laravel/pint v1, laravel/sail v1
-- laravel/prompts v0
+- laravel/socialite v5, laravel/wayfinder v0, laravel/boost v2.5
+- laravel/pail v1, laravel/pint v1, laravel/sail v1, laravel/prompts v0
 - pestphp/pest v5, phpunit/phpunit v13
-- vue v3, tailwindcss v4, @laravel/echo-vue v2, laravel-echo v2
+- vue v3, tailwindcss v4
 - @laravel/vite-plugin-wayfinder v0
 - eslint v9, prettier v3
 
-Documentation for end users lives at https://docs.trypost.it.
+Postgres is the only backing service: the queue and cache use the database drivers, and the app runs a web server, one `queue:work` and `schedule:work`.
 
 ## Skills activation
 
-This project has domain-specific skills in `.claude/skills/` (e.g. `pest-testing`, `inertia-vue-development`, `wayfinder-development`, `laravel-best-practices`, `cashier-stripe-development`, `mcp-development`, `passport-development`, `pennant-development`, `socialite-development`, `medialibrary-development`, `ai-sdk-development`, `configuring-horizon`, `configure-nightwatch`, `tailwindcss-development`, `upgrade-laravel-v13`, `humanizer`). Activate the relevant skill whenever you work in that domain — don't wait until you're stuck.
+This project has domain-specific skills in `.claude/skills/` (e.g. `pest-testing`, `inertia-vue-development`, `wayfinder-development`, `laravel-best-practices`, `socialite-development`, `medialibrary-development`, `tailwindcss-development`, `upgrade-laravel-v13`, `humanizer`). Activate the relevant skill whenever you work in that domain — don't wait until you're stuck.
 
 ## Conventions
 
 - Follow existing code conventions. Check sibling files for structure, approach and naming before creating or editing.
 - In Vue `<DialogFooter>`, primary action button first in markup, then cancel/secondary (see `vue-typescript.mdc` and `CLAUDE.md`).
-- AI agents: prompts live in `resources/views/prompts/`; `instructions()` uses `view(...)->render()` only — never heredocs or inline prompt strings in `app/Ai/Agents/` (see `CLAUDE.md`).
 - Use descriptive names (`isRegisteredForDiscounts`, not `discount()`).
 - Reuse existing components before writing new ones.
 - Stick to existing directory structure. Do not create new base folders without approval.

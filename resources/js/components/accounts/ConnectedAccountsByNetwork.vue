@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IconPlus } from '@tabler/icons-vue';
-import { trans, transChoice } from 'laravel-vue-i18n';
+import { transChoice } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import SocialAccountCard from '@/components/accounts/SocialAccountCard.vue';
@@ -40,14 +40,6 @@ const groups = computed<NetworkGroup[]>(() =>
         ),
     })),
 );
-
-const variantLabel = (
-    group: NetworkGroup,
-    account: ConnectedAccount,
-): string | undefined =>
-    account.platform === group.platform.value
-        ? undefined
-        : trans(`accounts.variants.${account.platform}`);
 </script>
 
 <template>
@@ -89,7 +81,6 @@ const variantLabel = (
                     v-for="account in group.accounts"
                     :key="account.id"
                     :account="account"
-                    :variant-label="variantLabel(group, account)"
                     @reconnect="emit('reconnect', $event)"
                     @disconnect="emit('disconnect', $event)"
                     @toggle="emit('toggle', $event)"

@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
-import CommentsTab from '@/components/posts/editor/CommentsTab.vue';
 import PreviewTab from '@/components/posts/editor/PreviewTab.vue';
 import ScheduleTab from '@/components/posts/editor/ScheduleTab.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { PlatformIssue } from '@/composables/usePostCompliance';
-import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
@@ -63,13 +61,8 @@ const props = defineProps<{
     platformContentTypes: Record<string, string>;
     platformIssues: Record<string, PlatformIssue>;
     platformConfigs: Record<string, any>;
-    labels: { id: string; name: string; color: string }[];
-    selectedLabelIds: string[];
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
-    pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     isReadOnly: boolean;
-    authUserId: string;
-    initialHighlightCommentId: string | null;
     postedAt?: string | null;
 }>();
 
@@ -77,7 +70,6 @@ const activeTab = defineModel<string>('activeTab', { required: true });
 
 const emit = defineEmits<{
     (e: 'toggle-platform', platformId: string): void;
-    (e: 'toggle-label', labelId: string): void;
     (
         e: 'update:platformMeta',
         platformId: string,
@@ -90,20 +82,11 @@ const emit = defineEmits<{
     ): void;
 }>();
 
-const commentsTabRef = ref<InstanceType<typeof CommentsTab> | null>(null);
-
 const previewablePlatforms = computed(() =>
     props.post.post_platforms.filter((pp) =>
         props.selectedPlatformIds.includes(pp.id),
     ),
 );
-
-defineExpose({
-    addCommentFromBroadcast: (comment: any) =>
-        commentsTabRef.value?.addCommentFromBroadcast(comment),
-    registerMentionedUsers: (users: any) =>
-        commentsTabRef.value?.registerMentionedUsers(users),
-});
 </script>
 
 <template>
@@ -116,9 +99,6 @@ defineExpose({
             }}</TabsTrigger>
             <TabsTrigger value="schedule" data-testid="editor-tab-channels">{{
                 $t('posts.edit.tabs.channels')
-            }}</TabsTrigger>
-            <TabsTrigger value="comments">{{
-                $t('posts.edit.tabs.comments')
             }}</TabsTrigger>
         </TabsList>
 
@@ -145,18 +125,14 @@ defineExpose({
             <ScheduleTab
                 :post-platforms="post.post_platforms"
                 :selected-platform-ids="selectedPlatformIds"
-                :labels="labels"
-                :selected-label-ids="selectedLabelIds"
                 :is-read-only="isReadOnly"
                 :platform-configs="platformConfigs"
                 :platform-meta="platformMeta"
                 :platform-content-types="platformContentTypes"
                 :platform-issues="platformIssues"
                 :tiktok-creator-infos="tiktokCreatorInfos"
-                :pinterest-boards="pinterestBoards"
                 :media="media"
                 @toggle-platform="(id) => emit('toggle-platform', id)"
-                @toggle-label="(id) => emit('toggle-label', id)"
                 @update:platform-meta="
                     (id, meta) => emit('update:platformMeta', id, meta)
                 "
@@ -164,15 +140,6 @@ defineExpose({
                     (id, contentType) =>
                         emit('update:platformContentType', id, contentType)
                 "
-            />
-        </TabsContent>
-
-        <TabsContent value="comments" class="flex-1 overflow-hidden">
-            <CommentsTab
-                ref="commentsTabRef"
-                :post-id="post.id"
-                :current-user-id="authUserId"
-                :highlight-comment-id="initialHighlightCommentId"
             />
         </TabsContent>
     </Tabs>

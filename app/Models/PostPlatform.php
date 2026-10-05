@@ -7,9 +7,7 @@ namespace App\Models;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
-use App\Observers\PostPlatformObserver;
 use Database\Factories\PostPlatformFactory;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +15,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
-#[ObservedBy(PostPlatformObserver::class)]
 class PostPlatform extends Model
 {
     /** @use HasFactory<PostPlatformFactory> */
@@ -38,8 +35,6 @@ class PostPlatform extends Model
         'error_message',
         'error_context',
         'published_at',
-        'submitted_at',
-        'last_reconciled_at',
         'meta',
         'connection_warning_sent_at',
     ];
@@ -52,8 +47,6 @@ class PostPlatform extends Model
             'content_type' => ContentType::class,
             'status' => Status::class,
             'published_at' => 'datetime',
-            'submitted_at' => 'datetime',
-            'last_reconciled_at' => 'datetime',
             'meta' => 'array',
             'error_context' => 'array',
             'connection_warning_sent_at' => 'datetime',
@@ -156,39 +149,6 @@ class PostPlatform extends Model
         ]);
 
         $this->socialAccount?->update(['last_used_at' => $now]);
-    }
-
-    /**
-     * The provider accepted the post but has not finished reviewing it. It is
-     * neither published nor failed until the review settles.
-     */
-    public function markAsPendingReview(string $platformPostId, ?string $platformUrl = null): void
-    {
-        $this->update([
-            'status' => Status::PendingReview,
-            'platform_post_id' => $platformPostId,
-            'platform_url' => $platformUrl,
-            'submitted_at' => $this->submitted_at ?? now(),
-            'error_message' => null,
-            'error_context' => null,
-        ]);
-    }
-
-    /**
-     * The provider accepted the post and then refused it in review. Unlike a
-     * failure, the remote row exists, so its id and URL are kept for support.
-     *
-     * @param  array<string, mixed>|null  $errorContext
-     */
-    public function markAsRejected(string $platformPostId, ?string $platformUrl, string $errorMessage, ?array $errorContext = null): void
-    {
-        $this->update([
-            'status' => Status::Rejected,
-            'platform_post_id' => $platformPostId,
-            'platform_url' => $platformUrl,
-            'error_message' => $errorMessage,
-            'error_context' => $errorContext,
-        ]);
     }
 
     public function markAsFailed(string $errorMessage, ?array $errorContext = null): void

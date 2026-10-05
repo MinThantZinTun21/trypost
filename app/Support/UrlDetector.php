@@ -6,7 +6,7 @@ namespace App\Support;
 
 final class UrlDetector
 {
-    /** PCRE matching bare http(s) URLs; shared with Bluesky link-facet parsing. */
+    /** PCRE matching bare http(s) URLs. */
     public const string URL_PATTERN = '/(https?:\/\/[^\s]+)/u';
 
     public static function firstUrl(string $text): ?string

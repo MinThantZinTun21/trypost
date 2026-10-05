@@ -63,11 +63,10 @@ test('key pages do not overflow horizontally on a phone', function () {
     $this->actingAs($user);
 
     $pages = [
-        'workspaces (AuthLayout)' => route('app.workspaces.index'),
         'posts index (default)' => route('app.posts.index'),
         'post editor (full-width)' => route('app.posts.edit', $post),
         'calendar (full-width)' => route('app.calendar'),
-        'settings (tabs)' => route('app.api-keys.index'),
+        'settings (tabs)' => route('app.profile.edit'),
     ];
 
     foreach ($pages as $label => $url) {

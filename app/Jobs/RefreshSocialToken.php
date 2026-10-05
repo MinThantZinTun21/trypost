@@ -35,8 +35,7 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
 
     /**
      * Refresh outright rather than verifying first: a refresh replaces the
-     * access token, leaving nothing for a verify call — billed as a "User:
-     * Read" on X — to confirm.
+     * access token, leaving nothing for a verify call to confirm.
      */
     public function handle(ConnectionVerifier $verifier): void
     {
@@ -51,12 +50,9 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         } catch (TokenExpiredException $e) {
-            // Instagram and Threads extend their token in place and cannot
-            // renew it once expired, so a rejected extension means the
-            // connection is already doomed — say so while reconnecting still
-            // helps. Elsewhere a rejection often just means we lost a race.
-            if (! $this->account->platform->extendsAccessTokenOnRefresh()
-                && $this->accessTokenStillWorks($verifier)) {
+            // A rejection often just means we lost a race with a concurrent
+            // refresh that already rotated the token.
+            if ($this->accessTokenStillWorks($verifier)) {
                 return;
             }
 
@@ -72,8 +68,8 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
 
     /**
      * The only place this job reaches the (billed) verify endpoint, and only
-     * once a refresh has been rejected — which on X and Bluesky usually means
-     * a concurrent refresh consumed the single-use refresh_token first.
+     * once a refresh has been rejected — which usually means a concurrent
+     * refresh consumed the rotating refresh_token first.
      */
     private function accessTokenStillWorks(ConnectionVerifier $verifier): bool
     {

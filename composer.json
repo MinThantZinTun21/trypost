@@ -37,31 +37,14 @@
         "google/apiclient": "^2.19",
         "inertiajs/inertia-laravel": "^3.3.1",
         "intervention/image": "^4.0",
-        "laravel/ai": "^0.10.3",
         "laravel/boost": "^2.5",
-        "laravel/cashier": "^16.2",
         "laravel/framework": "^13.0",
-        "laravel/horizon": "^5.45",
-        "laravel/mcp": "^0.9.1",
-        "laravel/nightwatch": "^1.22",
-        "laravel/passport": "^13.7",
-        "laravel/reverb": "^1.0",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.9",
-        "league/color-extractor": "^0.4.0",
         "league/flysystem-aws-s3-v3": "^3.0",
-        "league/html-to-markdown": "^5.1",
-        "posthog/posthog-php": "^4.1",
-        "predis/predis": "^3.3",
-        "sendkit/sendkit-laravel": "^1.1",
         "socialiteproviders/facebook": "^4.1",
-        "socialiteproviders/instagram": "^5.1",
-        "socialiteproviders/linkedin": "^5.0",
-        "socialiteproviders/pinterest": "^4.3",
         "socialiteproviders/tiktok": "^5.2",
-        "socialiteproviders/twitter": "^4.1",
-        "symfony/css-selector": "^8.0",
         "symfony/dom-crawler": "^8.0"
     },
     "require-dev": {
@@ -69,7 +52,6 @@
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
         "laravel/sail": "*",
-        "laravel/telescope": "^5.19",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^5.0",
@@ -102,7 +84,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#86efac\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" \"php artisan reverb:start\" --names=server,queue,logs,vite,reverb --kill-others"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#86efac,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --queue=default,social-facebook,social-tiktok,social-youtube --tries=1 --timeout=930\" \"php artisan schedule:work\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,scheduler,logs,vite --kill-others"
         ],
         "lint": [
             "pint --parallel"
@@ -144,9 +126,7 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": [
-                "laravel/telescope"
-            ]
+            "dont-discover": []
         }
     },
     "config": {

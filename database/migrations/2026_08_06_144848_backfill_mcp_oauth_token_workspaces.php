@@ -30,6 +30,13 @@ return new class extends Migration
 
     public function up(): void
     {
+        // The MCP/API token feature (and these classes) were removed; a fresh
+        // database has no tokens to backfill, and the oauth tables are dropped
+        // by 2026_10_02_072548_drop_api_and_oauth_tables.
+        if (! class_exists(AccessToken::class)) {
+            return;
+        }
+
         DB::beginTransaction();
 
         try {

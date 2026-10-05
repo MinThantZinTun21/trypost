@@ -40,8 +40,6 @@ test('the post page tags the format only where the platform offered a choice', f
     $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    subscribeAccount($user->account);
-
     $post = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,
@@ -60,9 +58,9 @@ test('the post page tags the format only where the platform offered a choice', f
 
     PostPlatform::factory()->create([
         'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn])->id,
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
+        'social_account_id' => SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::YouTube])->id,
+        'platform' => Platform::YouTube,
+        'content_type' => ContentType::YouTubeShort,
         'status' => PostPlatformStatus::Published,
         'enabled' => true,
     ]);
@@ -74,6 +72,6 @@ test('the post page tags the format only where the platform offered a choice', f
     waitForPostShowTestId($page, 'content-type-facebook_reel');
 
     $page->assertVisible('@content-type-facebook_reel')
-        ->assertMissing('@content-type-linkedin_post')
+        ->assertMissing('@content-type-youtube_short')
         ->assertNoJavaScriptErrors();
 });

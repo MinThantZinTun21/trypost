@@ -56,8 +56,6 @@ class UpdatePostRequest extends FormRequest
                 Rule::when($enforcesMediaCompatibility, [new ContentTypeCompatibleWithMedia]),
             ],
             ...PostPlatformMetaRules::rules(),
-            'label_ids' => ['sometimes', 'array'],
-            'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $this->user()->currentWorkspace->id)],
         ];
     }
 

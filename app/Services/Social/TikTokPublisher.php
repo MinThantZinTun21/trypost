@@ -483,7 +483,7 @@ class TikTokPublisher
         $postId = is_string($postId) && $postId !== '' ? $postId : null;
 
         if ($postId === null) {
-            $postId = app(TikTokAnalytics::class)->findVideoIdByCaption($postPlatform);
+            $postId = app(TikTokVideoLookup::class)->findVideoIdByCaption($postPlatform);
         }
 
         return [

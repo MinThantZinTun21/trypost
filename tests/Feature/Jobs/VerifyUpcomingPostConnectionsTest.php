@@ -9,7 +9,6 @@ use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\VerifyUpcomingPostConnections;
-use App\Mail\PostAtRisk;
 use App\Models\Notification;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -31,11 +30,35 @@ function verifyUpcomingSelectsFrom(string $sql, string $table): bool
     return str_starts_with($sql, 'select * from '.DB::getQueryGrammar()->wrapTable($table));
 }
 
+/**
+ * Asserts the owner got an in-app "post at risk" Notification. The optional
+ * check receives the notification's workspace, post platform ids and count.
+ */
+function assertPostAtRiskNotified(?Closure $check = null): void
+{
+    $matches = Notification::query()
+        ->where('type', Type::PostAtRisk)
+        ->get()
+        ->map(fn (Notification $notification): object => (object) [
+            'workspace' => Workspace::find(data_get($notification->data, 'workspace_id')),
+            'postPlatformIds' => data_get($notification->data, 'post_platform_ids', []),
+            'count' => data_get($notification->data, 'post_count'),
+        ])
+        ->filter(fn (object $notification): bool => $check === null || $check($notification));
+
+    expect($matches)->not->toBeEmpty();
+}
+
+function postAtRiskNotificationCount(): int
+{
+    return Notification::query()->where('type', Type::PostAtRisk)->count();
+}
+
 test('marks the account expired and queues a notification when verify throws TokenExpiredException', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -51,7 +74,7 @@ test('marks the account expired and queues a notification when verify throws Tok
     ]);
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('TikTok access token is invalid or expired'));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
@@ -59,18 +82,18 @@ test('marks the account expired and queues a notification when verify throws Tok
     expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
     expect($account->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
 
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($workspace, $postPlatform) {
-        return $mail->workspace->id === $workspace->id
-            && count($mail->postPlatformIds) === 1
-            && in_array($postPlatform->id, $mail->postPlatformIds, true);
+    assertPostAtRiskNotified(function ($notification) use ($workspace, $postPlatform) {
+        return $notification->workspace->id === $workspace->id
+            && count($notification->postPlatformIds) === 1
+            && in_array($postPlatform->id, $notification->postPlatformIds, true);
     });
 });
 
-test('creates an in-app notification for the workspace owner alongside the email', function () {
+test('creates an in-app notification for the workspace owner and sends no email', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -86,7 +109,7 @@ test('creates an in-app notification for the workspace owner alongside the email
     ]);
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('TikTok access token is invalid or expired'));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
@@ -97,19 +120,18 @@ test('creates an in-app notification for the workspace owner alongside the email
     expect($notification->user_id)->toBe($workspace->owner->id)
         ->and($notification->workspace_id)->toBe($workspace->id)
         ->and($notification->type)->toBe(Type::PostAtRisk)
-        ->and($notification->channel)->toBe(Channel::Both)
+        ->and($notification->channel)->toBe(Channel::InApp)
         ->and($notification->title)->toBe('1 upcoming post is at risk');
 
-    // The in-app title and the email subject are built from the same count,
-    // captured once at dispatch time — they must never disagree.
-    Mail::assertQueued(PostAtRisk::class, fn ($mail) => $mail->count === 1);
+    assertPostAtRiskNotified(fn ($notification) => $notification->count === 1);
+    Mail::assertNothingQueued();
 });
 
 test('defers to the next run instead of warning when markAsTokenExpired loses the account status lock', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -125,7 +147,7 @@ test('defers to the next run instead of warning when markAsTokenExpired loses th
     ]);
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('TikTok access token is invalid or expired'));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     // Simulate a concurrent process (e.g. a publish attempt) already holding
@@ -139,7 +161,7 @@ test('defers to the next run instead of warning when markAsTokenExpired loses th
 
         expect($account->fresh()->status)->toBe(SocialAccountStatus::Connected);
         expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-        Mail::assertNothingQueued();
+        expect(postAtRiskNotificationCount())->toBe(0);
     } finally {
         $lock->release();
     }
@@ -178,14 +200,14 @@ test('verifies a distinct account only once even with multiple at-risk posts', f
         expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
     }
 
-    Mail::assertQueued(PostAtRisk::class, fn ($mail) => count($mail->postPlatformIds) === 3);
+    assertPostAtRiskNotified(fn ($notification) => count($notification->postPlatformIds) === 3);
 });
 
 test('ignores posts outside the 1-hour window', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addHours(3),
@@ -203,14 +225,14 @@ test('ignores posts outside the 1-hour window', function () {
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('ignores draft posts even with a scheduled_at inside the window', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->draft()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addMinutes(30),
@@ -228,14 +250,14 @@ test('ignores draft posts even with a scheduled_at inside the window', function 
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('ignores posts already warned', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addMinutes(30),
@@ -254,17 +276,17 @@ test('ignores posts already warned', function () {
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('does not re-verify an account already known token_expired, but still warns about new posts', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::TokenExpired,
-        'error_message' => 'Threads access token is invalid or expired',
+        'error_message' => 'TikTok access token is invalid or expired',
     ]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
@@ -284,17 +306,17 @@ test('does not re-verify an account already known token_expired, but still warns
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
-    Mail::assertQueued(PostAtRisk::class);
+    assertPostAtRiskNotified();
 });
 
 test('counts distinct posts, not post_platforms, when one post spans multiple broken accounts', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $accountOne = SocialAccount::factory()->threads()->create([
+    $accountOne = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::TokenExpired,
-        'error_message' => 'Threads access token is invalid or expired',
+        'error_message' => 'TikTok access token is invalid or expired',
     ]);
     $accountTwo = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $workspace->id,
@@ -326,17 +348,17 @@ test('counts distinct posts, not post_platforms, when one post spans multiple br
 
     // Two post_platforms, but they belong to the same post — the count
     // must reflect distinct posts, not post_platform rows.
-    Mail::assertQueued(PostAtRisk::class, fn ($mail) => $mail->count === 1 && count($mail->postPlatformIds) === 2);
+    assertPostAtRiskNotified(fn ($notification) => $notification->count === 1 && count($notification->postPlatformIds) === 2);
 });
 
 test('does not re-verify an account already known disconnected, but still warns about new posts', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Disconnected,
-        'error_message' => 'Threads account was disconnected',
+        'error_message' => 'TikTok account was disconnected',
     ]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
@@ -356,14 +378,14 @@ test('does not re-verify an account already known disconnected, but still warns 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
-    Mail::assertQueued(PostAtRisk::class);
+    assertPostAtRiskNotified();
 });
 
 test('does not re-notify about an already-broken account within the cooldown, even for a brand-new at-risk post', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::TokenExpired,
     ]);
@@ -403,14 +425,14 @@ test('does not re-notify about an already-broken account within the cooldown, ev
     // Left unstamped so it's picked up once the cooldown expires, instead of
     // being silently absorbed without ever being mentioned in an email.
     expect($newPostPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('re-notifies about an already-broken account once the cooldown has passed', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::TokenExpired,
     ]);
@@ -445,14 +467,14 @@ test('re-notifies about an already-broken account once the cooldown has passed',
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($newPostPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
-    Mail::assertQueued(PostAtRisk::class);
+    assertPostAtRiskNotified();
 });
 
 test('skips notifying about a freshly-disconnected account to avoid a duplicate with AccountDisconnected', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::TokenExpired,
         'disconnected_at' => now()->subMinutes(2),
@@ -475,14 +497,14 @@ test('skips notifying about a freshly-disconnected account to avoid a duplicate 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('notifies about an already-broken account once the disconnection grace period has passed', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::TokenExpired,
         'disconnected_at' => now()->subMinutes(10),
@@ -505,14 +527,14 @@ test('notifies about an already-broken account once the disconnection grace peri
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
-    Mail::assertQueued(PostAtRisk::class);
+    assertPostAtRiskNotified();
 });
 
 test('trusts a recently successful verification and does not re-verify within the same run window', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
         'last_verified_at' => now()->subMinutes(10),
@@ -534,14 +556,14 @@ test('trusts a recently successful verification and does not re-verify within th
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('re-verifies an account once the last successful verification has aged out', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
         'last_verified_at' => now()->subMinutes(56),
@@ -570,7 +592,7 @@ test('records last_verified_at after a successful verification', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
         'last_verified_at' => null,
@@ -599,7 +621,7 @@ test('defers verification until the post is within 30 minutes of publishing', fu
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -622,14 +644,14 @@ test('defers verification until the post is within 30 minutes of publishing', fu
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
     expect($account->fresh()->last_verified_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('verifies once the nearest post in the group crosses the 30-minute lead, even if others are farther out', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -671,7 +693,7 @@ test('defers to the next run instead of duplicating AccountDisconnected when ano
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -697,14 +719,14 @@ test('defers to the next run instead of duplicating AccountDisconnected when ano
             'disconnected_at' => now(),
         ]);
 
-        throw new TokenExpiredException('Threads access token is invalid or expired');
+        throw new TokenExpiredException('TikTok access token is invalid or expired');
     });
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('skips notifying when a concurrent run already claimed the warning window', function () {
@@ -718,7 +740,7 @@ test('skips notifying when a concurrent run already claimed the warning window',
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -742,14 +764,14 @@ test('skips notifying when a concurrent run already claimed the warning window',
         // between this run's select and its own claim update below.
         $postPlatform->update(['connection_warning_sent_at' => now()]);
 
-        throw new TokenExpiredException('Threads access token is invalid or expired');
+        throw new TokenExpiredException('TikTok access token is invalid or expired');
     });
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($account->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('narrows the notification to only the rows this run actually claimed when a concurrent run claims some but not all', function () {
@@ -765,7 +787,7 @@ test('narrows the notification to only the rows this run actually claimed when a
     // which group a DB result set happens to return first (groupBy()
     // preserves query order, and atRiskPostPlatforms() has no ORDER BY).
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -802,16 +824,16 @@ test('narrows the notification to only the rows this run actually claimed when a
             // claim step below.
             $claimedByOtherRunPostPlatform->update(['connection_warning_sent_at' => now()]);
 
-            throw new TokenExpiredException('Threads access token is invalid or expired');
+            throw new TokenExpiredException('TikTok access token is invalid or expired');
         });
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($stillClaimableByThisRunPostPlatform, $claimedByOtherRunPostPlatform) {
-        return count($mail->postPlatformIds) === 1
-            && in_array($stillClaimableByThisRunPostPlatform->id, $mail->postPlatformIds, true)
-            && ! in_array($claimedByOtherRunPostPlatform->id, $mail->postPlatformIds, true);
+    assertPostAtRiskNotified(function ($notification) use ($stillClaimableByThisRunPostPlatform, $claimedByOtherRunPostPlatform) {
+        return count($notification->postPlatformIds) === 1
+            && in_array($stillClaimableByThisRunPostPlatform->id, $notification->postPlatformIds, true)
+            && ! in_array($claimedByOtherRunPostPlatform->id, $notification->postPlatformIds, true);
     });
 });
 
@@ -819,7 +841,7 @@ test('does not crash when the account is deleted between being loaded and the To
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -841,14 +863,14 @@ test('does not crash when the account is deleted between being loaded and the To
         // exception thrown here.
         SocialAccount::where('id', $account->id)->delete();
 
-        throw new TokenExpiredException('Threads access token is invalid or expired');
+        throw new TokenExpiredException('TikTok access token is invalid or expired');
     });
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('a deleted account does not abort the run for other accounts in the same workspace', function () {
@@ -856,7 +878,7 @@ test('a deleted account does not abort the run for other accounts in the same wo
 
     $workspace = Workspace::factory()->create();
 
-    $deletedAccount = SocialAccount::factory()->threads()->create([
+    $deletedAccount = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -893,7 +915,7 @@ test('a deleted account does not abort the run for other accounts in the same wo
         ->andReturnUsing(function () use ($deletedAccount) {
             SocialAccount::where('id', $deletedAccount->id)->delete();
 
-            throw new TokenExpiredException('Threads access token is invalid or expired');
+            throw new TokenExpiredException('TikTok access token is invalid or expired');
         });
     $verifier->shouldReceive('verify')
         ->once()
@@ -907,9 +929,9 @@ test('a deleted account does not abort the run for other accounts in the same wo
     expect($survivingPostPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
     expect($survivingAccount->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
 
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($survivingPostPlatform) {
-        return count($mail->postPlatformIds) === 1
-            && in_array($survivingPostPlatform->id, $mail->postPlatformIds, true);
+    assertPostAtRiskNotified(function ($notification) use ($survivingPostPlatform) {
+        return count($notification->postPlatformIds) === 1
+            && in_array($survivingPostPlatform->id, $notification->postPlatformIds, true);
     });
 });
 
@@ -917,7 +939,7 @@ test('a post deleted between the main query and the eager-loaded post relation r
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -962,7 +984,7 @@ test('a post deleted between the main query and the eager-loaded post relation r
     DB::listen($listener);
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('TikTok access token is invalid or expired'));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
@@ -973,9 +995,9 @@ test('a post deleted between the main query and the eager-loaded post relation r
     expect($survivingPostPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
     expect($account->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
 
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($survivingPostPlatform) {
-        return count($mail->postPlatformIds) === 1
-            && in_array($survivingPostPlatform->id, $mail->postPlatformIds, true);
+    assertPostAtRiskNotified(function ($notification) use ($survivingPostPlatform) {
+        return count($notification->postPlatformIds) === 1
+            && in_array($survivingPostPlatform->id, $notification->postPlatformIds, true);
     });
 });
 
@@ -983,7 +1005,7 @@ test('does not verify or warn about a post_platform on a paused account', functi
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
         'is_active' => false,
@@ -1006,7 +1028,7 @@ test('does not verify or warn about a post_platform on a paused account', functi
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('still verifies and warns about an active account when another account in the same workspace is paused', function () {
@@ -1014,7 +1036,7 @@ test('still verifies and warns about an active account when another account in t
 
     $workspace = Workspace::factory()->create();
 
-    $pausedAccount = SocialAccount::factory()->threads()->create([
+    $pausedAccount = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
         'is_active' => false,
@@ -1030,7 +1052,7 @@ test('still verifies and warns about an active account when another account in t
         'status' => PostPlatformStatus::Pending,
     ]);
 
-    $activeAccount = SocialAccount::factory()->threads()->create([
+    $activeAccount = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1057,7 +1079,7 @@ test('still verifies and warns about an active account when another account in t
                 return true;
             }
 
-            throw new TokenExpiredException('Threads access token is invalid or expired');
+            throw new TokenExpiredException('TikTok access token is invalid or expired');
         });
     app()->instance(ConnectionVerifier::class, $verifier);
 
@@ -1067,10 +1089,10 @@ test('still verifies and warns about an active account when another account in t
     expect($pausedPostPlatform->fresh()->connection_warning_sent_at)->toBeNull();
     expect($activePostPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
 
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($activePostPlatform, $pausedPostPlatform) {
-        return count($mail->postPlatformIds) === 1
-            && in_array($activePostPlatform->id, $mail->postPlatformIds, true)
-            && ! in_array($pausedPostPlatform->id, $mail->postPlatformIds, true);
+    assertPostAtRiskNotified(function ($notification) use ($activePostPlatform, $pausedPostPlatform) {
+        return count($notification->postPlatformIds) === 1
+            && in_array($activePostPlatform->id, $notification->postPlatformIds, true)
+            && ! in_array($pausedPostPlatform->id, $notification->postPlatformIds, true);
     });
 });
 
@@ -1078,7 +1100,7 @@ test('does not verify or warn about an account paused mid-run, after atRiskPostP
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1111,17 +1133,17 @@ test('does not verify or warn about an account paused mid-run, after atRiskPostP
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('does not warn about an already token_expired account paused mid-run, after atRiskPostPlatforms() already selected its post_platform', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::TokenExpired,
-        'error_message' => 'Threads access token is invalid or expired',
+        'error_message' => 'TikTok access token is invalid or expired',
     ]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
@@ -1153,14 +1175,14 @@ test('does not warn about an already token_expired account paused mid-run, after
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('does not crash or warn when the account is hard-deleted mid-run, after atRiskPostPlatforms() already selected its post_platform', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1200,14 +1222,14 @@ test('does not crash or warn when the account is hard-deleted mid-run, after atR
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('does not warn and does not mark connection_warning_sent_at on PlatformUnavailableException', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1223,21 +1245,21 @@ test('does not warn and does not mark connection_warning_sent_at on PlatformUnav
     ]);
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new PlatformUnavailableException('Threads API returned 503'));
+    $verifier->shouldReceive('verify')->once()->andThrow(new PlatformUnavailableException('TikTok API returned 503'));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
     expect($account->fresh()->status)->toBe(SocialAccountStatus::Connected);
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('does nothing when the account verifies successfully', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1260,7 +1282,7 @@ test('does nothing when the account verifies successfully', function () {
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
     expect($account->fresh()->status)->toBe(SocialAccountStatus::Connected);
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('an unexpected exception verifying one account does not abort the run for other accounts', function () {
@@ -1268,7 +1290,7 @@ test('an unexpected exception verifying one account does not abort the run for o
 
     $workspace = Workspace::factory()->create();
 
-    $brokenAccount = SocialAccount::factory()->threads()->create([
+    $brokenAccount = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1317,9 +1339,9 @@ test('an unexpected exception verifying one account does not abort the run for o
     expect($expiredPostPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
     expect($expiredAccount->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
 
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($expiredPostPlatform) {
-        return count($mail->postPlatformIds) === 1
-            && in_array($expiredPostPlatform->id, $mail->postPlatformIds, true);
+    assertPostAtRiskNotified(function ($notification) use ($expiredPostPlatform) {
+        return count($notification->postPlatformIds) === 1
+            && in_array($expiredPostPlatform->id, $notification->postPlatformIds, true);
     });
 });
 
@@ -1327,7 +1349,7 @@ test('ignores disabled platforms even inside the risk window', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addMinutes(30),
@@ -1345,14 +1367,14 @@ test('ignores disabled platforms even inside the risk window', function () {
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('does not leak another workspace\'s at-risk posts into this workspace\'s notification', function () {
     Mail::fake();
 
     $workspaceA = Workspace::factory()->create();
-    $accountA = SocialAccount::factory()->threads()->create([
+    $accountA = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspaceA->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1387,7 +1409,7 @@ test('does not leak another workspace\'s at-risk posts into this workspace\'s no
     $verifier->shouldReceive('verify')
         ->once()
         ->with(Mockery::on(fn ($account) => $account->id === $accountA->id))
-        ->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+        ->andThrow(new TokenExpiredException('TikTok access token is invalid or expired'));
     $verifier->shouldNotReceive('verify')
         ->with(Mockery::on(fn ($account) => $account->id === $accountB->id));
     app()->instance(ConnectionVerifier::class, $verifier);
@@ -1398,20 +1420,20 @@ test('does not leak another workspace\'s at-risk posts into this workspace\'s no
     expect($postPlatformB->fresh()->connection_warning_sent_at)->toBeNull();
     expect($accountB->fresh()->status)->toBe(SocialAccountStatus::Connected);
 
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($workspaceA, $postPlatformA, $postPlatformB) {
-        return $mail->workspace->id === $workspaceA->id
-            && in_array($postPlatformA->id, $mail->postPlatformIds, true)
-            && ! in_array($postPlatformB->id, $mail->postPlatformIds, true);
+    assertPostAtRiskNotified(function ($notification) use ($workspaceA, $postPlatformA, $postPlatformB) {
+        return $notification->workspace->id === $workspaceA->id
+            && in_array($postPlatformA->id, $notification->postPlatformIds, true)
+            && ! in_array($postPlatformB->id, $notification->postPlatformIds, true);
     });
 
-    Mail::assertQueuedCount(1);
+    expect(postAtRiskNotificationCount())->toBe(1);
 });
 
 test('re-evaluates a post_platform warned more than a day ago instead of skipping it forever', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1428,7 +1450,7 @@ test('re-evaluates a post_platform warned more than a day ago instead of skippin
     ]);
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('TikTok access token is invalid or expired'));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
@@ -1436,14 +1458,14 @@ test('re-evaluates a post_platform warned more than a day ago instead of skippin
     expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull()
         ->and($postPlatform->fresh()->connection_warning_sent_at->isAfter(now()->subMinute()))->toBeTrue();
 
-    Mail::assertQueued(PostAtRisk::class);
+    assertPostAtRiskNotified();
 });
 
 test('still skips a post_platform warned less than a day ago', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1468,14 +1490,14 @@ test('still skips a post_platform warned less than a day ago', function () {
 
     expect($postPlatform->fresh()->connection_warning_sent_at->format('Y-m-d H:i:s'))
         ->toBe($warnedAt->format('Y-m-d H:i:s'));
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('does not re-warn a re-armed post_platform when the account has since been reconnected', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1506,7 +1528,7 @@ test('does not re-warn a re-armed post_platform when the account has since been 
     expect($postPlatform->fresh()->connection_warning_sent_at->format('Y-m-d H:i:s'))
         ->toBe($warnedAt->format('Y-m-d H:i:s'));
     expect($account->fresh()->status)->toBe(SocialAccountStatus::Connected);
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('does not crash the run on a post_platform with a null social_account_id', function () {
@@ -1548,9 +1570,9 @@ test('does not crash the run on a post_platform with a null social_account_id', 
     expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
     expect($account->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
 
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($postPlatform) {
-        return count($mail->postPlatformIds) === 1
-            && in_array($postPlatform->id, $mail->postPlatformIds, true);
+    assertPostAtRiskNotified(function ($notification) use ($postPlatform) {
+        return count($notification->postPlatformIds) === 1
+            && in_array($postPlatform->id, $notification->postPlatformIds, true);
     });
 });
 
@@ -1558,7 +1580,7 @@ test('leaves posts unwarned and does not send an email when the workspace has no
     Mail::fake();
 
     $workspace = Workspace::factory()->create(['user_id' => null]);
-    $account = SocialAccount::factory()->threads()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => SocialAccountStatus::Connected,
     ]);
@@ -1574,13 +1596,13 @@ test('leaves posts unwarned and does not send an email when the workspace has no
     ]);
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('TikTok access token is invalid or expired'));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
+    expect(postAtRiskNotificationCount())->toBe(0);
 });
 
 test('job is unique per workspace with a window covering its timeout', function () {

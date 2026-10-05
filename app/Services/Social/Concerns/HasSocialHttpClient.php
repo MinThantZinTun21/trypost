@@ -15,10 +15,8 @@ trait HasSocialHttpClient
 {
     /**
      * Measures the sanitized content — the exact string the publisher sends —
-     * rather than the stored draft. The two differ by more than markup: X
-     * defusing rewrites URLs, Telegram escapes entities, and every platform
-     * strips HTML the editor stored. Checking the raw draft both rejected
-     * posts that would have fit and let through posts the network rejects.
+     * rather than the stored draft. Every platform strips the HTML the editor
+     * stored, so checking the raw draft would reject posts that fit.
      */
     protected function validateContentLength(PostPlatform $postPlatform): void
     {

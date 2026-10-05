@@ -9,22 +9,22 @@ use App\Exceptions\TokenExpiredException;
 use Illuminate\Http\Client\Response;
 
 /**
- * Interprets Meta Graph API (Facebook / Instagram / Threads) error responses
+ * Interprets Meta Graph API (Facebook) error responses
  * for the connection-health path (ConnectionVerifier's verify/refresh calls
  * against `/me` and `/refresh_access_token`). Does not cover the much larger,
  * platform-specific content-publishing error maps in
- * FacebookPublishException/InstagramPublishException/ThreadsPublishException.
+ * FacebookPublishException.
  *
  * Meta returns rate-limit and transient failures as an ordinary HTTP 4xx with
  * type "OAuthException", so neither the HTTP status nor the error type alone
  * can tell a dead token from a throttle. Two independent rate-limit systems
  * exist and both must be treated as transient:
  *
- * - Platform Rate Limits (app/user access tokens — Instagram and Threads
- *   accounts in this app): code 4 "app rate limit", code 17 "user rate
+ * - Platform Rate Limits (app/user access tokens — the user token straight
+ *   from OAuth during connect): code 4 "app rate limit", code 17 "user rate
  *   limit". https://developers.facebook.com/docs/graph-api/guides/error-handling/
  * - Business Use Case (BUC) Rate Limits (Page/system-user tokens — Facebook
- *   and InstagramFacebook accounts here use Page tokens): code 80001 "Pages
+ *   accounts here use Page tokens): code 80001 "Pages
  *   API", code 80002 "Instagram Platform", and code 32 "Pages API with a User
  *   token" — which the connect flow hits, since the portfolio walk reads
  *   /me/accounts, /me/businesses and the owned_pages / client_pages edges with
@@ -42,7 +42,7 @@ use Illuminate\Http\Client\Response;
  * which carries no confirmed rejection either) means the failure isn't a
  * confirmed rejection. Every other 4xx — including error codes other than
  * 190, which Meta also uses to signal a dead token (e.g. code 100 seen on a
- * genuinely revoked Threads token) — means the account needs to be
+ * genuinely revoked token) — means the account needs to be
  * reconnected.
  */
 class GraphError

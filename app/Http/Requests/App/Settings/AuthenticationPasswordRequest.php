@@ -15,14 +15,9 @@ class AuthenticationPasswordRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rules = [
+        return [
+            'current_password' => ['required', 'string', 'current_password'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ];
-
-        if ($this->user()->password) {
-            $rules['current_password'] = ['required', 'string', 'current_password'];
-        }
-
-        return $rules;
     }
 }

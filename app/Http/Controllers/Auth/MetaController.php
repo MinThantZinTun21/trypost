@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Http;
 use Inertia\Response as InertiaResponse;
 
 /**
- * What the Facebook and Instagram-via-Facebook connect flows share: one Meta app, one
- * page walk, and one set of answers when the walk has nothing to offer.
+ * What a Meta (Facebook) connect flow needs: one Meta app, one page walk, and
+ * one set of answers when the walk has nothing to offer.
  */
 abstract class MetaController extends SocialController
 {

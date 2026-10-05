@@ -1,12 +1,6 @@
 import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 
-/**
- * A dayjs instance bound to the current language. `dayjs.locale()` is global and
- * not reactive, so reading the ref here is what makes a computed re-run when the
- * language changes instead of serving the previous one from cache.
- */
-const localized = (value?: dayjs.ConfigType) => dayjs(value).locale(activeLocale.value.toLowerCase());
+const localized = (value?: dayjs.ConfigType) => dayjs(value);
 
 /**
  * Obtém o timezone do usuário
@@ -26,13 +20,6 @@ const resolvePreviewPostedAt = (postedAt?: string | null) => {
     }
 
     return localized();
-};
-
-/** X / Bluesky style: `4:21 PM · Aug 5, 2026` (locale-aware). */
-const formatAbsolutePreviewPostedAt = (postedAt?: string | null) => {
-    const instant = resolvePreviewPostedAt(postedAt);
-
-    return `${instant.format('LT')} · ${instant.format('ll')}`;
 };
 
 export default {
@@ -99,42 +86,15 @@ export default {
         return dayjs(date).format('L');
     },
 
-    formatXPreview(postedAt?: string | null) {
-        return formatAbsolutePreviewPostedAt(postedAt);
-    },
-
-    formatBlueskyPreview(postedAt?: string | null) {
-        return formatAbsolutePreviewPostedAt(postedAt);
-    },
-
-    formatMastodonPreview(postedAt?: string | null) {
-        return resolvePreviewPostedAt(postedAt).format('lll');
-    },
-
     /**
      * @param justNowLabel Localized fallback when no schedule is set (e.g. common.just_now).
      */
     formatFacebookPreview(postedAt?: string | null, justNowLabel?: string) {
-        if (! postedAt && justNowLabel) {
+        if (!postedAt && justNowLabel) {
             return justNowLabel;
         }
 
         return resolvePreviewPostedAt(postedAt).fromNow();
-    },
-
-    /**
-     * @param todayLabel Localized same-day prefix (e.g. common.date_range_picker.today).
-     */
-    formatDiscordPreview(postedAt?: string | null, todayLabel?: string) {
-        const instant = resolvePreviewPostedAt(postedAt);
-
-        if (instant.isSame(dayjs(), 'day')) {
-            return todayLabel
-                ? `${todayLabel} · ${instant.format('LT')}`
-                : instant.format('LT');
-        }
-
-        return instant.format('lll');
     },
 
     formatTime(date: string | null | undefined) {
@@ -297,7 +257,10 @@ export default {
      */
     formatUtcForDateTimeLocalInput(date: string | null | undefined): string {
         if (!date) return '';
-        return dayjs.utc(date).tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:00');
+        return dayjs
+            .utc(date)
+            .tz(getUserTimezone())
+            .format('YYYY-MM-DDTHH:mm:00');
     },
 
     /**

@@ -288,21 +288,9 @@ class MediaOptimizer
     private function getImageConfig(Platform $platform): array
     {
         return match ($platform) {
-            Platform::Instagram, Platform::InstagramFacebook, Platform::Threads => [
-                'max_width' => 1440,
-                'max_size' => 8 * 1024 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
             Platform::Facebook => [
                 'max_width' => 2048,
                 'max_size' => 4 * 1024 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
-            Platform::X => [
-                'max_width' => 2048,
-                'max_size' => 5 * 1024 * 1024,
                 'format' => 'image/jpeg',
                 'quality' => 100,
             ],
@@ -312,51 +300,9 @@ class MediaOptimizer
                 'format' => 'image/jpeg',
                 'quality' => 100,
             ],
-            Platform::LinkedIn, Platform::LinkedInPage => [
-                'max_width' => 2048,
-                'max_size' => 10 * 1024 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
-            Platform::Pinterest => [
-                'max_width' => 1000,
-                'max_size' => 20 * 1024 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
-            Platform::Bluesky => [
-                'max_width' => 2048,
-                'max_size' => 976 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
-            Platform::Mastodon => [
-                'max_width' => 2048,
-                'max_size' => 10 * 1024 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
             Platform::YouTube => [
                 'max_width' => 1920,
                 'max_size' => 2 * 1024 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
-            Platform::Telegram => [
-                'max_width' => 2048,
-                'max_size' => 10 * 1024 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
-            Platform::Discord => [
-                'max_width' => 2048,
-                'max_size' => 8 * 1024 * 1024,
-                'format' => 'image/jpeg',
-                'quality' => 100,
-            ],
-            Platform::GoogleBusiness => [
-                'max_width' => 2048,
-                'max_size' => 5 * 1024 * 1024,
                 'format' => 'image/jpeg',
                 'quality' => 100,
             ],

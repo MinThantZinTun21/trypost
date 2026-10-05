@@ -6,7 +6,5 @@ namespace App\Enums\Notification;
 
 enum Channel: string
 {
-    case Email = 'email';
     case InApp = 'in_app';
-    case Both = 'both';
 }

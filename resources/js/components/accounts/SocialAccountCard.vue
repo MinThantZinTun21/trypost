@@ -34,7 +34,6 @@ import {
 
 const props = defineProps<{
     account: ConnectedAccount;
-    variantLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -95,8 +94,7 @@ const paused = computed(() => props.account.is_active === false);
                 }}</span>
             </p>
             <p v-else class="mt-0.5 truncate text-xs text-foreground/60">
-                {{ account.handle_label
-                }}<template v-if="variantLabel"> · {{ variantLabel }}</template>
+                {{ account.handle_label }}
             </p>
         </div>
 

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Enums\Media\Source;
 use Closure;
-use Illuminate\Validation\Rule;
 
 /**
  * Single source of truth for inline post `media` validation, shared by the post
@@ -58,8 +56,6 @@ class PostMediaRules
                     $fail('validation.max.string')->translate(['attribute' => trans('posts.edit.alt_text.label'), 'max' => self::ALT_TEXT_MAX_LENGTH]);
                 }
             }],
-            'media.*.source' => ['sometimes', 'nullable', 'string', Rule::in(array_column(Source::cases(), 'value'))],
-            'media.*.source_meta' => ['sometimes', 'nullable', 'array'],
         ];
     }
 }

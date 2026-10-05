@@ -6,9 +6,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\LoginRequest;
-use App\Jobs\PostHog\SyncUser;
-use App\Models\Invite;
-use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +22,6 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('auth/Login', [
             'status' => session('status'),
             'email' => $request->query('email'),
-            'invite' => $request->query('invite'),
             'devLogin' => app()->isLocal() ? config('app.dev_login') : null,
         ]);
     }
@@ -38,19 +34,6 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
-
-        if ($locale = $request->validated('locale')) {
-            $user = $request->user();
-            $user->update(['locale' => $locale]);
-
-            if (PostHogService::shouldTrack()) {
-                SyncUser::dispatch((string) $user->id);
-            }
-        }
-
-        if ($invite = Invite::fromId($request->string('invite')->toString())) {
-            return redirect()->route('app.invites.show', $invite);
-        }
 
         return redirect()->intended(route('app.calendar'));
     }

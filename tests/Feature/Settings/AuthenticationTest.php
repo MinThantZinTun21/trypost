@@ -15,8 +15,7 @@ test('authentication page is displayed', function () {
         ->assertInertia(fn ($page) => $page
             ->component('settings/profile/Authentication')
             ->has('sessions')
-            ->where('hasPassword', true)
-            ->has('connectedAccounts')
+            ->missing('hasPassword')
         );
 });
 
@@ -68,8 +67,8 @@ test('password must be confirmed', function () {
         ->assertSessionHasErrors('password');
 });
 
-test('user without a password can set one without current_password', function () {
-    $user = User::factory()->create(['password' => null, 'google_id' => 'google-123']);
+test('current password is always required to change the password', function () {
+    $user = User::factory()->create();
 
     $this->actingAs($user)
         ->from(route('app.authentication.edit'))
@@ -77,39 +76,9 @@ test('user without a password can set one without current_password', function ()
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
         ])
-        ->assertSessionHasNoErrors();
+        ->assertSessionHasErrors('current_password');
 
-    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
-});
-
-test('disconnect provider removes the link', function () {
-    $user = User::factory()->create(['google_id' => 'google-123', 'password' => bcrypt('password')]);
-
-    $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->delete(route('app.authentication.disconnect-provider', 'google'))
-        ->assertRedirect(route('app.authentication.edit'));
-
-    expect($user->refresh()->google_id)->toBeNull();
-});
-
-test('disconnect provider blocked when it is the only sign-in method', function () {
-    $user = User::factory()->create(['google_id' => 'google-123', 'password' => null]);
-
-    $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->delete(route('app.authentication.disconnect-provider', 'google'))
-        ->assertSessionHas('flash.error');
-
-    expect($user->refresh()->google_id)->toBe('google-123');
-});
-
-test('disconnect provider rejects unknown provider', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->delete(route('app.authentication.disconnect-provider', 'twitter'))
-        ->assertNotFound();
+    expect(Hash::check('password', $user->refresh()->password))->toBeTrue();
 });
 
 test('destroy other sessions removes other rows for the user', function () {
@@ -139,4 +108,16 @@ test('destroy other sessions removes other rows for the user', function () {
         ->assertRedirect(route('app.authentication.edit'));
 
     expect(DB::table($sessionsTable)->where('id', 'other-session-id')->exists())->toBeFalse();
+});
+
+test('destroy other sessions requires the current password', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->from(route('app.authentication.edit'))
+        ->delete(route('app.authentication.destroy-other-sessions'), [
+            'password' => 'wrong-password',
+        ])
+        ->assertRedirect(route('app.authentication.edit'))
+        ->assertSessionHasErrors('password');
 });

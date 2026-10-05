@@ -35,7 +35,6 @@ storage/framework/sessions
 storage/framework/views
 storage/pail
 storage/*.key
-storage/oauth-*.key
 
 # Test caches
 .phpunit.cache

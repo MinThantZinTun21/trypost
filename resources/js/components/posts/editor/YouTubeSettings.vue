@@ -34,7 +34,9 @@ const emit = defineEmits<{
 
 const open = ref(false);
 const errors = usePageErrors();
-const descriptionId = computed(() => `youtube-description-${props.platformIndex}`);
+const descriptionId = computed(
+    () => `youtube-description-${props.platformIndex}`,
+);
 
 const description = computed({
     get: () => toNullableText(props.meta.description) ?? '',
@@ -142,7 +144,11 @@ const descriptionError = computed(() => {
                 />
                 <p
                     class="text-xs tabular-nums"
-                    :class="descriptionError ? 'text-rose-600' : 'text-foreground/60'"
+                    :class="
+                        descriptionError
+                            ? 'text-rose-600'
+                            : 'text-foreground/60'
+                    "
                 >
                     {{
                         $t('posts.form.youtube.description_bytes', {

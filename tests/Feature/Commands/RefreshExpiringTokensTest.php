@@ -9,55 +9,30 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 
-test('it dispatches refresh jobs for rotating tokens near expiry and extension tokens well ahead of expiry', function () {
+test('it dispatches refresh jobs for tokens near or past expiry', function () {
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
 
-    // Rotating platform expiring in 15 minutes — inside the 30-minute window.
-    $rotatingSoon = SocialAccount::factory()->create([
+    // Expiring in 15 minutes — inside the 30-minute window.
+    $expiringSoon = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::LinkedIn,
+        'platform' => Platform::YouTube,
         'status' => Status::Connected,
         'token_expires_at' => now()->addMinutes(15),
     ]);
 
-    // Rotating platform expiring in 1 hour — OUTSIDE the 30-minute window.
+    // Expiring in 1 hour — OUTSIDE the 30-minute window.
     SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::X,
+        'platform' => Platform::TikTok,
         'status' => Status::Connected,
         'token_expires_at' => now()->addHour(),
     ]);
 
-    // Extension platform expiring in 1 hour — inside the wide 24-hour window.
-    // (On the old shared 30-minute window this lapsed under queue backlog.)
-    $extensionSoon = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
-        'platform' => Platform::Instagram,
-        'status' => Status::Connected,
-        'token_expires_at' => now()->addHour(),
-    ]);
-
-    // Extension platform expiring in 12 hours — still inside the 24-hour window.
-    $extensionLater = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
-        'platform' => Platform::Threads,
-        'status' => Status::Connected,
-        'token_expires_at' => now()->addHours(12),
-    ]);
-
-    // Extension platform expiring in 2 days — OUTSIDE the 24-hour window.
-    SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
-        'platform' => Platform::Instagram,
-        'status' => Status::Connected,
-        'token_expires_at' => now()->addDays(2),
-    ]);
-
-    // Rotating platform already expired — last-chance attempt before the
-    // refresh_token also dies at the provider.
-    $rotatingExpired = SocialAccount::factory()->create([
+    // Already expired — last-chance attempt before the refresh_token also
+    // dies at the provider.
+    $expired = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
         'platform' => Platform::TikTok,
         'status' => Status::Connected,
@@ -67,9 +42,9 @@ test('it dispatches refresh jobs for rotating tokens near expiry and extension t
     // Disconnected — never refreshed.
     SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::Pinterest,
+        'platform' => Platform::TikTok,
         'status' => Status::Disconnected,
-        'token_expires_at' => now()->addHour(),
+        'token_expires_at' => now()->addMinutes(15),
     ]);
 
     // Already token expired — daily verify handles these.
@@ -83,73 +58,9 @@ test('it dispatches refresh jobs for rotating tokens near expiry and extension t
     $this->artisan('social:refresh-expiring-tokens')
         ->assertSuccessful();
 
-    Queue::assertPushed(RefreshSocialToken::class, 4);
-    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $rotatingSoon->id);
-    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $extensionSoon->id);
-    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $extensionLater->id);
-    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $rotatingExpired->id);
-});
-
-test('extension-model platforms get a wider refresh window than rotating platforms', function () {
-    Queue::fake();
-
-    $workspace = Workspace::factory()->create();
-
-    // Same expiry (1 hour out) for both — only the extension-model account
-    // should be dispatched, because it can't be refreshed once expired.
-    $extension = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
-        'platform' => Platform::Instagram,
-        'status' => Status::Connected,
-        'token_expires_at' => now()->addHour(),
-    ]);
-
-    $rotating = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
-        'platform' => Platform::X,
-        'status' => Status::Connected,
-        'token_expires_at' => now()->addHour(),
-    ]);
-
-    $this->artisan('social:refresh-expiring-tokens')
-        ->assertSuccessful();
-
-    Queue::assertPushed(RefreshSocialToken::class, 1);
-    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $extension->id);
-    Queue::assertNotPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $rotating->id);
-});
-
-test('google business profile tokens use the rotating refresh window, not the extension window', function () {
-    Queue::fake();
-
-    // One account per network, so the two windows need a workspace each.
-    $soonWorkspace = Workspace::factory()->create();
-    $laterWorkspace = Workspace::factory()->create();
-
-    // Inside the 30-minute rotating window — should be dispatched.
-    $soon = SocialAccount::factory()->create([
-        'workspace_id' => $soonWorkspace->id,
-        'platform' => Platform::GoogleBusiness,
-        'status' => Status::Connected,
-        'token_expires_at' => now()->addMinutes(15),
-    ]);
-
-    // Outside the 30-minute rotating window (but inside the 24-hour extension
-    // window) — must NOT be dispatched, proving Google Business Profile is
-    // treated as a rotating-refresh_token platform, not an extension platform.
-    $outsideRotatingWindow = SocialAccount::factory()->create([
-        'workspace_id' => $laterWorkspace->id,
-        'platform' => Platform::GoogleBusiness,
-        'status' => Status::Connected,
-        'token_expires_at' => now()->addHour(),
-    ]);
-
-    $this->artisan('social:refresh-expiring-tokens')
-        ->assertSuccessful();
-
-    Queue::assertPushed(RefreshSocialToken::class, 1);
-    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $soon->id);
-    Queue::assertNotPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $outsideRotatingWindow->id);
+    Queue::assertPushed(RefreshSocialToken::class, 2);
+    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $expiringSoon->id);
+    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $expired->id);
 });
 
 test('it dispatches nothing when no tokens are expiring', function () {
@@ -164,7 +75,7 @@ test('it dispatches nothing when no tokens are expiring', function () {
 test('a backed-up queue cannot stack duplicate refresh jobs for one account', function () {
     Queue::fake();
 
-    SocialAccount::factory()->x()->create([
+    SocialAccount::factory()->tiktok()->create([
         'workspace_id' => Workspace::factory()->create()->id,
         'status' => Status::Connected,
         'token_expires_at' => now()->addMinutes(20),
@@ -183,7 +94,7 @@ test('a backed-up queue cannot stack duplicate refresh jobs for one account', fu
 test('the command reports accounts in the window, not jobs it cannot know landed', function () {
     Queue::fake();
 
-    SocialAccount::factory()->x()->create([
+    SocialAccount::factory()->tiktok()->create([
         'workspace_id' => Workspace::factory()->create()->id,
         'status' => Status::Connected,
         'token_expires_at' => now()->addMinutes(20),

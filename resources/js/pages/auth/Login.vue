@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { Form, Head, usePage } from '@inertiajs/vue3';
+import { Form, Head } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
-import LegalLinks from '@/components/auth/LegalLinks.vue';
-import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -18,26 +15,18 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useGuestLocale } from '@/composables/useGuestLocale';
 import { usePageErrors } from '@/composables/usePageErrors';
 import AuthBase from '@/layouts/AuthLayout.vue';
-import { register } from '@/routes';
 import { store } from '@/routes/login';
-import { request } from '@/routes/password';
 
 defineProps<{
     status?: string;
     email?: string | null;
-    invite?: string | null;
     devLogin?: { email: string; password: string } | null;
 }>();
 
-const { chosen } = useGuestLocale();
-
 const showPassword = ref(false);
 
-const page = usePage();
-const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
 const pageErrors = usePageErrors();
 </script>
 
@@ -56,22 +45,12 @@ const pageErrors = usePageErrors();
         </div>
 
         <div class="flex flex-col gap-6">
-            <SocialLogin mode="login" :invite="invite" />
-
             <Form
                 v-bind="store.form()"
                 :reset-on-success="['password']"
                 v-slot="{ errors, processing }"
                 class="flex flex-col gap-6"
             >
-                <input type="hidden" name="locale" :value="chosen ?? ''" />
-
-                <input
-                    v-if="invite"
-                    type="hidden"
-                    name="invite"
-                    :value="invite"
-                />
                 <div class="grid gap-6">
                     <div class="grid gap-2">
                         <Label for="email">{{ $t('auth.login.email') }}</Label>
@@ -91,18 +70,9 @@ const pageErrors = usePageErrors();
                     </div>
 
                     <div class="grid gap-2">
-                        <div class="flex items-center justify-between">
-                            <Label for="password">{{
-                                $t('auth.login.password')
-                            }}</Label>
-                            <TextLink
-                                :href="request()"
-                                class="text-sm"
-                                :tabindex="5"
-                            >
-                                {{ $t('auth.login.forgot_password') }}
-                            </TextLink>
-                        </div>
+                        <Label for="password">{{
+                            $t('auth.login.password')
+                        }}</Label>
                         <div class="relative">
                             <Input
                                 id="password"
@@ -183,22 +153,7 @@ const pageErrors = usePageErrors();
                         {{ $t('auth.login.submit') }}
                     </Button>
                 </div>
-
-                <div
-                    v-if="!isSelfHosted"
-                    class="text-center text-sm text-muted-foreground"
-                >
-                    {{ $t('auth.login.no_account') }}
-                    <TextLink
-                        :href="register()"
-                        :tabindex="5"
-                        data-testid="login-sign-up-link"
-                        >{{ $t('auth.login.sign_up') }}</TextLink
-                    >
-                </div>
             </Form>
-
-            <LegalLinks />
         </div>
     </AuthBase>
 </template>

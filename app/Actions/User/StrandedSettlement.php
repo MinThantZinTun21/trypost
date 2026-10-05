@@ -7,7 +7,7 @@ namespace App\Actions\User;
 use App\Actions\Media\DeleteOrphanedMediaFiles;
 
 /**
- * Result of settling stranded members: media paths to remove from storage.
+ * Media paths to remove from storage once a user deletion has committed.
  * Flush outside any held lock so filesystem I/O is not serialized under it.
  */
 final readonly class StrandedSettlement

@@ -2,19 +2,13 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role;
-use App\Jobs\PostHog\SyncUser;
-use App\Models\AccessToken;
 use App\Models\Account;
-use App\Models\Invite;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Cashier\Subscription;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -44,7 +38,6 @@ test('profile information can be updated', function () {
 
     expect($user->name)->toBe('Test User');
     expect($user->email)->toBe('test@example.com');
-    expect($user->email_verified_at)->toBeNull();
 });
 
 test('email verification status is unchanged when the email address is unchanged', function () {
@@ -64,51 +57,6 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can switch the UI locale', function (string $locale, Locale $expected) {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->from(route('app.posts.index'))
-        ->put(route('app.profile.language'), [
-            'locale' => $locale,
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('app.posts.index'))
-        ->assertCookieMissing('locale');
-
-    expect($user->refresh()->locale)->toBe($expected);
-})->with([
-    ['es', Locale::Spanish],
-    ['uk', Locale::Ukrainian],
-    ['pt-BR', Locale::PortugueseBrazil],
-]);
-
-test('the stored locale drives the UI on the next request', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->put(route('app.profile.language'), ['locale' => 'ja']);
-    $this->actingAs($user)->get(route('app.posts.index'));
-
-    expect(app()->getLocale())->toBe('ja');
-});
-
-test('user cannot update locale with invalid code', function () {
-    $user = User::factory()->create(['locale' => Locale::English]);
-
-    $response = $this
-        ->actingAs($user)
-        ->put(route('app.profile.language'), [
-            'locale' => 'invalid',
-        ]);
-
-    $response->assertSessionHasErrors('locale');
-
-    expect($user->refresh()->locale)->toBe(Locale::English);
-});
-
 test('user can delete their account', function () {
     $user = User::factory()->create();
 
@@ -126,18 +74,6 @@ test('user can delete their account', function () {
     expect($user->fresh())->toBeNull();
 });
 
-test('owner deleting profile revokes their passport tokens', function () {
-    $owner = User::factory()->create();
-    $token = $owner->createToken('API Key')->token;
-
-    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect(User::find($owner->id))->toBeNull();
-    expect(AccessToken::find($token->id)->revoked)->toBeTrue();
-});
-
 test('correct password must be provided to delete account', function () {
     $user = User::factory()->create();
 
@@ -153,27 +89,6 @@ test('correct password must be provided to delete account', function () {
         ->assertRedirect(route('app.profile.edit'));
 
     expect($user->fresh())->not->toBeNull();
-});
-
-test('deleting account deletes members who belong to the shared account', function () {
-    [
-        'owner' => $owner,
-        'member' => $member,
-        'shared_workspaces' => [$workspace],
-    ] = strandedMemberOnSharedAccount(
-        sharedWorkspaces: 1,
-        setMemberCurrent: true,
-    );
-    $memberToken = $member->createToken('Member API')->token;
-
-    $this
-        ->actingAs($owner)
-        ->delete(route('app.profile.destroy'), [
-            'password' => 'password',
-        ]);
-
-    expect(User::find($member->id))->toBeNull();
-    expect(AccessToken::find($memberToken->id)->revoked)->toBeTrue();
 });
 
 test('user can upload profile photo', function () {
@@ -262,9 +177,7 @@ test('delete account requires authentication', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('member deleting profile does NOT destroy the shared account', function (bool $selfHosted) {
-    config()->set('trypost.self_hosted', $selfHosted);
-
+test('member deleting profile does NOT destroy the shared account', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create(['account_id' => $owner->account_id]);
 
@@ -283,7 +196,7 @@ test('member deleting profile does NOT destroy the shared account', function (bo
     expect(Account::find($owner->account_id))->not->toBeNull();
     expect(Workspace::find($workspace->id))->not->toBeNull();
     expect($owner->fresh())->not->toBeNull();
-})->with([true, false]);
+});
 
 test('member deleting profile does not delete shared workspaces they created', function () {
     $owner = User::factory()->create();
@@ -305,9 +218,7 @@ test('member deleting profile does not delete shared workspaces they created', f
     expect(Account::find($owner->account_id))->not->toBeNull();
 });
 
-test('member deleting profile detaches them from workspaces', function (bool $selfHosted) {
-    config()->set('trypost.self_hosted', $selfHosted);
-
+test('member deleting profile detaches them from workspaces', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create(['account_id' => $owner->account_id]);
 
@@ -322,30 +233,9 @@ test('member deleting profile detaches them from workspaces', function (bool $se
     ]);
 
     expect($workspace->fresh()->members()->where('users.id', $member->id)->exists())->toBeFalse();
-})->with([true, false]);
-
-test('owner deleting profile deletes remaining members of the account', function () {
-    [
-        'owner' => $owner,
-        'member' => $member,
-        'shared_workspaces' => [$workspace],
-    ] = strandedMemberOnSharedAccount(
-        sharedWorkspaces: 1,
-        setMemberCurrent: true,
-    );
-    $accountId = $owner->account_id;
-
-    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    expect(Account::find($accountId))->toBeNull();
-    expect(User::find($member->id))->toBeNull();
 });
 
-test('owner deleting profile destroys the account and cascades', function (bool $selfHosted) {
-    config()->set('trypost.self_hosted', $selfHosted);
-
+test('owner deleting profile destroys the account and cascades', function () {
     $owner = User::factory()->create();
     $accountId = $owner->account_id;
 
@@ -361,7 +251,7 @@ test('owner deleting profile destroys the account and cascades', function (bool 
 
     expect(Account::find($accountId))->toBeNull();
     expect(Workspace::find($workspace->id))->toBeNull();
-})->with([true, false]);
+});
 
 test('owner deleting profile clears media for account workspaces not owned by user_id', function () {
     Storage::fake();
@@ -408,145 +298,4 @@ test('owner deleting profile clears avatar media', function () {
     expect($owner->fresh())->toBeNull();
     expect(Media::find($avatar->id))->toBeNull();
     Storage::assertMissing($avatarPath);
-});
-
-test('owner account delete aborts when stripe cancel fails', function () {
-    Storage::fake();
-
-    $owner = User::factory()->create();
-    $account = $owner->account;
-    $accountId = $account->id;
-
-    $member = User::factory()->create();
-    $member->account?->delete();
-    $member->update(['account_id' => $accountId]);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $accountId,
-        'user_id' => $owner->id,
-    ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Member->value]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-
-    $media = $workspace->addMedia(
-        UploadedFile::fake()->image('logo.jpg'),
-        'logo',
-    );
-    $mediaPath = $media->path;
-    Storage::assertExists($mediaPath);
-
-    $invite = Invite::factory()->create([
-        'account_id' => $accountId,
-        'invited_by' => $owner->id,
-        'workspaces' => [$workspace->id],
-    ]);
-
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-
-    $mockSubscription = Mockery::mock(Subscription::class);
-    $mockSubscription->shouldReceive('ended')->andReturnFalse();
-    $mockSubscription->shouldReceive('cancelNow')
-        ->once()
-        ->andThrow(new RuntimeException('stripe unavailable'));
-
-    $mockAccount = Mockery::mock($account)->makePartial();
-    $mockAccount->shouldReceive('subscription')
-        ->with(Account::SUBSCRIPTION_NAME)
-        ->andReturn($mockSubscription);
-    $mockAccount->shouldReceive('delete')->never();
-
-    $owner->setRelation('account', $mockAccount);
-
-    $response = $this->actingAs($owner)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    $response->assertRedirect(route('app.profile.edit'));
-    $response->assertSessionHas('flash.banner', __('settings.flash.delete_failed_billing'));
-    $response->assertSessionHas('flash.bannerStyle', 'danger');
-
-    expect($owner->fresh())->not->toBeNull();
-    expect(User::find($member->id))->not->toBeNull();
-    expect(Account::find($accountId))->not->toBeNull();
-    expect(Account::find($accountId)->subscriptions()->count())->toBe(1);
-    expect(Workspace::find($workspace->id))->not->toBeNull();
-    expect(Media::find($media->id))->not->toBeNull();
-    expect(Invite::find($invite->id))->not->toBeNull();
-    Storage::assertExists($mediaPath);
-});
-
-test('account delete cancels incomplete stripe subscriptions that are not subscribed', function () {
-    $owner = User::factory()->create();
-    $account = $owner->account;
-    $accountId = $account->id;
-    $member = User::factory()->create();
-    $member->update(['account_id' => $accountId]);
-
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_incomplete_'.fake()->uuid(),
-        'stripe_status' => 'incomplete',
-        'stripe_price' => 'price_123',
-    ]);
-
-    expect($account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
-
-    $mockSubscription = Mockery::mock(Subscription::class);
-    $mockSubscription->shouldReceive('ended')->andReturnFalse();
-    $mockSubscription->shouldReceive('cancelNow')
-        ->once()
-        ->andThrow(new RuntimeException('stripe unavailable'));
-
-    $mockAccount = Mockery::mock($account)->makePartial();
-    $mockAccount->shouldReceive('subscription')
-        ->with(Account::SUBSCRIPTION_NAME)
-        ->andReturn($mockSubscription);
-    $mockAccount->shouldReceive('delete')->never();
-
-    $owner->setRelation('account', $mockAccount);
-
-    $response = $this->actingAs($owner)->delete(route('app.profile.destroy'), [
-        'password' => 'password',
-    ]);
-
-    $response->assertRedirect(route('app.profile.edit'));
-    $response->assertSessionHas('flash.banner', __('settings.flash.delete_failed_billing'));
-
-    expect($owner->fresh())->not->toBeNull();
-    expect(User::find($member->id))->not->toBeNull();
-    expect(Account::find($accountId))->not->toBeNull();
-});
-
-test('switching the UI language pushes the new locale to PostHog', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake();
-
-    $user = User::factory()->create(['locale' => Locale::English]);
-
-    $this->actingAs($user)->put(route('app.profile.language'), ['locale' => 'pt-BR']);
-
-    expect($user->refresh()->locale)->toBe(Locale::PortugueseBrazil);
-
-    Queue::assertPushed(
-        SyncUser::class,
-        fn (SyncUser $job) => $job->userId === (string) $user->id,
-    );
-});
-
-test('a rejected language change pushes nothing to PostHog', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake();
-
-    $user = User::factory()->create(['locale' => Locale::English]);
-
-    $this->actingAs($user)
-        ->put(route('app.profile.language'), ['locale' => 'sv'])
-        ->assertSessionHasErrors('locale');
-
-    Queue::assertNotPushed(SyncUser::class);
 });

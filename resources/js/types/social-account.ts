@@ -4,7 +4,6 @@ export interface AvailablePlatform {
     value: string;
     label: string;
     network: string;
-    connect_methods?: string[];
 }
 
 export interface ConnectedAccount {

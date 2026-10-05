@@ -37,7 +37,7 @@ This project uses `@tabler/icons-vue` for all icons. NEVER use `lucide-vue-next`
 ## Routing (Wayfinder)
 
 - This project uses Laravel Wayfinder for type-safe frontend routing.
-- ALWAYS use Wayfinder-generated route helpers in Vue pages (`register()`, `login()`, `dashboard()`). NEVER hardcode URL strings like `href="/register"`.
+- ALWAYS use Wayfinder-generated route helpers in Vue pages (`login()`, `dashboard()`). NEVER hardcode URL strings like `href="/login"`.
 - After creating or modifying PHP routes/controllers, run `php artisan wayfinder:generate` to regenerate the TypeScript route helpers.
 - Import routes from `@/routes/...` — e.g. `import { store } from '@/routes/login'`.
 - Import controller actions from `@/actions/...`.

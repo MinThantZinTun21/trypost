@@ -2,15 +2,21 @@
 #
 #   1. Generate an app key:   docker compose -f compose.prod.yaml run --rm app php artisan key:generate --show
 #      Paste the value into APP_KEY below.
-#   2. Edit APP_URL and the passwords marked "change me".
-#   3. Start:                 docker compose -f compose.prod.yaml up -d
+#   2. Edit APP_URL, OWNER_EMAIL and the passwords marked "change me".
+#   3. Start:                 docker compose -f compose.prod.yaml up -d --build
 #
-# This pulls the published image — no local build. Postgres, Redis, the queue
-# workers, the scheduler and the WebSocket server all run for you.
+# This builds the image from this repository. Postgres, the queue worker and
+# the scheduler all run for you. The first boot creates the Owner; with
+# OWNER_PASSWORD empty, the generated password is printed once in the log
+# (docker compose -f compose.prod.yaml logs app).
 
 services:
   app:
-    image: ghcr.io/trypostit/trypost:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    image: trypost-app:latest
     container_name: trypost
     restart: unless-stopped
     environment:
@@ -20,8 +26,12 @@ services:
       APP_DEBUG: "false"
       APP_KEY: ""                       # <- run key:generate (see header) and paste here
       APP_URL: http://localhost:8000    # <- your public URL, e.g. https://post.yourdomain.com
-      SELF_HOSTED: "true"
       TRYPOST_TARGET: production
+
+      # ===== Owner (created on first boot) =====
+      OWNER_NAME: Owner
+      OWNER_EMAIL: owner@example.com    # <- change me
+      OWNER_PASSWORD: ""                # <- change me, or leave empty to generate one
 
       # ===== Database (bundled postgres service below) =====
       DB_CONNECTION: pgsql
@@ -31,34 +41,10 @@ services:
       DB_USERNAME: trypost
       DB_PASSWORD: trypost-password     # <- change me (must match POSTGRES_PASSWORD below)
 
-      # ===== Redis / queue / cache / broadcasting =====
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      QUEUE_CONNECTION: redis
-      CACHE_STORE: redis
+      # ===== Queue / cache (both on Postgres) =====
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
       SESSION_DRIVER: database
-      BROADCAST_CONNECTION: reverb
-
-      # ===== WebSockets (Reverb) =====
-      # The published image bakes the client at localhost:8080. For a custom
-      # domain, rebuild the image with --build-arg VITE_REVERB_HOST=<domain>
-      # VITE_REVERB_PORT=443 VITE_REVERB_SCHEME=https.
-      REVERB_APP_ID: "1001"
-      REVERB_APP_KEY: trypost-reverb-key           # must match the key baked into the published image
-      REVERB_APP_SECRET: change-me-reverb-secret   # <- change me
-      REVERB_HOST: localhost
-      REVERB_PORT: "8080"
-      REVERB_SCHEME: http
-
-      # ===== Passport (OAuth / API keys / MCP) =====
-      # REQUIRED for any durable deploy (and always for multi-node / load
-      # balancers). File keys under storage/ are NOT persisted by the volumes
-      # below — without these env vars a container recreate issues new keys and
-      # invalidates every API/MCP token. Generate once:
-      #   docker compose -f compose.prod.yaml run --rm app php artisan passport:keys --show
-      # then paste the PEM contents here (use \n for newlines).
-      PASSPORT_PRIVATE_KEY: ""
-      PASSPORT_PUBLIC_KEY: ""
 
       # ===== Storage =====
       # Default: local disk, persisted in the "storage" volume below.
@@ -118,13 +104,10 @@ services:
       # ELEVENLABS_API_KEY: ""
     ports:
       - "8000:80"     # app (nginx)
-      - "8080:8080"   # Reverb WebSocket
     volumes:
       - storage:/var/www/html/storage/app
     depends_on:
       pgsql:
-        condition: service_healthy
-      redis:
         condition: service_healthy
 
   pgsql:
@@ -141,19 +124,6 @@ services:
       test: ['CMD-SHELL', 'pg_isready -U trypost -d trypost']
       interval: 10s
       timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: trypost-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
-      timeout: 3s
       retries: 5
 
   # Optional reverse proxy with automatic HTTPS (Let's Encrypt).
@@ -182,7 +152,6 @@ services:
 
 volumes:
   pgdata:
-  redisdata:
   storage:
   caddy-data:
   caddy-config:

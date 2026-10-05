@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\VerifyWorkspaceConnections;
-use App\Mail\WorkspaceConnectionsDisconnected;
+use App\Models\Notification;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
@@ -27,8 +28,8 @@ test('job does not send email when all connections are valid', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
+    SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')->andReturn(true);
@@ -44,7 +45,7 @@ test('job marks account as token expired on first failure and disconnected on se
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')
@@ -63,18 +64,18 @@ test('job marks account as token expired on first failure and disconnected on se
 
     expect($account->fresh()->status)->toBe(Status::Disconnected);
 
-    Mail::assertQueued(WorkspaceConnectionsDisconnected::class, function ($mail) use ($workspace) {
-        return $mail->workspace->id === $workspace->id
-            && $mail->disconnectedAccounts->count() === 1;
-    });
+    $notifications = Notification::where('workspace_id', $workspace->id)->where('type', Type::AccountDisconnected)->get();
+    expect($notifications)->toHaveCount(2);
+    expect($notifications->pluck('title')->unique()->all())->toBe(['1 account disconnected']);
+    Mail::assertNothingQueued();
 });
 
-test('job sends single email with all failed accounts', function () {
+test('job sends a single notification listing all failed accounts', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account1 = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $account2 = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $account1 = SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
+    $account2 = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')
@@ -87,20 +88,18 @@ test('job sends single email with all failed accounts', function () {
     expect($account1->fresh()->status)->toBe(Status::TokenExpired);
     expect($account2->fresh()->status)->toBe(Status::TokenExpired);
 
-    Mail::assertQueued(WorkspaceConnectionsDisconnected::class, function ($mail) use ($workspace) {
-        return $mail->workspace->id === $workspace->id
-            && $mail->disconnectedAccounts->count() === 2;
-    });
-
-    Mail::assertQueuedCount(1);
+    $notifications = Notification::where('workspace_id', $workspace->id)->where('type', Type::AccountDisconnected)->get();
+    expect($notifications)->toHaveCount(1);
+    expect($notifications->first()->title)->toBe('2 accounts disconnected');
+    Mail::assertNothingQueued();
 });
 
-test('job only includes failed accounts in email', function () {
+test('job only includes failed accounts in the notification', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $validAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $invalidAccount = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $validAccount = SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
+    $invalidAccount = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')
@@ -117,21 +116,21 @@ test('job only includes failed accounts in email', function () {
     expect($validAccount->fresh()->status)->toBe(Status::Connected);
     expect($invalidAccount->fresh()->status)->toBe(Status::TokenExpired);
 
-    Mail::assertQueued(WorkspaceConnectionsDisconnected::class, function ($mail) use ($invalidAccount) {
-        return $mail->disconnectedAccounts->count() === 1
-            && $mail->disconnectedAccounts->first()->id === $invalidAccount->id;
-    });
+    $notification = Notification::where('workspace_id', $workspace->id)->where('type', Type::AccountDisconnected)->sole();
+    expect($notification->title)->toBe('1 account disconnected');
+    expect($notification->body)->toBe("{$invalidAccount->platform->label()} ({$invalidAccount->handle()})");
+    Mail::assertNothingQueued();
 });
 
 test('job does NOT disconnect or email when platform is unavailable', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->bluesky()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('verify')->andThrow(
-        new PlatformUnavailableException('Bluesky API returned 503 during token refresh', 503)
+        new PlatformUnavailableException('YouTube API returned 503 during token refresh', 503)
     );
 
     app()->instance(ConnectionVerifier::class, $verifier);
@@ -146,7 +145,7 @@ test('job skips already disconnected accounts', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    SocialAccount::factory()->linkedin()->disconnected()->create(['workspace_id' => $workspace->id]);
+    SocialAccount::factory()->facebook()->disconnected()->create(['workspace_id' => $workspace->id]);
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldNotReceive('verify');
@@ -161,11 +160,11 @@ test('job skips already disconnected accounts', function () {
 test('daily sweep skips verifying a connected account a recent refresh already proved valid', function () {
     Mail::fake();
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => ['open_id' => '123']]], 200),
     ]);
 
     $workspace = Workspace::factory()->create();
-    SocialAccount::factory()->x()->create([
+    SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => Status::Connected,
         'last_verified_at' => now()->subHours(2),
@@ -174,19 +173,19 @@ test('daily sweep skips verifying a connected account a recent refresh already p
     VerifyWorkspaceConnections::dispatch($workspace);
 
     // A successful token refresh within the trust window already proved the
-    // credential — re-reading the profile would only burn a billed User Read.
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/users/me'));
+    // credential — re-reading the profile would only burn an API call.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/user/info/'));
     Mail::assertNothingSent();
 });
 
 test('daily sweep still verifies a connected account whose last_verified_at is stale', function () {
     Mail::fake();
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => ['open_id' => '123']]], 200),
     ]);
 
     $workspace = Workspace::factory()->create();
-    SocialAccount::factory()->x()->create([
+    SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => Status::Connected,
         'last_verified_at' => now()->subHours(20),
@@ -194,17 +193,17 @@ test('daily sweep still verifies a connected account whose last_verified_at is s
 
     VerifyWorkspaceConnections::dispatch($workspace);
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/user/info/'));
 });
 
 test('daily sweep still verifies a TokenExpired account despite a fresh last_verified_at', function () {
     Mail::fake();
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => ['open_id' => '123']]], 200),
     ]);
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => Status::TokenExpired,
         'last_verified_at' => now()->subMinutes(5),
@@ -213,18 +212,18 @@ test('daily sweep still verifies a TokenExpired account despite a fresh last_ver
     VerifyWorkspaceConnections::dispatch($workspace);
 
     // Skipping here would strand a recovered account in TokenExpired forever.
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/user/info/'));
     expect($account->fresh()->status)->toBe(Status::Connected);
 });
 
 test('daily sweep records its own successful verification', function () {
     Mail::fake();
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => ['open_id' => '123']]], 200),
     ]);
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => Status::Connected,
         'last_verified_at' => null,
@@ -241,13 +240,13 @@ test('an unreachable platform does not revive an account nobody verified', funct
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $workspace->id,
         'status' => Status::TokenExpired,
     ]);
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->andThrow(new PlatformUnavailableException('X API returned 503', 503));
+    $verifier->shouldReceive('verify')->andThrow(new PlatformUnavailableException('TikTok API returned 503', 503));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     VerifyWorkspaceConnections::dispatch($workspace);

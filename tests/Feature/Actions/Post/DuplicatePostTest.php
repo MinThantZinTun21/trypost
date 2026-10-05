@@ -7,13 +7,11 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
-use App\Events\PostCreated;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Event;
 
 test('execute clones the post as a draft created via web', function () {
     $user = User::factory()->create();
@@ -22,7 +20,7 @@ test('execute clones the post as a draft created via web', function () {
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,
         'content' => 'Original content',
-        'created_via' => CreatedVia::Api,
+        'created_via' => null,
         'status' => PostStatus::Published,
     ]);
 
@@ -36,30 +34,12 @@ test('execute clones the post as a draft created via web', function () {
         ->and($copy->published_at)->toBeNull();
 });
 
-test('execute relies on the observer to dispatch PostCreated for the duplicate', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $original = Post::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-    ]);
-
-    Event::fake([PostCreated::class]);
-
-    $copy = DuplicatePost::execute($original, $user);
-
-    Event::assertDispatched(
-        PostCreated::class,
-        fn (PostCreated $event) => $event->post->id === $copy->id,
-    );
-});
-
 test('execute skips platform rows whose social account was removed', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $liveAccount = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::X,
+        'platform' => Platform::Facebook,
         'display_name' => 'Live Account',
         'username' => 'live_user',
     ]);
@@ -70,7 +50,7 @@ test('execute skips platform rows whose social account was removed', function ()
         'status' => PostStatus::Published,
     ]);
 
-    PostPlatform::factory()->x()->published()->create([
+    PostPlatform::factory()->facebook()->published()->create([
         'post_id' => $original->id,
         'social_account_id' => $liveAccount->id,
         'platform_name' => 'Live Account',
@@ -89,13 +69,13 @@ test('execute skips platform rows whose social account was removed', function ()
         'enabled' => true,
     ]);
 
-    $copy = DuplicatePost::execute($original->load(['postPlatforms', 'labels']), $user);
+    $copy = DuplicatePost::execute($original->load('postPlatforms'), $user);
 
     $copiedPlatforms = $copy->postPlatforms()->get();
 
     expect($copiedPlatforms)->toHaveCount(1)
         ->and($copiedPlatforms->first()->social_account_id)->toBe($liveAccount->id)
-        ->and($copiedPlatforms->first()->platform)->toBe(Platform::X)
+        ->and($copiedPlatforms->first()->platform)->toBe(Platform::Facebook)
         ->and($copiedPlatforms->first()->platform_name)->toBe('Live Account')
         ->and($copiedPlatforms->first()->status)->toBe(PostPlatformStatus::Pending)
         ->and($copiedPlatforms->first()->enabled)->toBeTrue();
@@ -125,7 +105,7 @@ test('execute copies only platforms that still have a social account relation', 
 
     expect($platform->social_account_id)->toBeNull();
 
-    $copy = DuplicatePost::execute($original->fresh(['postPlatforms', 'labels']), $user);
+    $copy = DuplicatePost::execute($original->fresh('postPlatforms'), $user);
 
     expect($copy->postPlatforms)->toHaveCount(0);
 });

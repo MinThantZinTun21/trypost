@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
-use App\Models\PostComment;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -84,20 +83,4 @@ test('media tile actions are visible on a phone without hover', function () {
 
     waitForTestId($page, 'media-remove');
     $page->assertVisible('@media-remove');
-});
-
-test('comment actions are visible on a phone without hover', function () {
-    $post = seedMobileEditorPost();
-    PostComment::factory()->create([
-        'post_id' => $post->id,
-        'user_id' => $post->user_id,
-        'body' => 'a comment on the go',
-    ]);
-
-    $page = visit(route('app.posts.edit', $post))->resize(375, 812);
-
-    $page->click('@editor-nav-comments');
-
-    waitForTestId($page, 'comment-reply');
-    $page->assertVisible('@comment-reply');
 });

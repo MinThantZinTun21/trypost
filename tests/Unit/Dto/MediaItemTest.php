@@ -135,8 +135,6 @@ test('a stored item round-trips through fromArray and toArray', function () {
         'original_filename' => 'photo.jpg',
         'size' => 1234,
         'meta' => ['width' => 10, 'height' => 20],
-        'source' => 'unsplash',
-        'source_meta' => ['photographer' => 'Ana'],
     ];
 
     expect(MediaItem::fromArray($stored)->toArray())->toEqual($stored);

@@ -12,7 +12,9 @@ const props = defineProps<{
     platform: string;
 }>();
 
-const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
+const warning = computed(() =>
+    getMediaValidationWarning(props.contentType, props.media),
+);
 </script>
 
 <template>

@@ -9,7 +9,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\Workspace;
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
 use Throwable;

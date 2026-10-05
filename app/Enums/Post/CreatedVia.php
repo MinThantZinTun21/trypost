@@ -7,7 +7,4 @@ namespace App\Enums\Post;
 enum CreatedVia: string
 {
     case Web = 'web';
-    case Mcp = 'mcp';
-    case Api = 'api';
-    case Repurpose = 'repurpose';
 }

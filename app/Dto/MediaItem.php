@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Dto;
 
-use App\Enums\Media\Source;
 use App\Enums\Media\Type;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Media;
@@ -13,7 +12,6 @@ class MediaItem
 {
     /**
      * @param  array<string, mixed>|null  $meta
-     * @param  array<string, mixed>|null  $source_meta
      */
     public function __construct(
         public readonly string $id,
@@ -21,8 +19,6 @@ class MediaItem
         public readonly string $url,
         public readonly ?string $mime_type = null,
         public readonly ?string $original_filename = null,
-        public readonly ?Source $source = null,
-        public readonly ?array $source_meta = null,
         public readonly ?array $meta = null,
         public readonly ?Type $type = null,
         public readonly ?int $size = null,
@@ -71,8 +67,6 @@ class MediaItem
             'size' => $this->size,
             ...array_filter([
                 'meta' => $this->meta,
-                'source' => $this->source?->value,
-                'source_meta' => $this->source_meta,
             ]),
         ];
     }
@@ -163,10 +157,6 @@ class MediaItem
         $path = data_get($data, 'path', '');
         $mimeType = data_get($data, 'mime_type') ?: Type::mimeTypeFromExtension(Type::extensionOf($path));
 
-        $sourceValue = data_get($data, 'source');
-        $source = is_string($sourceValue) ? Source::tryFrom($sourceValue) : null;
-
-        $sourceMeta = data_get($data, 'source_meta');
         $meta = data_get($data, 'meta');
         $type = data_get($data, 'type');
         $size = data_get($data, 'size');
@@ -177,8 +167,6 @@ class MediaItem
             url: data_get($data, 'url', ''),
             mime_type: $mimeType,
             original_filename: data_get($data, 'original_filename'),
-            source: $source,
-            source_meta: is_array($sourceMeta) ? $sourceMeta : null,
             meta: is_array($meta) ? $meta : null,
             type: is_string($type) ? Type::tryFrom($type) : null,
             size: is_numeric($size) ? (int) $size : null,

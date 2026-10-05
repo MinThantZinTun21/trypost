@@ -3,16 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\Notification\Type;
-use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
-use App\Events\NotificationCreated;
 use App\Jobs\SendNotification;
-use App\Mail\AccountDisconnected;
 use App\Models\Notification;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
@@ -23,29 +19,20 @@ beforeEach(function () {
 
 // ---- needsProactiveTokenRefresh ----
 
-test('needsProactiveTokenRefresh: rotating platforms refresh only when expired, extension platforms while still valid', function () {
-    // Rotating (X): a still-valid token that is merely expiring soon is NOT refreshed.
-    $xValid = SocialAccount::factory()->x()->create([
+test('needsProactiveTokenRefresh: refreshes only once the token has expired', function () {
+    // A still-valid token that is merely expiring soon is NOT refreshed.
+    $tiktokValid = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'token_expires_at' => now()->addMinutes(10),
     ]);
-    expect($xValid->needsProactiveTokenRefresh())->toBeFalse();
+    expect($tiktokValid->needsProactiveTokenRefresh())->toBeFalse();
 
-    // Rotating (X): once actually expired, it is refreshed.
-    $xExpired = SocialAccount::factory()->x()->create([
+    // Once actually expired, it is refreshed.
+    $tiktokExpired = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'token_expires_at' => now()->subMinute(),
     ]);
-    expect($xExpired->needsProactiveTokenRefresh())->toBeTrue();
-
-    // Extension-model (Instagram): a still-valid token that is expiring soon MUST
-    // be refreshed while valid — its token can't be extended once expired.
-    $igValid = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'token_expires_at' => now()->addMinutes(10),
-    ]);
-    expect($igValid->needsProactiveTokenRefresh())->toBeTrue();
+    expect($tiktokExpired->needsProactiveTokenRefresh())->toBeTrue();
 });
 
 // ---- markAsTokenExpired ----
@@ -53,7 +40,7 @@ test('needsProactiveTokenRefresh: rotating platforms refresh only when expired, 
 test('markAsTokenExpired updates status and dispatches notification when transitioning from connected', function () {
     Queue::fake();
 
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
         'username' => 'testuser',
@@ -74,7 +61,7 @@ test('markAsTokenExpired updates status and dispatches notification when transit
 test('markAsTokenExpired does not dispatch notification when already token expired', function () {
     Queue::fake();
 
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::TokenExpired,
         'disconnected_at' => now()->subDay(),
@@ -88,7 +75,7 @@ test('markAsTokenExpired does not dispatch notification when already token expir
 test('markAsTokenExpired does not dispatch notification when account is disconnected', function () {
     Queue::fake();
 
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Disconnected,
         'disconnected_at' => now()->subDay(),
@@ -102,7 +89,7 @@ test('markAsTokenExpired does not dispatch notification when account is disconne
 test('markAsTokenExpired respects notify=false flag', function () {
     Queue::fake();
 
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
         'username' => 'testuser',
@@ -118,7 +105,7 @@ test('markAsTokenExpired preserves existing disconnected_at value', function () 
     Queue::fake();
 
     $earlier = now()->subDays(3);
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
         'disconnected_at' => $earlier,
@@ -131,10 +118,9 @@ test('markAsTokenExpired preserves existing disconnected_at value', function () 
 });
 
 test('markAsTokenExpired creates notification row with i18n placeholders substituted', function () {
-    Event::fake([NotificationCreated::class]);
     Mail::fake();
 
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
         'username' => 'testuser',
@@ -145,13 +131,13 @@ test('markAsTokenExpired creates notification row with i18n placeholders substit
     $notification = Notification::where('user_id', $this->owner->id)->first();
 
     expect($notification)->not->toBeNull();
-    expect($notification->title)->toBe('X account needs to be reconnected');
+    expect($notification->title)->toBe('TikTok account needs to be reconnected');
     expect($notification->body)->toBe('@testuser session expired — please reconnect to keep posting');
     expect($notification->type)->toBe(Type::AccountDisconnected);
     expect($notification->data)->toBe(['social_account_id' => $account->id]);
 
-    Event::assertDispatched(NotificationCreated::class);
-    Mail::assertQueued(AccountDisconnected::class);
+    Mail::assertNothingSent();
+    Mail::assertNothingQueued();
 });
 
 // ---- markAsDisconnected ----
@@ -159,7 +145,7 @@ test('markAsTokenExpired creates notification row with i18n placeholders substit
 test('markAsDisconnected updates status and dispatches notification when transitioning from connected', function () {
     Queue::fake();
 
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
         'username' => 'testuser',
@@ -180,7 +166,7 @@ test('markAsDisconnected updates status and dispatches notification when transit
 test('markAsDisconnected does not dispatch notification when already disconnected', function () {
     Queue::fake();
 
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Disconnected,
         'disconnected_at' => now()->subDay(),
@@ -192,10 +178,9 @@ test('markAsDisconnected does not dispatch notification when already disconnecte
 });
 
 test('markAsDisconnected creates notification row with i18n placeholders substituted', function () {
-    Event::fake([NotificationCreated::class]);
     Mail::fake();
 
-    $account = SocialAccount::factory()->x()->create([
+    $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,
         'username' => 'testuser',
@@ -206,42 +191,13 @@ test('markAsDisconnected creates notification row with i18n placeholders substit
     $notification = Notification::where('user_id', $this->owner->id)->first();
 
     expect($notification)->not->toBeNull();
-    expect($notification->title)->toBe('X account disconnected');
+    expect($notification->title)->toBe('TikTok account disconnected');
     expect($notification->body)->toBe('@testuser needs to be reconnected');
     expect($notification->type)->toBe(Type::AccountDisconnected);
     expect($notification->data)->toBe(['social_account_id' => $account->id]);
 
-    Event::assertDispatched(NotificationCreated::class);
-    Mail::assertQueued(AccountDisconnected::class);
+    Mail::assertNothingSent();
+    Mail::assertNothingQueued();
 });
 
 // ---- profile_url ----
-
-test('profile_url for google business prefers the Maps listing when stored', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'meta' => [
-            'location_id' => 'accounts/123456789/locations/987654321',
-            'maps_uri' => 'https://maps.google.com/?cid=123',
-        ],
-    ]);
-
-    expect($account->profile_url)->toBe('https://maps.google.com/?cid=123');
-});
-
-test('profile_url for google business falls back to the location dashboard', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-    ]);
-
-    expect($account->profile_url)->toBe('https://business.google.com/dashboard/l/u987654321');
-});
-
-test('profile_url for google business is null without a stored location', function () {
-    $account = SocialAccount::factory()->googleBusiness()->create([
-        'workspace_id' => $this->workspace->id,
-        'meta' => ['google_user_id' => 'google-user-123'],
-    ]);
-
-    expect($account->profile_url)->toBeNull();
-});

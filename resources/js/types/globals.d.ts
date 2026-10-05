@@ -1,14 +1,5 @@
 import { AppPageProps } from '@/types/index';
 
-declare global {
-    interface Window {
-        dataLayer: Record<string, unknown>[];
-        $crisp?: {
-            push: (command: unknown[]) => void;
-        };
-    }
-}
-
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {
     interface ImportMetaEnv {

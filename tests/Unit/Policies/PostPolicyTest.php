@@ -7,51 +7,30 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Policies\PostPolicy;
+use Illuminate\Auth\Access\Response;
 
 beforeEach(function () {
     $this->policy = new PostPolicy;
+
+    $account = Account::factory()->create();
+    $this->owner = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $this->owner->id]);
+    $this->workspace = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $this->owner->id]);
+    $this->owner->update(['current_workspace_id' => $this->workspace->id]);
+    $this->owner->refresh();
 });
 
-/**
- * Build a post + an actor with the given workspace role, both in one account.
- *
- * @return array{0: User, 1: Post}
- */
-function postPolicyActor(string $role): array
-{
-    $account = Account::factory()->create();
-    $owner = User::factory()->create(['account_id' => $account->id]);
-    $account->update(['owner_id' => $owner->id]);
-    $workspace = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $owner->id]);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id]);
+test('the Owner can view, update, delete and duplicate their posts', function (string $ability) {
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    if ($role === 'owner') {
-        $actor = $owner;
-    } else {
-        $actor = User::factory()->create(['account_id' => $account->id]);
-        $workspace->members()->attach($actor->id, ['role' => $role]);
-    }
+    expect($this->policy->{$ability}($this->owner, $post))->toBeTrue();
+})->with(['view', 'update', 'delete', 'duplicate']);
 
-    $actor->update(['current_workspace_id' => $workspace->id]);
+test('a post from another workspace is denied as not found', function (string $ability) {
+    $post = Post::factory()->create();
 
-    return [$actor->refresh(), $post];
-}
+    $result = $this->policy->{$ability}($this->owner, $post);
 
-test('any workspace member (including viewer) can view a post', function (string $role) {
-    [$actor, $post] = postPolicyActor($role);
-
-    expect($this->policy->view($actor, $post))->toBeTrue();
-})->with(['owner', 'admin', 'member', 'viewer']);
-
-test('post update/delete/duplicate is allowed for member+ and denied for viewer', function (string $role, bool $allowed) {
-    [$actor, $post] = postPolicyActor($role);
-
-    expect($this->policy->update($actor, $post))->toBe($allowed);
-    expect($this->policy->delete($actor, $post))->toBe($allowed);
-    expect($this->policy->duplicate($actor, $post))->toBe($allowed);
-})->with([
-    'owner' => ['owner', true],
-    'admin' => ['admin', true],
-    'member' => ['member', true],
-    'viewer' => ['viewer', false],
-]);
+    expect($result)->toBeInstanceOf(Response::class)
+        ->and($result->status())->toBe(404);
+})->with(['view', 'update', 'delete', 'duplicate']);

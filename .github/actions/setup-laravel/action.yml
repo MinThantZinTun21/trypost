@@ -8,9 +8,6 @@ inputs:
   db-port:
     description: 'Host port mapped to the database service.'
     required: true
-  redis-port:
-    description: 'Host port mapped to the Redis service.'
-    required: true
 
 runs:
   using: 'composite'
@@ -19,7 +16,7 @@ runs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.4'
-        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_pgsql, pdo_mysql, bcmath, intl, gd, redis
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_pgsql, pdo_mysql, bcmath, intl, gd
         coverage: none
 
     - name: Setup Node.js
@@ -57,7 +54,6 @@ runs:
       shell: bash
       env:
         DB_PORT: ${{ inputs.db-port }}
-        REDIS_PORT: ${{ inputs.redis-port }}
       run: php artisan migrate --force
 
     - name: Generate Passport keys

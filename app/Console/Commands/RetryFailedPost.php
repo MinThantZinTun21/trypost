@@ -179,7 +179,6 @@ class RetryFailedPost extends Command
 
         $kept = [];
         $publishId = PublishCheckpoint::tiktokPublishId($context);
-        $workflow = PublishCheckpoint::instagramWorkflow($context);
 
         if ($publishId !== null) {
             $kept[PublishCheckpoint::TIKTOK_PUBLISH_ID] = $publishId;
@@ -188,10 +187,6 @@ class RetryFailedPost extends Command
             if ($paths !== []) {
                 $kept[PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS] = $paths;
             }
-        }
-
-        if ($workflow !== null) {
-            $kept[PublishCheckpoint::INSTAGRAM_WORKFLOW] = $workflow;
         }
 
         return $kept === [] ? null : $kept;
