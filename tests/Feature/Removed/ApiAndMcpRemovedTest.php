@@ -30,3 +30,11 @@ test('passport and laravel/mcp are not required by the app', function () {
     expect($require)->not->toHaveKeys(['laravel/passport', 'laravel/mcp'])
         ->and(class_exists('Laravel\\Passport\\Passport'))->toBeFalse();
 });
+
+test('no ci workflow or action runs a passport command', function () {
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(base_path('.github'), FilesystemIterator::SKIP_DOTS));
+
+    foreach ($files as $file) {
+        expect(file_get_contents($file->getPathname()))->not->toContain('passport:');
+    }
+});

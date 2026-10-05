@@ -1,5 +1,5 @@
 name: 'Setup Laravel test environment'
-description: 'Set up PHP, Composer, optional Node, the app key, database, and Passport keys for a test job.'
+description: 'Set up PHP, Composer, optional Node, the app key, and database for a test job.'
 
 inputs:
   node:
@@ -55,7 +55,3 @@ runs:
       env:
         DB_PORT: ${{ inputs.db-port }}
       run: php artisan migrate --force
-
-    - name: Generate Passport keys
-      shell: bash
-      run: php artisan passport:keys --force
