@@ -89,8 +89,6 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth'])->group(function () {
-    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('app.profile.destroy');
-
     Route::get('settings/authentication', [AuthenticationController::class, 'edit'])->name('app.authentication.edit');
     Route::put('settings/authentication/password', [AuthenticationController::class, 'updatePassword'])
         ->middleware('throttle:6,1')

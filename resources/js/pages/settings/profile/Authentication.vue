@@ -5,7 +5,6 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import AuthenticationController from '@/actions/App/Http/Controllers/App/Settings/AuthenticationController';
-import DeleteUser from '@/components/DeleteUser.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
 import PageHeader from '@/components/PageHeader.vue';
@@ -331,10 +330,6 @@ const logoutDialogOpen = ref(false);
                         </Button>
                     </Form>
                 </div>
-
-                <Separator />
-
-                <DeleteUser />
             </section>
         </div>
     </AppLayout>
