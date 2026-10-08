@@ -11,6 +11,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\YouTubeDescription;
+use App\Support\YouTubeTitle;
 use Google\Client as GoogleClient;
 use Google\Service\Exception;
 use Google\Service\YouTube;
@@ -35,6 +36,7 @@ class YouTubePublisher
             ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
             : null;
         $description = $this->resolveDescription($postPlatform, $content);
+        $title = $this->resolveTitle($postPlatform, $content);
 
         $account = $postPlatform->socialAccount;
 
@@ -60,7 +62,7 @@ class YouTubePublisher
             );
         }
 
-        return $this->publishShort($firstMedia, $account, $content, $description);
+        return $this->publishShort($firstMedia, $account, $title, $description);
     }
 
     private function createGoogleClient(SocialAccount $account): GoogleClient
@@ -88,9 +90,9 @@ class YouTubePublisher
         return $client;
     }
 
-    private function publishShort(MediaItem $media, SocialAccount $account, ?string $content, string $description): array
+    private function publishShort(MediaItem $media, SocialAccount $account, ?string $title, string $description): array
     {
-        if (empty($content)) {
+        if (blank($title)) {
             throw new YouTubePublishException(
                 userMessage: 'YouTube Shorts require a title. Please add text to your post.',
                 category: ErrorCategory::ContentPolicy,
@@ -108,7 +110,7 @@ class YouTubePublisher
 
         try {
             $this->downloadVideo($media, $tempFile);
-            $video = $this->uploadVideo($media, $account, $tempFile, $this->buildVideo($content, $description));
+            $video = $this->uploadVideo($media, $account, $tempFile, $this->buildVideo($title, $description));
             $videoId = $video->getId();
 
             return [
@@ -215,10 +217,24 @@ class YouTubePublisher
         return $description;
     }
 
-    private function buildVideo(string $content, string $description): Video
+    private function resolveTitle(PostPlatform $postPlatform, ?string $content): ?string
+    {
+        $violation = YouTubeTitle::violation(data_get($postPlatform->meta, 'title'));
+
+        if ($violation !== null) {
+            throw new YouTubePublishException(
+                userMessage: __($violation),
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
+        return YouTubeTitle::resolve($postPlatform->meta, $content);
+    }
+
+    private function buildVideo(string $title, string $description): Video
     {
         $snippet = new VideoSnippet;
-        $snippet->setTitle($this->buildTitle($content));
+        $snippet->setTitle($title);
         $snippet->setDescription($description);
         $snippet->setCategoryId('22');
 
@@ -231,21 +247,5 @@ class YouTubePublisher
         $video->setStatus($status);
 
         return $video;
-    }
-
-    private function buildTitle(string $content): string
-    {
-        $maxLength = 100;
-        $shortsTag = ' #Shorts';
-        $availableLength = $maxLength - mb_strlen($shortsTag);
-
-        $firstLine = explode("\n", $content)[0];
-        $title = explode('.', $firstLine)[0];
-
-        if (mb_strlen($title) > $availableLength) {
-            $title = mb_substr($title, 0, $availableLength - 3).'...';
-        }
-
-        return $title.$shortsTag;
     }
 }

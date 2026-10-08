@@ -7,6 +7,7 @@ import {
 } from '@/composables/useMedia';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { contentLimitApplies } from '@/lib/contentLimit';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
 import { getYouTubeDescriptionIssue } from '@/lib/youtubeDescription';
 import { ContentType } from '@/types/content-type';
@@ -211,6 +212,8 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
         const result: { platform: string; maxLength: number }[] = [];
         for (const pp of selectedPlatforms.value) {
             if (seen.has(pp.platform)) continue;
+            if (!contentLimitApplies(pp.platform, platformMeta.value[pp.id]))
+                continue;
             const max = pp.social_account_id
                 ? platformConfigs[pp.social_account_id]?.maxContentLength
                 : null;

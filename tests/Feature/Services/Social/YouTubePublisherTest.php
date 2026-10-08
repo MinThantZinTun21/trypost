@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\YouTubePublisher;
+use App\Support\YouTubeTitle;
 use Google\Client;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -145,6 +146,46 @@ test('youtube description builds independent upload metadata', function () {
                 && $payload['snippet']['description'] === $description;
         });
     }
+});
+
+test('youtube title from meta reaches the upload request', function (?string $content, string $title, string $expected) {
+    $this->post->update([
+        'content' => $content,
+        'media' => [[
+            'id' => 'video-1',
+            'type' => 'video',
+            'path' => 'medias/video.mp4',
+            'url' => 'https://example.com/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $this->postPlatform->update(['meta' => ['title' => $title]]);
+
+    fakeYouTubeUpload()->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function (Request $request) use ($expected): bool {
+        if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
+            return false;
+        }
+
+        return json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR)['snippet']['title'] === $expected;
+    });
+})->with([
+    'title set' => ['First sentence. More text.', 'My own Short title', 'My own Short title'],
+    'title without content' => [null, 'My own Short title', 'My own Short title'],
+    'title trimmed' => ['First sentence.', '  My own Short title  ', 'My own Short title'],
+    'blank title falls back' => ['First sentence. More text.', '   ', 'First sentence #Shorts'],
+    'title lifts the content cap' => [str_repeat('Long caption for every platform. ', 10), 'My own Short title', 'My own Short title'],
+]);
+
+test('youtube publisher rejects a stored invalid title before network work', function () {
+    Http::fake();
+    $this->postPlatform->update(['meta' => ['title' => str_repeat('a', 101)]]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(YouTubePublishException::class, __('posts.form.youtube.title_max'));
+    Http::assertNothingSent();
 });
 
 beforeEach(function () {
@@ -357,42 +398,28 @@ test('youtube publisher throws exception with null content', function () {
         ->toThrow(Exception::class, 'YouTube Shorts require a title');
 });
 
-test('youtube publisher builds correct title with shorts tag', function () {
-    $publisher = new YouTubePublisher;
-    $reflection = new ReflectionClass($publisher);
-    $method = $reflection->getMethod('buildTitle');
-    $method->setAccessible(true);
-
+test('youtube title falls back to the first sentence with the shorts tag', function () {
     // Short content: appends #Shorts
-    $title = $method->invoke($publisher, 'My awesome short video');
-    expect($title)->toBe('My awesome short video #Shorts');
+    expect(YouTubeTitle::fromContent('My awesome short video'))->toBe('My awesome short video #Shorts');
 
     // Long content: truncates to leave room for #Shorts tag (100 chars max)
-    $longContent = str_repeat('A', 200);
-    $title = $method->invoke($publisher, $longContent);
-    expect(mb_strlen($title))->toBeLessThanOrEqual(100);
-    expect($title)->toEndWith(' #Shorts');
+    $title = YouTubeTitle::fromContent(str_repeat('A', 200));
+    expect(mb_strlen($title))->toBeLessThanOrEqual(100)
+        ->and($title)->toEndWith(' #Shorts');
 
     // Multi-line content: only uses first line before period
-    $multiLine = "First sentence. Second part.\nSecond line";
-    $title = $method->invoke($publisher, $multiLine);
-    expect($title)->toBe('First sentence #Shorts');
+    expect(YouTubeTitle::fromContent("First sentence. Second part.\nSecond line"))->toBe('First sentence #Shorts');
 
     // Newline-separated: stops at newline
-    $newlineContent = "Title line\nMore content here";
-    $title = $method->invoke($publisher, $newlineContent);
-    expect($title)->toBe('Title line #Shorts');
+    expect(YouTubeTitle::fromContent("Title line\nMore content here"))->toBe('Title line #Shorts');
+
+    // YouTube rejects angle brackets in titles
+    expect(YouTubeTitle::fromContent('Why a < b > c'))->toBe('Why a  b  c #Shorts');
 });
 
 test('youtube publisher counts an accented title in characters, not bytes', function () {
-    $reflection = new ReflectionClass(YouTubePublisher::class);
-    $method = $reflection->getMethod('buildTitle');
-    $method->setAccessible(true);
-
-    $publisher = new YouTubePublisher;
-
     foreach (range(0, 11) as $pad) {
-        $title = $method->invoke($publisher, str_repeat('a', $pad).str_repeat('ação ', 30));
+        $title = YouTubeTitle::fromContent(str_repeat('a', $pad).str_repeat('ação ', 30));
 
         expect(mb_check_encoding($title, 'UTF-8'))->toBeTrue()
             ->and(mb_strlen($title))->toBeLessThanOrEqual(100);
@@ -402,5 +429,5 @@ test('youtube publisher counts an accented title in characters, not bytes', func
 
     expect(mb_strlen($accented))->toBe(90)
         ->and(strlen($accented))->toBeGreaterThan(92)
-        ->and($method->invoke($publisher, $accented))->toBe($accented.' #Shorts');
+        ->and(YouTubeTitle::fromContent($accented))->toBe($accented.' #Shorts');
 });

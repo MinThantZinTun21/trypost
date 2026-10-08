@@ -47,7 +47,8 @@ class PostPlatformMetaRules
             'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
 
-            // YouTube
+            // YouTube (Platform-specific limits: textLimitViolations())
+            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', new ValidYouTubeDescription],
         ];
     }
@@ -70,6 +71,7 @@ class PostPlatformMetaRules
     public static function attributes(): array
     {
         return [
+            'platforms.*.meta.title' => __('posts.form.youtube.title'),
             'platforms.*.meta.description' => __('posts.form.youtube.description'),
         ];
     }
@@ -98,6 +100,56 @@ class PostPlatformMetaRules
                 }
             }
         }
+    }
+
+    /**
+     * Adds validation errors for Titles, Descriptions and captions that break
+     * their Platform's length or character limits. Unlike the required-on-publish
+     * meta, these hold for drafts too, so a saved Post never fails at publish
+     * time over text length.
+     *
+     * @param  array<int, mixed>  $platforms
+     * @param  callable(mixed, int): ?Platform  $resolvePlatform
+     */
+    public static function addTextLimitErrors(Validator $validator, array $platforms, callable $resolvePlatform): void
+    {
+        foreach ($platforms as $index => $platform) {
+            foreach (self::textLimitViolations($resolvePlatform($platform, $index), data_get($platform, 'meta')) as $field => $message) {
+                $key = "platforms.{$index}.meta.{$field}";
+
+                if (! $validator->errors()->has($key)) {
+                    $validator->errors()->add($key, $message);
+                }
+            }
+        }
+    }
+
+    /**
+     * Per-Platform text limits, taken from each Platform's API docs.
+     *
+     * @return array<string, string> field => message
+     */
+    public static function textLimitViolations(?Platform $platform, mixed $meta): array
+    {
+        $violations = match ($platform) {
+            Platform::YouTube => ['title' => YouTubeTitle::violation(data_get($meta, 'title'))],
+            default => [],
+        };
+
+        return array_map(fn (string $key): string => __($key), array_filter($violations));
+    }
+
+    /**
+     * Whether the Post's content counts against the Platform's content cap
+     * (`Platform::maxContentLength()`). A YouTube Title replaces the content as
+     * the video title, so the 100-character cap on the content no longer applies.
+     */
+    public static function contentLimitApplies(Platform $platform, mixed $meta): bool
+    {
+        return match ($platform) {
+            Platform::YouTube => YouTubeTitle::custom($meta) === null,
+            default => true,
+        };
     }
 
     /**

@@ -13,6 +13,7 @@ test('there are no custom meta messages', function () {
 
 test('custom meta attributes use translated field names', function () {
     expect(PostPlatformMetaRules::attributes())->toBe([
+        'platforms.*.meta.title' => __('posts.form.youtube.title'),
         'platforms.*.meta.description' => __('posts.form.youtube.description'),
     ]);
 });
@@ -43,6 +44,7 @@ test('shared meta rules cover the facebook, tiktok and youtube fields only', fun
         'platforms.*.meta.disclose',
         'platforms.*.meta.brand_content_toggle',
         'platforms.*.meta.brand_organic_toggle',
+        'platforms.*.meta.title',
         'platforms.*.meta.description',
     ]);
 });
@@ -68,3 +70,19 @@ test('tiktok required meta rejects self only branded content', function () {
         'brand_content_toggle' => true,
     ]))->toBe(['privacy_level', trans('posts.form.tiktok.privacy.private_disabled_branded')]);
 });
+
+test('youtube title text limits follow the youtube data api', function (mixed $title, ?string $key) {
+    expect(PostPlatformMetaRules::textLimitViolations(Platform::YouTube, ['title' => $title]))
+        ->toBe($key === null ? [] : ['title' => __($key)]);
+})->with([
+    'missing' => [null, null],
+    'one hundred characters' => [str_repeat('é', 100), null],
+    'over one hundred characters' => [str_repeat('é', 101), 'posts.form.youtube.title_max'],
+    'less than sign' => ['a < b', 'posts.form.youtube.title_angle_brackets'],
+    'greater than sign' => ['a > b', 'posts.form.youtube.title_angle_brackets'],
+    'not text' => [['title'], 'posts.form.youtube.title_invalid'],
+]);
+
+test('youtube title limits do not apply to other platforms', function (Platform $platform) {
+    expect(PostPlatformMetaRules::textLimitViolations($platform, ['title' => str_repeat('<', 101)]))->toBe([]);
+})->with([Platform::Facebook, Platform::TikTok]);

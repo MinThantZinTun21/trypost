@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
@@ -15,6 +16,10 @@ import {
     YOUTUBE_DESCRIPTION_MAX_BYTES,
     youtubeDescriptionBytes,
 } from '@/lib/youtubeDescription';
+import {
+    YOUTUBE_TITLE_MAX_CHARACTERS,
+    youtubeTitleCharacters,
+} from '@/lib/youtubeTitle';
 import type { ChannelAccount } from '@/types/channel';
 import { Platform } from '@/types/platform';
 
@@ -36,6 +41,20 @@ const open = ref(false);
 const errors = usePageErrors();
 const descriptionId = computed(
     () => `youtube-description-${props.platformIndex}`,
+);
+const titleId = computed(() => `youtube-title-${props.platformIndex}`);
+
+const title = computed({
+    get: () => toNullableText(props.meta.title) ?? '',
+    set: (value: string) =>
+        emit('update:meta', {
+            ...props.meta,
+            title: toNullableText(value),
+        }),
+});
+const titleCharacters = computed(() => youtubeTitleCharacters(title.value));
+const titleError = computed(
+    () => errors.value[`platforms.${props.platformIndex}.meta.title`],
 );
 
 const description = computed({
@@ -123,6 +142,39 @@ const descriptionError = computed(() => {
                         >
                     </p>
                 </div>
+            </div>
+            <div class="space-y-2">
+                <Label
+                    :for="titleId"
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.youtube.title') }}
+                </Label>
+                <Input
+                    :id="titleId"
+                    v-model="title"
+                    :data-testid="titleId"
+                    :disabled="disabled"
+                    :aria-invalid="titleError ? true : undefined"
+                    :placeholder="$t('posts.form.youtube.title_placeholder')"
+                />
+                <p
+                    class="text-xs tabular-nums"
+                    :class="
+                        titleError ||
+                        titleCharacters > YOUTUBE_TITLE_MAX_CHARACTERS
+                            ? 'text-rose-600'
+                            : 'text-foreground/60'
+                    "
+                >
+                    {{
+                        $t('posts.form.youtube.title_characters', {
+                            used: titleCharacters.toString(),
+                            limit: YOUTUBE_TITLE_MAX_CHARACTERS.toString(),
+                        })
+                    }}
+                </p>
+                <InputError :message="titleError" />
             </div>
             <div class="space-y-2">
                 <Label

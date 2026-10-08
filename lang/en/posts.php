@@ -112,6 +112,12 @@ return [
         'youtube' => [
             'settings' => 'YouTube settings',
             'posting_to' => 'Posting to',
+            'title' => 'Title',
+            'title_placeholder' => 'Defaults to the first sentence of your post',
+            'title_max' => 'The YouTube title must not exceed 100 characters.',
+            'title_angle_brackets' => 'The YouTube title cannot contain < or >.',
+            'title_invalid' => 'The YouTube title must be valid text.',
+            'title_characters' => ':used / :limit characters',
             'description' => 'Description',
             'description_placeholder' => 'Video description',
             'description_max' => 'The YouTube description must not exceed 5,000 bytes.',

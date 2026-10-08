@@ -97,10 +97,11 @@ enum Platform: string
      * means the post can't be published. Values are the documented API maxes:
      *
      *  - TikTok caption: 2200
-     *  - YouTube Shorts: content supplies the title, capped at 100 characters
-     *    (publisher derives it from the first line via `buildTitle`). Optional
-     *    meta.description is separate plain text, capped at 5000 UTF-8 bytes;
-     *    absent descriptions fall back to content.
+     *  - YouTube Shorts: without a meta.title the content supplies the title,
+     *    capped at 100 characters (`YouTubeTitle::fromContent()`); a Title
+     *    lifts the cap (`PostPlatformMetaRules::contentLimitApplies()`).
+     *    Optional meta.description is separate plain text, capped at 5000
+     *    UTF-8 bytes; absent descriptions fall back to content.
      *  - Facebook text status: 10000 (API allows 63206; we cap below
      *    that — 63k-char posts are unrealistic and emoji-heavy content
      *    risks overflowing the TEXT column's 65535-byte ceiling)

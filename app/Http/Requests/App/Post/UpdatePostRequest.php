@@ -7,6 +7,7 @@ namespace App\Http\Requests\App\Post;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Models\PostPlatform;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Support\PostMediaRules;
@@ -42,7 +43,7 @@ class UpdatePostRequest extends FormRequest
                 'max:10000',
                 Rule::when(
                     $enforcesMediaCompatibility,
-                    [new ContentFitsPlatformLimits($this->resolveSelectedPlatforms())]
+                    [new ContentFitsPlatformLimits($this->resolveContentLimitedPlatforms())]
                 ),
             ],
             ...PostMediaRules::rules(hosted: true),
@@ -78,23 +79,15 @@ class UpdatePostRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if (! $this->isPublishingOrScheduling()) {
-                return;
-            }
-
             $platforms = $this->input('platforms', []);
-            $ids = collect($platforms)->pluck('id')->filter()->all();
+            $platformsById = $this->resolveSelectedPlatforms();
+            $resolvePlatform = fn ($platform) => $platformsById[data_get($platform, 'id')] ?? null;
 
-            $platformsById = $this->route('post')
-                ->postPlatforms()
-                ->whereIn('id', $ids)
-                ->pluck('platform', 'id');
+            PostPlatformMetaRules::addTextLimitErrors($validator, $platforms, $resolvePlatform);
 
-            PostPlatformMetaRules::addRequiredOnPublishErrors(
-                $validator,
-                $platforms,
-                fn ($platform) => $platformsById[data_get($platform, 'id')] ?? null,
-            );
+            if ($this->isPublishingOrScheduling()) {
+                PostPlatformMetaRules::addRequiredOnPublishErrors($validator, $platforms, $resolvePlatform);
+            }
         });
     }
 
@@ -105,6 +98,34 @@ class UpdatePostRequest extends FormRequest
             [Status::Scheduled->value, Status::Publishing->value],
             true,
         );
+    }
+
+    /**
+     * The selected platforms whose content cap applies, judged on the meta the
+     * update will store (stored meta merged with the submitted meta, as
+     * UpdatePost merges it).
+     *
+     * @return Collection<int|string, Platform>
+     */
+    private function resolveContentLimitedPlatforms(): Collection
+    {
+        $submittedMeta = collect($this->input('platforms', []))
+            ->filter(fn ($platform) => is_array($platform) && data_get($platform, 'id'))
+            ->mapWithKeys(fn (array $platform) => [data_get($platform, 'id') => data_get($platform, 'meta')]);
+
+        if ($submittedMeta->isEmpty()) {
+            return collect();
+        }
+
+        return $this->route('post')
+            ->postPlatforms()
+            ->whereIn('id', $submittedMeta->keys()->all())
+            ->get(['id', 'platform', 'meta'])
+            ->filter(fn (PostPlatform $postPlatform): bool => PostPlatformMetaRules::contentLimitApplies(
+                $postPlatform->platform,
+                array_merge($postPlatform->meta ?? [], is_array($submittedMeta[$postPlatform->id]) ? $submittedMeta[$postPlatform->id] : []),
+            ))
+            ->pluck('platform', 'id');
     }
 
     /**

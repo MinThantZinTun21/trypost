@@ -464,3 +464,85 @@ test('draft save drops the removed media source keys', function () {
         ->and(data_get($this->post->media, '0'))->not->toHaveKey('source')
         ->and(data_get($this->post->media, '0'))->not->toHaveKey('source_meta');
 });
+
+test('youtube title saves on a draft and reloads in the editor', function () {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $platform->id, 'meta' => ['title' => 'My own Short title']],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect(data_get($platform->fresh()->meta, 'title'))->toBe('My own Short title');
+
+    $this->actingAs($this->user)->get(route('app.posts.edit', $this->post))
+        ->assertInertia(fn ($page) => $page->where(
+            'post.post_platforms',
+            fn ($platforms) => data_get(collect($platforms)->firstWhere('id', $platform->id), 'meta.title') === 'My own Short title',
+        ));
+});
+
+test('youtube title limits hold on a draft', function (string $title, string $key) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $platform->id, 'meta' => ['title' => $title]],
+        ],
+    ])->assertSessionHasErrors(['platforms.0.meta.title' => __($key)]);
+
+    expect(data_get($platform->fresh()->meta, 'title'))->toBeNull();
+})->with([
+    'too long' => [str_repeat('a', 101), 'posts.form.youtube.title_max'],
+    'angle brackets' => ['Use <b>bold</b>', 'posts.form.youtube.title_angle_brackets'],
+]);
+
+test('a title the youtube limits reject is fine on another platform', function () {
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $this->postPlatform->id, 'meta' => ['title' => 'Use <b>bold</b>']],
+        ],
+    ])->assertSessionDoesntHaveErrors('platforms.0.meta.title');
+});
+
+test('a youtube title lifts the 100 character cap on the content', function (array $meta, bool $capped) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['title' => 'Stored title'],
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Scheduled->value,
+        'content' => str_repeat('Long caption for every platform. ', 10),
+        'media' => $this->mediaPayload,
+        'scheduled_at' => now()->addDay()->toDateTimeString(),
+        'platforms' => [
+            ['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => $meta],
+        ],
+    ]);
+
+    $capped
+        ? $response->assertSessionHasErrors('content')
+        : $response->assertSessionDoesntHaveErrors('content');
+})->with([
+    'submitted title' => [['title' => 'My own Short title'], false],
+    'stored title kept' => [[], false],
+    'title cleared' => [['title' => null], true],
+    'blank title' => [['title' => '   '], true],
+]);
