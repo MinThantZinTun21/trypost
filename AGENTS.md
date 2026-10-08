@@ -223,6 +223,18 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 - New schema changes are new migrations. Never edit or squash an existing
   migration — existing databases upgrade in place.
 
+## MCP server (Assistant)
+
+- `POST /mcp` (`routes/ai.php`, `App\Mcp\Servers\SchedulerServer`) is the
+  Owner's Assistant's way in (ADR 0003). It is built on `laravel/mcp` from
+  scratch; the old Passport-backed `/mcp/trypost` server and its settings page
+  stay removed.
+- `AuthenticateMcpToken` guards it with one bearer secret, `MCP_TOKEN`
+  (empty = 404), and acts as the Owner. There is no OAuth and no per-client key.
+- Tools say "Social account", never "channel". Tool names are snake_case.
+  Tools reuse the same actions and validation as the composer; they never
+  publish through a separate path.
+
 ## Single Owner
 
 - There is no registration, onboarding, social login, email verification or

@@ -38,3 +38,19 @@ _Avoid_: Format, post kind
 **Notification**:
 An in-app message telling the Owner that a Post failed to publish, a Social account was disconnected, or an account used by an upcoming Post needs reconnecting.
 _Avoid_: Alert, email
+
+**Title**:
+The headline a Platform shows with a video or photo: a YouTube Short's title, a Facebook Reel's title or a TikTok Photo's title. Set per Post platform; an empty YouTube title falls back to the first sentence of the Post's content.
+_Avoid_: Heading, subject
+
+**Description**:
+The longer text a Platform shows under a YouTube Short, a Facebook Reel or a TikTok Photo. Set per Post platform; empty means the Post's content.
+_Avoid_: Body, summary
+
+**TikTok caption**:
+Text that replaces the Post's content for one TikTok account's Video, so a single Post can say something different on TikTok.
+_Avoid_: TikTok title
+
+**Assistant**:
+An AI tool, such as Claude Code, connected to the app over MCP that reads Social accounts and creates Posts on the Owner's behalf.
+_Avoid_: Bot, agent, API client
