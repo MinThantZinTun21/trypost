@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\CompleteMediaUpload;
+use App\Mcp\Tools\CreatePost;
 use App\Mcp\Tools\GetPost;
 use App\Mcp\Tools\ListPosts;
 use App\Mcp\Tools\ListSocialAccounts;
@@ -29,6 +30,7 @@ class SchedulerServer extends Server
         CompleteMediaUpload::class,
         ListPosts::class,
         GetPost::class,
+        CreatePost::class,
     ];
 
     protected array $resources = [];
