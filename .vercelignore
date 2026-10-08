@@ -1,0 +1,22 @@
+# Uploaded by `vercel deploy` from this machine. Composer packages are
+# installed on Vercel (Linux) by the vercel-php runtime, so vendor stays local.
+.env
+.env.*
+!.env.example
+compose.prod.local.yaml
+/vendor
+/node_modules
+/storage/*
+/tests
+/docker
+/docs
+/maizzle
+/.git
+/.github
+/.claude
+/.cursor
+/.agents
+/public/storage
+/public/hot
+/bootstrap/cache/*.php
+/.vercel-static

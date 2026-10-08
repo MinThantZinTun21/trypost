@@ -4,5 +4,7 @@ return [
     'upload' => [
         'failed' => 'Could not upload :file. Please try again.',
         'file_too_large' => 'File size exceeds the maximum allowed (:max MB).',
+        'not_found' => 'The upload could not be found. Please try again.',
+        'unsupported' => 'This file type is not supported.',
     ],
 ];

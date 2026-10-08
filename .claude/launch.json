@@ -3,12 +3,13 @@
   "configurations": [
     {
       "name": "trypost",
-      "runtimeExecutable": "composer",
+      "runtimeExecutable": "sh",
       "runtimeArgs": [
-        "run",
-        "dev"
+        "-c",
+        "SERVER_PORT=${PORT:-8001} exec composer run dev"
       ],
-      "port": 8000
+      "port": 8001,
+      "autoPort": true
     }
   ]
 }

@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -1419,4 +1420,25 @@ test('facebook says the walk was cut short rather than claiming everything is co
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('success', false)
             ->where('message', __('accounts.popup_callback.pages_read_incomplete')));
+});
+
+test('facebook oauth errors log a short entry that survives log truncation', function () {
+    Log::spy();
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andThrow(new RuntimeException('Invalid verification code format.'))->getMock());
+
+    $this->actingAs($this->user)->get(route('app.social.facebook.callback'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+
+    Log::shouldHaveReceived('error')->once()->with('Facebook OAuth Error', Mockery::on(fn (array $context) => array_keys($context) === ['error', 'exception', 'at']
+        && $context['error'] === 'Invalid verification code format.'
+        && $context['exception'] === RuntimeException::class
+        && str_starts_with($context['at'], __FILE__.':')));
 });
