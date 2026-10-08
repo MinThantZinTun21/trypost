@@ -16,6 +16,7 @@ use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
 use App\Support\FacebookLinkPreview;
+use App\Support\PostPlatformText;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -57,7 +58,7 @@ class FacebookPublisher
         $contentType = $postPlatform->content_type;
 
         return match ($contentType) {
-            ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $this->requireVideo($media->first(), 'Reels')),
+            ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $postPlatform->meta, $content, $this->requireVideo($media->first(), 'Reels')),
             ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $this->requireVideo($media->first(), 'Stories')),
             ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, data_get($postPlatform->meta, 'aspect_ratio')),
             default => throw new FacebookPublishException(
@@ -253,9 +254,13 @@ class FacebookPublisher
     }
 
     /**
+     * The Reel's Title and Description go in the `finish` call (Reels
+     * publishing guide, step 3). An empty Description means the content.
+     *
+     * @param  array<string, mixed>|null  $meta
      * @return array{id: mixed, url: string}
      */
-    private function publishReel(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
+    private function publishReel(string $pageId, string $accessToken, ?array $meta, ?string $content, MediaItem $media): array
     {
         $videoId = $this->uploadVideo($pageId, $accessToken, 'video_reels', $media);
 
@@ -264,7 +269,8 @@ class FacebookPublisher
             'video_id' => $videoId,
             'video_state' => 'PUBLISHED',
             'access_token' => $accessToken,
-            ...$this->optionalField('description', $content),
+            ...$this->optionalField('title', PostPlatformText::trimmed($meta, 'title')),
+            ...$this->optionalField('description', PostPlatformText::trimmed($meta, 'description') ?? $content),
         ], 'reel finish');
 
         $reelId = data_get($response->json(), 'id') ?? $videoId;

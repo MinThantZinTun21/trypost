@@ -7,6 +7,7 @@ namespace App\Http\Requests\App\Post;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Models\PostPlatform;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Support\PostMediaRules;
@@ -19,6 +20,11 @@ use Illuminate\Validation\Validator;
 
 class UpdatePostRequest extends FormRequest
 {
+    /**
+     * @var array<int, mixed>|null
+     */
+    private ?array $platformsAsStored = null;
+
     public function authorize(): bool
     {
         return true;
@@ -39,10 +45,10 @@ class UpdatePostRequest extends FormRequest
             'content' => [
                 'nullable',
                 'string',
-                'max:10000',
+                'max:'.PostPlatformMetaRules::TEXT_MAX_LENGTH,
                 Rule::when(
                     $enforcesMediaCompatibility,
-                    [new ContentFitsPlatformLimits($this->resolveSelectedPlatforms())]
+                    [new ContentFitsPlatformLimits($this->resolveContentLimitedPlatforms())]
                 ),
             ],
             ...PostMediaRules::rules(hosted: true),
@@ -78,23 +84,22 @@ class UpdatePostRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if (! $this->isPublishingOrScheduling()) {
-                return;
-            }
-
             $platforms = $this->input('platforms', []);
-            $ids = collect($platforms)->pluck('id')->filter()->all();
+            $platformsById = $this->resolveSelectedPlatforms();
+            $resolvePlatform = fn ($platform) => $platformsById[data_get($platform, 'id')] ?? null;
 
-            $platformsById = $this->route('post')
-                ->postPlatforms()
-                ->whereIn('id', $ids)
-                ->pluck('platform', 'id');
+            $content = $this->has('content') ? $this->input('content') : $this->route('post')->content;
 
-            PostPlatformMetaRules::addRequiredOnPublishErrors(
+            PostPlatformMetaRules::addTextLimitErrors(
                 $validator,
-                $platforms,
-                fn ($platform) => $platformsById[data_get($platform, 'id')] ?? null,
+                $this->platformsAsStored(),
+                $resolvePlatform,
+                is_string($content) ? $content : null,
             );
+
+            if ($this->isPublishingOrScheduling()) {
+                PostPlatformMetaRules::addRequiredOnPublishErrors($validator, $platforms, $resolvePlatform);
+            }
         });
     }
 
@@ -105,6 +110,78 @@ class UpdatePostRequest extends FormRequest
             [Status::Scheduled->value, Status::Publishing->value],
             true,
         );
+    }
+
+    /**
+     * The selected platforms whose content cap applies, judged on the meta the
+     * update will store.
+     *
+     * @return Collection<int|string, Platform>
+     */
+    private function resolveContentLimitedPlatforms(): Collection
+    {
+        $submitted = collect($this->platformsAsStored())
+            ->filter(fn ($platform) => is_array($platform) && data_get($platform, 'id'))
+            ->keyBy(fn (array $platform) => data_get($platform, 'id'));
+
+        if ($submitted->isEmpty()) {
+            return collect();
+        }
+
+        return $this->route('post')
+            ->postPlatforms()
+            ->whereIn('id', $submitted->keys()->all())
+            ->get(['id', 'platform'])
+            ->filter(fn (PostPlatform $postPlatform): bool => PostPlatformMetaRules::contentLimitApplies(
+                $postPlatform->platform,
+                ContentType::tryFrom((string) data_get($submitted->get($postPlatform->id), 'content_type')),
+                data_get($submitted->get($postPlatform->id), 'meta'),
+            ))
+            ->pluck('platform', 'id');
+    }
+
+    /**
+     * The submitted platforms as the update will store them: the stored meta
+     * merged with the submitted meta, as UpdatePost merges it, and the
+     * submitted Content type, else the stored one.
+     *
+     * @return array<int, mixed>
+     */
+    private function platformsAsStored(): array
+    {
+        if ($this->platformsAsStored !== null) {
+            return $this->platformsAsStored;
+        }
+
+        $platforms = $this->input('platforms', []);
+
+        if (! is_array($platforms)) {
+            return $this->platformsAsStored = [];
+        }
+
+        $stored = $this->route('post')
+            ->postPlatforms()
+            ->whereIn('id', collect($platforms)->map(fn ($platform) => data_get($platform, 'id'))->filter()->all())
+            ->get(['id', 'meta', 'content_type'])
+            ->keyBy('id');
+
+        return $this->platformsAsStored = collect($platforms)->map(function (mixed $platform) use ($stored): mixed {
+            if (! is_array($platform)) {
+                return $platform;
+            }
+
+            $submittedMeta = data_get($platform, 'meta');
+            $storedPlatform = $stored->get(data_get($platform, 'id'));
+
+            return [
+                ...$platform,
+                'content_type' => data_get($platform, 'content_type') ?? $storedPlatform?->content_type?->value,
+                'meta' => array_filter(
+                    array_merge($storedPlatform->meta ?? [], is_array($submittedMeta) ? $submittedMeta : []),
+                    fn (mixed $value): bool => $value !== null,
+                ),
+            ];
+        })->all();
     }
 
     /**

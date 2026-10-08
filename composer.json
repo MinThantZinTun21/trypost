@@ -39,6 +39,7 @@
         "intervention/image": "^4.0",
         "laravel/boost": "^2.5",
         "laravel/framework": "^13.0",
+        "laravel/mcp": "^0.9.6",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.9",

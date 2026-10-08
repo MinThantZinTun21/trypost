@@ -1436,3 +1436,43 @@ test('facebook publisher does not attach a link card when the post has media', f
     Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/photos')
         && ! array_key_exists('link', $request->data()));
 });
+
+test('facebook reel sends its title and description in the finish call', function (array $meta, ?string $title, string $description) {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookReel, 'meta' => $meta]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    Http::fake(facebookVideoUploadFakes('video_reels'));
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function ($request) use ($title, $description) {
+        if (! str_starts_with($request->url(), config('trypost.platforms.facebook.graph_api'))
+            || ! str_contains($request->url(), '/page_123/video_reels')
+            || data_get($request->data(), 'upload_phase') !== 'finish') {
+            return false;
+        }
+
+        return data_get($request->data(), 'title') === $title
+            && data_get($request->data(), 'description') === $description;
+    });
+})->with([
+    'title and description' => [['title' => 'Reel title', 'description' => 'Reel description #fyp'], 'Reel title', 'Reel description #fyp'],
+    'description falls back to the content' => [['title' => 'Reel title'], 'Reel title', 'Check out this Facebook post!'],
+    'blank description falls back to the content' => [['description' => '  '], null, 'Check out this Facebook post!'],
+    'no title' => [['description' => 'Reel description'], null, 'Reel description'],
+]);
+
+test('facebook posts and stories ignore reel text', function (ContentType $contentType, string $endpoint) {
+    $this->postPlatform->update(['content_type' => $contentType, 'meta' => ['title' => 'Reel title', 'description' => 'Reel description']]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    Http::fake(facebookVideoUploadFakes($endpoint));
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertNotSent(fn ($request) => data_get($request->data(), 'title') === 'Reel title'
+        || data_get($request->data(), 'description') === 'Reel description');
+})->with([
+    'video post' => [ContentType::FacebookPost, 'videos'],
+    'story' => [ContentType::FacebookStory, 'video_stories'],
+]);

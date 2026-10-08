@@ -1495,3 +1495,65 @@ test('tiktok publisher keeps links intact', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), '/video/init/')
         && data_get($request->data(), 'post_info.title') === 'New post: https://acme.com/blog');
 });
+
+test('tiktok video sends the caption instead of the content', function (array $meta, string $expected) {
+    $this->postPlatform->update(['meta' => [...$this->postPlatform->meta, ...$meta]]);
+    $this->post->update([
+        'content' => str_repeat('Long text for every platform. ', 80),
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_123']], 200),
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PUBLISH_COMPLETE', 'publish_id' => 'pub_123']], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => $request->url() === $this->api.'/post/publish/video/init/'
+        && data_get(json_decode($request->body(), true), 'post_info.title') === $expected);
+})->with([
+    'caption' => [['caption' => 'TikTok-only caption #fyp'], 'TikTok-only caption #fyp'],
+    'caption with emoji at the limit' => [['caption' => str_repeat('😀', 1100)], str_repeat('😀', 1100)],
+]);
+
+test('tiktok photo sends its title and description', function (array $meta, ?string $title, string $description) {
+    $this->postPlatform->update(['content_type' => ContentType::TikTokPhoto, 'meta' => [...$this->postPlatform->meta, ...$meta]]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-image',
+            'path' => 'media/2026-01/image1.jpg',
+            'url' => 'https://example.com/media/2026-01/image1.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'image1.jpg',
+            'meta' => ['width' => 1080, 'height' => 1080],
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/content/init/' => Http::response(['data' => ['publish_id' => 'pub_photo_123']], 200),
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PUBLISH_COMPLETE', 'publish_id' => 'pub_photo_123']], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function ($request) use ($title, $description) {
+        if ($request->url() !== $this->api.'/post/publish/content/init/') {
+            return false;
+        }
+        $postInfo = data_get(json_decode($request->body(), true), 'post_info');
+
+        return data_get($postInfo, 'title') === $title
+            && data_get($postInfo, 'description') === $description;
+    });
+})->with([
+    'title and description' => [['title' => 'Photo title', 'description' => 'Photo description'], 'Photo title', 'Photo description'],
+    'description falls back to the content' => [['title' => 'Photo title'], 'Photo title', 'Check out this TikTok video!'],
+    'a video caption is not sent with photos' => [['caption' => 'Video caption'], null, 'Check out this TikTok video!'],
+]);

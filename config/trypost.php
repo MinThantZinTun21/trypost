@@ -51,6 +51,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | MCP Server
+    |--------------------------------------------------------------------------
+    |
+    | POST /mcp lets the Owner's Assistant (e.g. Claude Code) list Social
+    | accounts and create Posts. Clients send `Authorization: Bearer <token>`.
+    | Empty token = endpoint disabled (404).
+    |
+    */
+
+    'mcp' => [
+        'token' => env('MCP_TOKEN'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Media Size Limits
     |--------------------------------------------------------------------------
     |

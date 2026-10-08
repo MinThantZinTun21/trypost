@@ -464,3 +464,216 @@ test('draft save drops the removed media source keys', function () {
         ->and(data_get($this->post->media, '0'))->not->toHaveKey('source')
         ->and(data_get($this->post->media, '0'))->not->toHaveKey('source_meta');
 });
+
+test('youtube title saves on a draft and reloads in the editor', function () {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $platform->id, 'meta' => ['title' => 'My own Short title']],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect(data_get($platform->fresh()->meta, 'title'))->toBe('My own Short title');
+
+    $this->actingAs($this->user)->get(route('app.posts.edit', $this->post))
+        ->assertInertia(fn ($page) => $page->where(
+            'post.post_platforms',
+            fn ($platforms) => data_get(collect($platforms)->firstWhere('id', $platform->id), 'meta.title') === 'My own Short title',
+        ));
+});
+
+test('youtube title limits hold on a draft', function (string $title, string $key) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $platform->id, 'meta' => ['title' => $title]],
+        ],
+    ])->assertSessionHasErrors(['platforms.0.meta.title' => __($key)]);
+
+    expect(data_get($platform->fresh()->meta, 'title'))->toBeNull();
+})->with([
+    'too long' => [str_repeat('a', 101), 'posts.form.youtube.title_max'],
+    'angle brackets' => ['Use <b>bold</b>', 'posts.form.youtube.title_angle_brackets'],
+]);
+
+test('a title the youtube limits reject is fine on another platform', function () {
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $this->postPlatform->id, 'meta' => ['title' => 'Use <b>bold</b>']],
+        ],
+    ])->assertSessionDoesntHaveErrors('platforms.0.meta.title');
+});
+
+test('a youtube title lifts the 100 character cap on the content', function (array $meta, bool $capped) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['title' => 'Stored title'],
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Scheduled->value,
+        'content' => str_repeat('Long caption for every platform. ', 10),
+        'media' => $this->mediaPayload,
+        'scheduled_at' => now()->addDay()->toDateTimeString(),
+        'platforms' => [
+            ['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => $meta],
+        ],
+    ]);
+
+    $capped
+        ? $response->assertSessionHasErrors('content')
+        : $response->assertSessionDoesntHaveErrors('content');
+})->with([
+    'submitted title' => [['title' => 'My own Short title'], false],
+    'stored title kept' => [[], false],
+    'title cleared' => [['title' => null], true],
+    'blank title' => [['title' => '   '], true],
+]);
+
+test('a youtube post whose stored title lifts the cap keeps long content within the description limit', function (array $meta, bool $rejected) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['title' => 'Stored title'],
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'content' => str_repeat('é', 2501),
+        'platforms' => [
+            ['id' => $platform->id, 'meta' => $meta],
+        ],
+    ]);
+
+    $rejected
+        ? $response->assertSessionHasErrors(['platforms.0.meta.description' => __('posts.form.youtube.description_from_content_max')])
+        : $response->assertSessionDoesntHaveErrors('platforms.0.meta.description');
+})->with([
+    'no description' => [[], true],
+    'own description' => [['description' => 'A short description'], false],
+    'title cleared' => [['title' => null], false],
+]);
+
+test('facebook reel title and description save on a draft and reload in the editor', function () {
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Facebook,
+        'content_type' => ContentType::FacebookReel,
+        'meta' => [],
+    ]);
+    $description = trim(str_repeat('Long Reel description. ', 300));
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $platform->id, 'meta' => ['title' => 'Reel title', 'description' => $description]],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect($platform->fresh()->meta)->toEqual(['title' => 'Reel title', 'description' => $description]);
+
+    $this->actingAs($this->user)->get(route('app.posts.edit', $this->post))
+        ->assertInertia(fn ($page) => $page->where(
+            'post.post_platforms',
+            fn ($platforms) => data_get(collect($platforms)->firstWhere('id', $platform->id), 'meta.title') === 'Reel title'
+                && data_get(collect($platforms)->firstWhere('id', $platform->id), 'meta.description') === $description,
+        ));
+});
+
+test('tiktok caption and photo text save on a draft and reload in the editor', function () {
+    $meta = ['caption' => 'TikTok-only caption', 'title' => 'Photo title', 'description' => 'Photo description'];
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $this->postPlatform->id, 'meta' => $meta]],
+    ])->assertSessionHasNoErrors();
+
+    expect($this->postPlatform->fresh()->meta)->toEqual($meta);
+
+    $this->actingAs($this->user)->get(route('app.posts.edit', $this->post))
+        ->assertInertia(fn ($page) => $page->where(
+            'post.post_platforms',
+            fn ($platforms) => data_get(collect($platforms)->firstWhere('id', $this->postPlatform->id), 'meta.caption') === 'TikTok-only caption',
+        ));
+});
+
+test('tiktok text limits hold on a draft for the text its content type publishes', function (ContentType $contentType, string $checked, string $key, string $hidden) {
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $this->postPlatform->id, 'content_type' => $contentType->value, 'meta' => [
+            'caption' => str_repeat('a', 2201),
+            'title' => str_repeat('a', 91),
+        ]]],
+    ])->assertSessionHasErrors(["platforms.0.meta.{$checked}" => __($key)])
+        ->assertSessionDoesntHaveErrors("platforms.0.meta.{$hidden}");
+})->with([
+    'video' => [ContentType::TikTokVideo, 'caption', 'posts.form.tiktok.caption_max', 'title'],
+    'photo' => [ContentType::TikTokPhoto, 'title', 'posts.form.tiktok.photo_title_max', 'caption'],
+]);
+
+test('tiktok text limits follow the stored content type when none is submitted', function () {
+    $this->postPlatform->update(['content_type' => ContentType::TikTokPhoto]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $this->postPlatform->id, 'meta' => [
+            'caption' => str_repeat('a', 2201),
+            'title' => str_repeat('a', 91),
+        ]]],
+    ])->assertSessionHasErrors(['platforms.0.meta.title' => __('posts.form.tiktok.photo_title_max')])
+        ->assertSessionDoesntHaveErrors('platforms.0.meta.caption');
+});
+
+test('a content type from another platform does not skip the text limits', function () {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::FacebookPost->value, 'meta' => ['title' => str_repeat('a', 101)]]],
+    ])->assertSessionHasErrors(['platforms.0.meta.title' => __('posts.form.youtube.title_max')]);
+});
+
+test('a tiktok caption lifts the 2200 character cap on the content', function (array $meta, bool $capped) {
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Scheduled->value,
+        'content' => str_repeat('Long text for every platform. ', 80),
+        'media' => $this->mediaPayload,
+        'scheduled_at' => now()->addDay()->toDateTimeString(),
+        'platforms' => [[
+            'id' => $this->postPlatform->id,
+            'content_type' => ContentType::TikTokVideo->value,
+            'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value, ...$meta],
+        ]],
+    ]);
+
+    $capped
+        ? $response->assertSessionHasErrors('content')
+        : $response->assertSessionDoesntHaveErrors('content');
+})->with([
+    'caption' => [['caption' => 'Short TikTok caption'], false],
+    'no caption' => [[], true],
+]);

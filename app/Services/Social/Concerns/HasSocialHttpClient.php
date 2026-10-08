@@ -7,6 +7,7 @@ namespace App\Services\Social\Concerns;
 use App\Models\PostPlatform;
 use App\Services\Social\ContentSanitizer;
 use App\Services\Social\TokenRedactor;
+use App\Support\PostPlatformMetaRules;
 use Exception;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -20,6 +21,10 @@ trait HasSocialHttpClient
      */
     protected function validateContentLength(PostPlatform $postPlatform): void
     {
+        if (! PostPlatformMetaRules::contentLimitApplies($postPlatform->platform, $postPlatform->content_type, $postPlatform->meta)) {
+            return;
+        }
+
         $raw = $postPlatform->post->content ?? '';
         $content = app(ContentSanitizer::class)->displayText($raw, $postPlatform->platform);
 

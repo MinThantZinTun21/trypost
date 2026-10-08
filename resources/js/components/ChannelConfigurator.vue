@@ -197,6 +197,7 @@ const settingsProps = (channel: Channel) => ({
             <FacebookSettings
                 v-if="channel.platform === Platform.Facebook"
                 v-bind="settingsProps(channel)"
+                :platform-index="index"
                 :content-type="channel.contentType"
                 :media="media"
                 @update:content-type="
@@ -206,6 +207,7 @@ const settingsProps = (channel: Channel) => ({
             <TikTokSettings
                 v-else-if="channel.platform === Platform.TikTok"
                 v-bind="settingsProps(channel)"
+                :platform-index="index"
                 :publish-config="channel.publishConfig ?? null"
                 :creator-info="channel.creatorInfo ?? null"
                 :video-duration-sec="videoDurationSec"

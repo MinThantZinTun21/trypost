@@ -19,6 +19,7 @@ This is a hard fork of [trypostit/trypost](https://github.com/trypostit/trypost)
 - **Write once, schedule anywhere.** Pick the accounts, upload images or videos from your computer (large files upload in chunks), and save as a draft or schedule the post.
 - **Calendar.** Month, week and day views, with drag and drop to reschedule, plus lists of scheduled, draft and posted posts.
 - **Publishing you can see.** Each platform's result shows a link or a failure reason, and the post page refreshes while it publishes.
+- **Works with Claude Code.** An MCP server at `/mcp` lets an Assistant list your Social accounts and schedule posts for you.
 - **In-app notifications** when a post fails, when an account disconnects, or when an upcoming post's account needs reconnecting. Expiring tokens are refreshed automatically.
 
 ## Requirements
@@ -92,6 +93,16 @@ Vercel cannot run the queue worker or the scheduler, so an external cron (for ex
    ```
 
    The frontend is built locally because Vercel's build step has no PHP; the `vercel-php` runtime installs the Composer packages on Vercel.
+
+## Connect Claude Code
+
+Set `MCP_TOKEN` to a long random string (`openssl rand -hex 32`); an empty token turns the MCP server off. Then register it with Claude Code:
+
+```bash
+claude mcp add --transport http trypost https://your-app.example/mcp --header "Authorization: Bearer <MCP_TOKEN>"
+```
+
+Every tool acts as the Owner. Start by asking Claude to list your Social accounts.
 
 ## Tests
 

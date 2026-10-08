@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\PostPlatform\AspectRatio;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
 use App\Models\PostPlatform;
-use App\Rules\ValidYouTubeDescription;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
@@ -22,6 +22,11 @@ use Illuminate\Validation\Validator;
  */
 class PostPlatformMetaRules
 {
+    /**
+     * The stored cap on a Title, Description or caption, matching the content's own.
+     */
+    public const int TEXT_MAX_LENGTH = 10000;
+
     /**
      * Validation rules for `platforms.*.meta` and all its per-platform sub-keys.
      * Spread into a FormRequest/MCP tool rule set as the complete meta contract.
@@ -47,8 +52,11 @@ class PostPlatformMetaRules
             'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
 
-            // YouTube
-            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', new ValidYouTubeDescription],
+            // Facebook Reel, TikTok and YouTube text. Platform-specific limits live in
+            // textLimitViolations(); this cap matches the content's own.
+            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
+            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
+            'platforms.*.meta.caption' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
         ];
     }
 
@@ -70,6 +78,8 @@ class PostPlatformMetaRules
     public static function attributes(): array
     {
         return [
+            'platforms.*.meta.title' => __('posts.form.youtube.title'),
+            'platforms.*.meta.caption' => __('posts.form.tiktok.caption'),
             'platforms.*.meta.description' => __('posts.form.youtube.description'),
         ];
     }
@@ -98,6 +108,94 @@ class PostPlatformMetaRules
                 }
             }
         }
+    }
+
+    /**
+     * Adds validation errors for Titles, Descriptions and captions that break
+     * their Platform's length or character limits. Unlike the required-on-publish
+     * meta, these hold for drafts too, so a saved Post never fails at publish
+     * time over text length.
+     *
+     * @param  array<int, mixed>  $platforms
+     * @param  callable(mixed, int): ?Platform  $resolvePlatform
+     * @param  ?string  $content  The Post's content, for text that falls back to it.
+     */
+    public static function addTextLimitErrors(Validator $validator, array $platforms, callable $resolvePlatform, ?string $content = null): void
+    {
+        foreach ($platforms as $index => $platform) {
+            $contentType = data_get($platform, 'content_type');
+            $violations = self::textLimitViolations(
+                $resolvePlatform($platform, $index),
+                data_get($platform, 'meta'),
+                $content,
+                is_string($contentType) ? ContentType::tryFrom($contentType) : null,
+            );
+
+            foreach ($violations as $field => $message) {
+                $key = "platforms.{$index}.meta.{$field}";
+
+                if (! $validator->errors()->has($key)) {
+                    $validator->errors()->add($key, $message);
+                }
+            }
+        }
+    }
+
+    /**
+     * Per-Platform text limits, taken from each Platform's API docs. Meta
+     * documents no limit for a Facebook Reel's Title or Description, so only
+     * the shared cap in rules() applies there.
+     *
+     * A YouTube Short with no Description uses the content as one, so the
+     * content must fit the Description's limit too once a Title lets it grow
+     * past the content cap.
+     *
+     * With a Content type of the same Platform, only the text that type
+     * publishes is checked, so text kept from another type (hidden in the
+     * composer) never blocks a save; any other Content type checks it all.
+     *
+     * @return array<string, string> field => message
+     */
+    public static function textLimitViolations(?Platform $platform, mixed $meta, ?string $content = null, ?ContentType $contentType = null): array
+    {
+        $violations = match ($platform) {
+            Platform::YouTube => [
+                'title' => YouTubeTitle::violation(data_get($meta, 'title')),
+                'description' => YouTubeDescription::violation(data_get($meta, 'description'))
+                    ?? YouTubeDescription::contentViolation($meta, $content),
+            ],
+            Platform::TikTok => [
+                'caption' => TikTokText::violation(data_get($meta, 'caption'), TikTokText::CAPTION_MAX, 'posts.form.tiktok.caption_max'),
+                'title' => TikTokText::violation(data_get($meta, 'title'), TikTokText::PHOTO_TITLE_MAX, 'posts.form.tiktok.photo_title_max'),
+                'description' => TikTokText::violation(data_get($meta, 'description'), TikTokText::PHOTO_DESCRIPTION_MAX, 'posts.form.tiktok.photo_description_max'),
+            ],
+            default => [],
+        };
+
+        if ($contentType !== null && $contentType->platform() === $platform) {
+            $violations = array_intersect_key($violations, array_flip($contentType->textFields()));
+        }
+
+        return array_map(fn (string $key): string => __($key), array_filter($violations));
+    }
+
+    /**
+     * Whether the Post's content counts against the Platform's content cap
+     * (`Platform::maxContentLength()`). Text that replaces the content lifts
+     * it: a YouTube Title (the content would be the video title), a TikTok
+     * caption on a Video and a TikTok Description on a Photo.
+     */
+    public static function contentLimitApplies(Platform $platform, ?ContentType $contentType, mixed $meta): bool
+    {
+        return match ($platform) {
+            Platform::YouTube => YouTubeTitle::custom($meta) === null,
+            Platform::TikTok => match ($contentType) {
+                ContentType::TikTokVideo => PostPlatformText::trimmed($meta, 'caption') === null,
+                ContentType::TikTokPhoto => PostPlatformText::trimmed($meta, 'description') === null,
+                default => true,
+            },
+            default => true,
+        };
     }
 
     /**

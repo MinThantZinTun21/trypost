@@ -91,7 +91,7 @@ class MediaItem
      * and `classify()` in mediaType.ts; items saved before it existed classify
      * by MIME, then by path.
      */
-    private function kind(): ?Type
+    public function kind(): ?Type
     {
         return $this->type ?? Type::classify($this->mime_type, $this->path);
     }

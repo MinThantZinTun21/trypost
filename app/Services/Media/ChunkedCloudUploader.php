@@ -19,6 +19,11 @@ use Throwable;
 
 class ChunkedCloudUploader
 {
+    /**
+     * How long a presigned upload URL stays valid.
+     */
+    public const int UPLOAD_URL_TTL_SECONDS = 3600;
+
     private const CACHE_PREFIX = 'chunked-cloud-upload:';
 
     private const CACHE_TTL_HOURS = 6;
@@ -78,13 +83,14 @@ class ChunkedCloudUploader
         $key = 'medias/'.Str::uuid().".{$extension}";
         $mimeType = MediaType::mimeTypeFromExtension($extension) ?? 'application/octet-stream';
 
+        $ttl = self::UPLOAD_URL_TTL_SECONDS;
         $request = $this->s3()->createPresignedRequest(
             $this->s3()->getCommand('PutObject', [
                 'Bucket' => $this->bucket(),
                 'Key' => $key,
                 'ContentType' => $mimeType,
             ]),
-            '+1 hour',
+            "+{$ttl} seconds",
         );
 
         return [
