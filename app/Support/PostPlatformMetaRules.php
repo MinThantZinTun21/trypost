@@ -118,7 +118,15 @@ class PostPlatformMetaRules
     public static function addTextLimitErrors(Validator $validator, array $platforms, callable $resolvePlatform, ?string $content = null): void
     {
         foreach ($platforms as $index => $platform) {
-            foreach (self::textLimitViolations($resolvePlatform($platform, $index), data_get($platform, 'meta'), $content) as $field => $message) {
+            $contentType = data_get($platform, 'content_type');
+            $violations = self::textLimitViolations(
+                $resolvePlatform($platform, $index),
+                data_get($platform, 'meta'),
+                $content,
+                is_string($contentType) ? ContentType::tryFrom($contentType) : null,
+            );
+
+            foreach ($violations as $field => $message) {
                 $key = "platforms.{$index}.meta.{$field}";
 
                 if (! $validator->errors()->has($key)) {
@@ -137,9 +145,12 @@ class PostPlatformMetaRules
      * content must fit the Description's limit too once a Title lets it grow
      * past the content cap.
      *
+     * With a Content type, only the text that type publishes is checked, so
+     * text kept from another type (hidden in the composer) never blocks a save.
+     *
      * @return array<string, string> field => message
      */
-    public static function textLimitViolations(?Platform $platform, mixed $meta, ?string $content = null): array
+    public static function textLimitViolations(?Platform $platform, mixed $meta, ?string $content = null, ?ContentType $contentType = null): array
     {
         $violations = match ($platform) {
             Platform::YouTube => [
@@ -154,6 +165,10 @@ class PostPlatformMetaRules
             ],
             default => [],
         };
+
+        if ($contentType !== null) {
+            $violations = array_intersect_key($violations, array_flip($contentType->textFields()));
+        }
 
         return array_map(fn (string $key): string => __($key), array_filter($violations));
     }

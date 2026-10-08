@@ -35,6 +35,15 @@ test('youtube content standing in for the description must fit the description l
     'no title, so the content cap applies instead' => [[], null],
 ]);
 
+test('tiktok text limits only check the text the content type publishes', function (ContentType $contentType, array $expected) {
+    $meta = ['caption' => str_repeat('a', 2201), 'title' => str_repeat('a', 91)];
+
+    expect(array_keys(PostPlatformMetaRules::textLimitViolations(Platform::TikTok, $meta, null, $contentType)))->toBe($expected);
+})->with([
+    'video checks the caption' => [ContentType::TikTokVideo, ['caption']],
+    'photo checks the title' => [ContentType::TikTokPhoto, ['title']],
+]);
+
 test('facebook reel text gets the shared cap only, since meta documents no limit', function () {
     $meta = ['title' => str_repeat('é', 3000), 'description' => str_repeat('é', 6000)];
 

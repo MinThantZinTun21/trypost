@@ -23,7 +23,7 @@ class UpdatePostRequest extends FormRequest
     /**
      * @var array<int, mixed>|null
      */
-    private ?array $platformsWithStoredMeta = null;
+    private ?array $platformsAsStored = null;
 
     public function authorize(): bool
     {
@@ -92,7 +92,7 @@ class UpdatePostRequest extends FormRequest
 
             PostPlatformMetaRules::addTextLimitErrors(
                 $validator,
-                $this->platformsWithStoredMeta(),
+                $this->platformsAsStored(),
                 $resolvePlatform,
                 is_string($content) ? $content : null,
             );
@@ -120,7 +120,7 @@ class UpdatePostRequest extends FormRequest
      */
     private function resolveContentLimitedPlatforms(): Collection
     {
-        $submitted = collect($this->platformsWithStoredMeta())
+        $submitted = collect($this->platformsAsStored())
             ->filter(fn ($platform) => is_array($platform) && data_get($platform, 'id'))
             ->keyBy(fn (array $platform) => data_get($platform, 'id'));
 
@@ -131,50 +131,53 @@ class UpdatePostRequest extends FormRequest
         return $this->route('post')
             ->postPlatforms()
             ->whereIn('id', $submitted->keys()->all())
-            ->get(['id', 'platform', 'content_type'])
+            ->get(['id', 'platform'])
             ->filter(fn (PostPlatform $postPlatform): bool => PostPlatformMetaRules::contentLimitApplies(
                 $postPlatform->platform,
-                ContentType::tryFrom((string) data_get($submitted->get($postPlatform->id), 'content_type')) ?? $postPlatform->content_type,
+                ContentType::tryFrom((string) data_get($submitted->get($postPlatform->id), 'content_type')),
                 data_get($submitted->get($postPlatform->id), 'meta'),
             ))
             ->pluck('platform', 'id');
     }
 
     /**
-     * The submitted platforms with the meta the update will store: the stored
-     * meta merged with the submitted meta, as UpdatePost merges it.
+     * The submitted platforms as the update will store them: the stored meta
+     * merged with the submitted meta, as UpdatePost merges it, and the
+     * submitted Content type, else the stored one.
      *
      * @return array<int, mixed>
      */
-    private function platformsWithStoredMeta(): array
+    private function platformsAsStored(): array
     {
-        if ($this->platformsWithStoredMeta !== null) {
-            return $this->platformsWithStoredMeta;
+        if ($this->platformsAsStored !== null) {
+            return $this->platformsAsStored;
         }
 
         $platforms = $this->input('platforms', []);
 
         if (! is_array($platforms)) {
-            return $this->platformsWithStoredMeta = [];
+            return $this->platformsAsStored = [];
         }
 
-        $storedMeta = $this->route('post')
+        $stored = $this->route('post')
             ->postPlatforms()
             ->whereIn('id', collect($platforms)->map(fn ($platform) => data_get($platform, 'id'))->filter()->all())
-            ->get(['id', 'meta'])
-            ->pluck('meta', 'id');
+            ->get(['id', 'meta', 'content_type'])
+            ->keyBy('id');
 
-        return $this->platformsWithStoredMeta = collect($platforms)->map(function (mixed $platform) use ($storedMeta): mixed {
+        return $this->platformsAsStored = collect($platforms)->map(function (mixed $platform) use ($stored): mixed {
             if (! is_array($platform)) {
                 return $platform;
             }
 
             $submittedMeta = data_get($platform, 'meta');
+            $storedPlatform = $stored->get(data_get($platform, 'id'));
 
             return [
                 ...$platform,
+                'content_type' => data_get($platform, 'content_type') ?? $storedPlatform?->content_type?->value,
                 'meta' => array_filter(
-                    array_merge($storedMeta->get(data_get($platform, 'id')) ?? [], is_array($submittedMeta) ? $submittedMeta : []),
+                    array_merge($storedPlatform->meta ?? [], is_array($submittedMeta) ? $submittedMeta : []),
                     fn (mixed $value): bool => $value !== null,
                 ),
             ];

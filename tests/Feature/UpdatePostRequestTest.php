@@ -617,18 +617,19 @@ test('tiktok caption and photo text save on a draft and reload in the editor', f
         ));
 });
 
-test('tiktok text limits hold on a draft', function () {
+test('tiktok text limits hold on a draft for the text its content type publishes', function (ContentType $contentType, string $checked, string $key, string $hidden) {
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
         'status' => Status::Draft->value,
-        'platforms' => [['id' => $this->postPlatform->id, 'meta' => [
+        'platforms' => [['id' => $this->postPlatform->id, 'content_type' => $contentType->value, 'meta' => [
             'caption' => str_repeat('a', 2201),
             'title' => str_repeat('a', 91),
         ]]],
-    ])->assertSessionHasErrors([
-        'platforms.0.meta.caption' => __('posts.form.tiktok.caption_max'),
-        'platforms.0.meta.title' => __('posts.form.tiktok.photo_title_max'),
-    ]);
-});
+    ])->assertSessionHasErrors(["platforms.0.meta.{$checked}" => __($key)])
+        ->assertSessionDoesntHaveErrors("platforms.0.meta.{$hidden}");
+})->with([
+    'video' => [ContentType::TikTokVideo, 'caption', 'posts.form.tiktok.caption_max', 'title'],
+    'photo' => [ContentType::TikTokPhoto, 'title', 'posts.form.tiktok.photo_title_max', 'caption'],
+]);
 
 test('a tiktok caption lifts the 2200 character cap on the content', function (array $meta, bool $capped) {
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
