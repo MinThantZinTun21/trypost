@@ -45,7 +45,7 @@ class UpdatePostRequest extends FormRequest
             'content' => [
                 'nullable',
                 'string',
-                'max:10000',
+                'max:'.PostPlatformMetaRules::TEXT_MAX_LENGTH,
                 Rule::when(
                     $enforcesMediaCompatibility,
                     [new ContentFitsPlatformLimits($this->resolveContentLimitedPlatforms())]

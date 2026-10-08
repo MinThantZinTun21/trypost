@@ -42,6 +42,7 @@ test('tiktok text limits only check the text the content type publishes', functi
 })->with([
     'video checks the caption' => [ContentType::TikTokVideo, ['caption']],
     'photo checks the title' => [ContentType::TikTokPhoto, ['title']],
+    'another platform\'s type checks both' => [ContentType::FacebookPost, ['caption', 'title']],
 ]);
 
 test('facebook reel text gets the shared cap only, since meta documents no limit', function () {

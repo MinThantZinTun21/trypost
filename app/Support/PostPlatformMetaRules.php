@@ -150,8 +150,9 @@ class PostPlatformMetaRules
      * content must fit the Description's limit too once a Title lets it grow
      * past the content cap.
      *
-     * With a Content type, only the text that type publishes is checked, so
-     * text kept from another type (hidden in the composer) never blocks a save.
+     * With a Content type of the same Platform, only the text that type
+     * publishes is checked, so text kept from another type (hidden in the
+     * composer) never blocks a save; any other Content type checks it all.
      *
      * @return array<string, string> field => message
      */
@@ -171,7 +172,7 @@ class PostPlatformMetaRules
             default => [],
         };
 
-        if ($contentType !== null) {
+        if ($contentType !== null && $contentType->platform() === $platform) {
             $violations = array_intersect_key($violations, array_flip($contentType->textFields()));
         }
 

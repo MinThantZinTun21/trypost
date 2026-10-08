@@ -631,6 +631,32 @@ test('tiktok text limits hold on a draft for the text its content type publishes
     'photo' => [ContentType::TikTokPhoto, 'title', 'posts.form.tiktok.photo_title_max', 'caption'],
 ]);
 
+test('tiktok text limits follow the stored content type when none is submitted', function () {
+    $this->postPlatform->update(['content_type' => ContentType::TikTokPhoto]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $this->postPlatform->id, 'meta' => [
+            'caption' => str_repeat('a', 2201),
+            'title' => str_repeat('a', 91),
+        ]]],
+    ])->assertSessionHasErrors(['platforms.0.meta.title' => __('posts.form.tiktok.photo_title_max')])
+        ->assertSessionDoesntHaveErrors('platforms.0.meta.caption');
+});
+
+test('a content type from another platform does not skip the text limits', function () {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::FacebookPost->value, 'meta' => ['title' => str_repeat('a', 101)]]],
+    ])->assertSessionHasErrors(['platforms.0.meta.title' => __('posts.form.youtube.title_max')]);
+});
+
 test('a tiktok caption lifts the 2200 character cap on the content', function (array $meta, bool $capped) {
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
         'status' => Status::Scheduled->value,
