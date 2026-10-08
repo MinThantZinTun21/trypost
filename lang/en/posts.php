@@ -245,6 +245,7 @@ return [
             'media_limits_docs' => 'View media limits',
             'aspect_ratio_invalid' => 'Aspect ratio is not supported by this format.',
             'no_content_type' => 'Pick a content type for this platform.',
+            'content_type_platform' => 'This content type is not available on this platform.',
             'requires_text' => 'Add text — this format needs a title.',
         ],
         'publishing' => 'Publishing...',
