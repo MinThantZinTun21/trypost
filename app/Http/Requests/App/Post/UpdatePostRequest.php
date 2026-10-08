@@ -109,22 +109,27 @@ class UpdatePostRequest extends FormRequest
      */
     private function resolveContentLimitedPlatforms(): Collection
     {
-        $submittedMeta = collect($this->input('platforms', []))
+        $submitted = collect($this->input('platforms', []))
             ->filter(fn ($platform) => is_array($platform) && data_get($platform, 'id'))
-            ->mapWithKeys(fn (array $platform) => [data_get($platform, 'id') => data_get($platform, 'meta')]);
+            ->keyBy(fn (array $platform) => data_get($platform, 'id'));
 
-        if ($submittedMeta->isEmpty()) {
+        if ($submitted->isEmpty()) {
             return collect();
         }
 
         return $this->route('post')
             ->postPlatforms()
-            ->whereIn('id', $submittedMeta->keys()->all())
-            ->get(['id', 'platform', 'meta'])
-            ->filter(fn (PostPlatform $postPlatform): bool => PostPlatformMetaRules::contentLimitApplies(
-                $postPlatform->platform,
-                array_merge($postPlatform->meta ?? [], is_array($submittedMeta[$postPlatform->id]) ? $submittedMeta[$postPlatform->id] : []),
-            ))
+            ->whereIn('id', $submitted->keys()->all())
+            ->get(['id', 'platform', 'content_type', 'meta'])
+            ->filter(function (PostPlatform $postPlatform) use ($submitted): bool {
+                $submittedMeta = data_get($submitted->get($postPlatform->id), 'meta');
+
+                return PostPlatformMetaRules::contentLimitApplies(
+                    $postPlatform->platform,
+                    ContentType::tryFrom((string) data_get($submitted->get($postPlatform->id), 'content_type')) ?? $postPlatform->content_type,
+                    array_merge($postPlatform->meta ?? [], is_array($submittedMeta) ? $submittedMeta : []),
+                );
+            })
             ->pluck('platform', 'id');
     }
 

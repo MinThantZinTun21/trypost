@@ -96,7 +96,9 @@ enum Platform: string
      * Hard cap (in characters) the platform's API will accept. Going over this
      * means the post can't be published. Values are the documented API maxes:
      *
-     *  - TikTok caption: 2200
+     *  - TikTok caption: 2200 (a meta.caption on a Video, or a
+     *    meta.description on a Photo, replaces the content and lifts the cap;
+     *    see TikTokText for TikTok's own text limits)
      *  - YouTube Shorts: without a meta.title the content supplies the title,
      *    capped at 100 characters (`YouTubeTitle::fromContent()`); a Title
      *    lifts the cap (`PostPlatformMetaRules::contentLimitApplies()`).

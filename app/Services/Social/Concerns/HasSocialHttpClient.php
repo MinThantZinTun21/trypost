@@ -21,7 +21,7 @@ trait HasSocialHttpClient
      */
     protected function validateContentLength(PostPlatform $postPlatform): void
     {
-        if (! PostPlatformMetaRules::contentLimitApplies($postPlatform->platform, $postPlatform->meta)) {
+        if (! PostPlatformMetaRules::contentLimitApplies($postPlatform->platform, $postPlatform->content_type, $postPlatform->meta)) {
             return;
         }
 

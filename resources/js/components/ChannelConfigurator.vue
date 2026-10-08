@@ -207,6 +207,7 @@ const settingsProps = (channel: Channel) => ({
             <TikTokSettings
                 v-else-if="channel.platform === Platform.TikTok"
                 v-bind="settingsProps(channel)"
+                :platform-index="index"
                 :publish-config="channel.publishConfig ?? null"
                 :creator-info="channel.creatorInfo ?? null"
                 :video-duration-sec="videoDurationSec"

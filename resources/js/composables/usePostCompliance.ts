@@ -212,7 +212,13 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
         const result: { platform: string; maxLength: number }[] = [];
         for (const pp of selectedPlatforms.value) {
             if (seen.has(pp.platform)) continue;
-            if (!contentLimitApplies(pp.platform, platformMeta.value[pp.id]))
+            if (
+                !contentLimitApplies(
+                    pp.platform,
+                    platformContentTypes.value[pp.id] ?? pp.content_type,
+                    platformMeta.value[pp.id],
+                )
+            )
                 continue;
             const max = pp.social_account_id
                 ? platformConfigs[pp.social_account_id]?.maxContentLength

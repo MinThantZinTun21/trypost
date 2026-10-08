@@ -18,6 +18,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
+use App\Support\TikTokText;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -121,8 +122,8 @@ class TikTokPublisher
 
     /**
      * Build the post_info payload for a VIDEO post. TikTok's video endpoint
-     * accepts the caption in the `title` field (capped at 2200 chars by the
-     * platform's maxContentLength).
+     * accepts the caption in the `title` field. A TikTok caption in meta
+     * replaces the content (both capped at 2200 by TikTokText).
      *
      * @return array<string, mixed>
      */
@@ -131,7 +132,7 @@ class TikTokPublisher
         $meta = $postPlatform->meta ?? [];
 
         $postInfo = [
-            'title' => $content ?? '',
+            'title' => TikTokText::filled($meta, 'caption') ?? $content ?? '',
             'privacy_level' => $this->resolveRequiredPrivacyLevel($postPlatform)->value,
             'disable_duet' => ! data_get($meta, 'allow_duet', false),
             'disable_comment' => ! data_get($meta, 'allow_comments', false),
@@ -154,19 +155,20 @@ class TikTokPublisher
     }
 
     /**
-     * Build the post_info payload for a PHOTO carousel. TikTok's photo endpoint
-     * accepts the caption in the `description` field (cap 4000 UTF-16 runes).
-     * The `title` field is a separate 90-char headline that we don't expose,
-     * so we omit it. Duet/Stitch and is_aigc do not apply to photo posts.
+     * Build the post_info payload for a PHOTO carousel. The Photo's Title goes
+     * in `title` and its Description in `description`; an empty Description
+     * means the content. Duet/Stitch and is_aigc do not apply to photo posts.
      *
      * @return array<string, mixed>
      */
     private function buildPhotoPostInfo(PostPlatform $postPlatform, ?string $content): array
     {
         $meta = $postPlatform->meta ?? [];
+        $title = TikTokText::filled($meta, 'title');
 
         $postInfo = [
-            'description' => $content ?? '',
+            ...($title !== null ? ['title' => $title] : []),
+            'description' => TikTokText::filled($meta, 'description') ?? $content ?? '',
             'privacy_level' => $this->resolveRequiredPrivacyLevel($postPlatform)->value,
             'disable_comment' => ! data_get($meta, 'allow_comments', false),
         ];

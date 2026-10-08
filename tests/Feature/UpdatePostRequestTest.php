@@ -574,3 +574,54 @@ test('facebook reel title and description save on a draft and reload in the edit
                 && data_get(collect($platforms)->firstWhere('id', $platform->id), 'meta.description') === $description,
         ));
 });
+
+test('tiktok caption and photo text save on a draft and reload in the editor', function () {
+    $meta = ['caption' => 'TikTok-only caption', 'title' => 'Photo title', 'description' => 'Photo description'];
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $this->postPlatform->id, 'meta' => $meta]],
+    ])->assertSessionHasNoErrors();
+
+    expect($this->postPlatform->fresh()->meta)->toEqual($meta);
+
+    $this->actingAs($this->user)->get(route('app.posts.edit', $this->post))
+        ->assertInertia(fn ($page) => $page->where(
+            'post.post_platforms',
+            fn ($platforms) => data_get(collect($platforms)->firstWhere('id', $this->postPlatform->id), 'meta.caption') === 'TikTok-only caption',
+        ));
+});
+
+test('tiktok text limits hold on a draft', function () {
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $this->postPlatform->id, 'meta' => [
+            'caption' => str_repeat('a', 2201),
+            'title' => str_repeat('a', 91),
+        ]]],
+    ])->assertSessionHasErrors([
+        'platforms.0.meta.caption' => __('posts.form.tiktok.caption_max'),
+        'platforms.0.meta.title' => __('posts.form.tiktok.photo_title_max'),
+    ]);
+});
+
+test('a tiktok caption lifts the 2200 character cap on the content', function (array $meta, bool $capped) {
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Scheduled->value,
+        'content' => str_repeat('Long text for every platform. ', 80),
+        'media' => $this->mediaPayload,
+        'scheduled_at' => now()->addDay()->toDateTimeString(),
+        'platforms' => [[
+            'id' => $this->postPlatform->id,
+            'content_type' => ContentType::TikTokVideo->value,
+            'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value, ...$meta],
+        ]],
+    ]);
+
+    $capped
+        ? $response->assertSessionHasErrors('content')
+        : $response->assertSessionDoesntHaveErrors('content');
+})->with([
+    'caption' => [['caption' => 'Short TikTok caption'], false],
+    'no caption' => [[], true],
+]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\PostPlatform\AspectRatio;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
@@ -46,10 +47,11 @@ class PostPlatformMetaRules
             'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
 
-            // Facebook Reel and YouTube text. Platform-specific limits live in
+            // Facebook Reel, TikTok and YouTube text. Platform-specific limits live in
             // textLimitViolations(); this cap matches the content's own.
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'platforms.*.meta.caption' => ['sometimes', 'nullable', 'string', 'max:10000'],
         ];
     }
 
@@ -72,6 +74,7 @@ class PostPlatformMetaRules
     {
         return [
             'platforms.*.meta.title' => __('posts.form.youtube.title'),
+            'platforms.*.meta.caption' => __('posts.form.tiktok.caption'),
             'platforms.*.meta.description' => __('posts.form.youtube.description'),
         ];
     }
@@ -138,6 +141,11 @@ class PostPlatformMetaRules
                 'title' => YouTubeTitle::violation(data_get($meta, 'title')),
                 'description' => YouTubeDescription::violation(data_get($meta, 'description')),
             ],
+            Platform::TikTok => [
+                'caption' => TikTokText::violation(data_get($meta, 'caption'), TikTokText::CAPTION_MAX, 'posts.form.tiktok.caption_max'),
+                'title' => TikTokText::violation(data_get($meta, 'title'), TikTokText::PHOTO_TITLE_MAX, 'posts.form.tiktok.photo_title_max'),
+                'description' => TikTokText::violation(data_get($meta, 'description'), TikTokText::PHOTO_DESCRIPTION_MAX, 'posts.form.tiktok.photo_description_max'),
+            ],
             default => [],
         };
 
@@ -146,13 +154,19 @@ class PostPlatformMetaRules
 
     /**
      * Whether the Post's content counts against the Platform's content cap
-     * (`Platform::maxContentLength()`). A YouTube Title replaces the content as
-     * the video title, so the 100-character cap on the content no longer applies.
+     * (`Platform::maxContentLength()`). Text that replaces the content lifts
+     * it: a YouTube Title (the content would be the video title), a TikTok
+     * caption on a Video and a TikTok Description on a Photo.
      */
-    public static function contentLimitApplies(Platform $platform, mixed $meta): bool
+    public static function contentLimitApplies(Platform $platform, ?ContentType $contentType, mixed $meta): bool
     {
         return match ($platform) {
             Platform::YouTube => YouTubeTitle::custom($meta) === null,
+            Platform::TikTok => match ($contentType) {
+                ContentType::TikTokVideo => TikTokText::filled($meta, 'caption') === null,
+                ContentType::TikTokPhoto => TikTokText::filled($meta, 'description') === null,
+                default => true,
+            },
             default => true,
         };
     }

@@ -11,6 +11,7 @@ import { toast } from 'vue-sonner';
 import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -19,8 +20,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import {
+    TIKTOK_CAPTION_MAX,
+    TIKTOK_PHOTO_DESCRIPTION_MAX,
+    TIKTOK_PHOTO_TITLE_MAX,
+    tiktokTextLength,
+} from '@/lib/tiktokText';
+import { toNullableText } from '@/lib/utils';
 import { ContentType } from '@/types/content-type';
 import {
     isTikTokPrivacyLevel,
@@ -51,6 +60,7 @@ interface CreatorInfo {
 
 interface Props {
     socialAccount: SocialAccount | null;
+    platformIndex: number;
     publishConfig: Record<string, any> | null;
     creatorInfo?: CreatorInfo | null;
     videoDurationSec?: number | null;
@@ -104,6 +114,23 @@ const privacyError = computed<string | undefined>(() => {
 const updateMeta = (patch: Record<string, any>) => {
     emit('update:meta', { ...props.meta, ...patch });
 };
+
+const metaText = (key: 'caption' | 'title' | 'description') =>
+    computed({
+        get: () => toNullableText(props.meta?.[key]) ?? '',
+        set: (value: string) => updateMeta({ [key]: toNullableText(value) }),
+    });
+const caption = metaText('caption');
+const photoTitle = metaText('title');
+const photoDescription = metaText('description');
+const fieldError = (key: string) =>
+    computed(
+        () => errors.value[`platforms.${props.platformIndex}.meta.${key}`],
+    );
+const captionError = fieldError('caption');
+const photoTitleError = fieldError('title');
+const photoDescriptionError = fieldError('description');
+const fieldId = (key: string) => `tiktok-${key}-${props.platformIndex}`;
 
 const privacyLevel = computed({
     get: () => props.meta?.privacy_level ?? '',
@@ -342,6 +369,94 @@ watch(
                     </p>
                 </div>
             </div>
+
+            <!-- Caption (videos) -->
+            <div v-if="isVideoPost" class="space-y-2">
+                <Label
+                    :for="fieldId('caption')"
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >{{ $t('posts.form.tiktok.caption') }}</Label
+                >
+                <Textarea
+                    :id="fieldId('caption')"
+                    v-model="caption"
+                    :data-testid="fieldId('caption')"
+                    :disabled="props.disabled"
+                    :aria-invalid="captionError ? true : undefined"
+                    :placeholder="$t('posts.form.tiktok.caption_placeholder')"
+                    class="field-sizing-fixed min-h-24 w-full resize-y"
+                />
+                <p class="text-xs text-foreground/60 tabular-nums">
+                    {{
+                        $t('posts.form.tiktok.text_characters', {
+                            used: tiktokTextLength(caption).toString(),
+                            limit: TIKTOK_CAPTION_MAX.toString(),
+                        })
+                    }}
+                </p>
+                <InputError :message="captionError" />
+            </div>
+
+            <!-- Title and description (photos) -->
+            <template v-if="isPhotoPost">
+                <div class="space-y-2">
+                    <Label
+                        :for="fieldId('title')"
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                        >{{ $t('posts.form.tiktok.photo_title') }}</Label
+                    >
+                    <Input
+                        :id="fieldId('title')"
+                        v-model="photoTitle"
+                        :data-testid="fieldId('title')"
+                        :disabled="props.disabled"
+                        :aria-invalid="photoTitleError ? true : undefined"
+                        :placeholder="
+                            $t('posts.form.tiktok.photo_title_placeholder')
+                        "
+                    />
+                    <p class="text-xs text-foreground/60 tabular-nums">
+                        {{
+                            $t('posts.form.tiktok.text_characters', {
+                                used: tiktokTextLength(photoTitle).toString(),
+                                limit: TIKTOK_PHOTO_TITLE_MAX.toString(),
+                            })
+                        }}
+                    </p>
+                    <InputError :message="photoTitleError" />
+                </div>
+                <div class="space-y-2">
+                    <Label
+                        :for="fieldId('description')"
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                        >{{ $t('posts.form.tiktok.photo_description') }}</Label
+                    >
+                    <Textarea
+                        :id="fieldId('description')"
+                        v-model="photoDescription"
+                        :data-testid="fieldId('description')"
+                        :disabled="props.disabled"
+                        :aria-invalid="photoDescriptionError ? true : undefined"
+                        :placeholder="
+                            $t(
+                                'posts.form.tiktok.photo_description_placeholder',
+                            )
+                        "
+                        class="field-sizing-fixed min-h-24 w-full resize-y"
+                    />
+                    <p class="text-xs text-foreground/60 tabular-nums">
+                        {{
+                            $t('posts.form.tiktok.text_characters', {
+                                used: tiktokTextLength(
+                                    photoDescription,
+                                ).toString(),
+                                limit: TIKTOK_PHOTO_DESCRIPTION_MAX.toString(),
+                            })
+                        }}
+                    </p>
+                    <InputError :message="photoDescriptionError" />
+                </div>
+            </template>
 
             <!-- Privacy Level -->
             <div class="space-y-2">

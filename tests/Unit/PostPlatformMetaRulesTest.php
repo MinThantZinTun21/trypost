@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Support\PostPlatformMetaRules;
@@ -14,6 +15,7 @@ test('there are no custom meta messages', function () {
 test('custom meta attributes use translated field names', function () {
     expect(PostPlatformMetaRules::attributes())->toBe([
         'platforms.*.meta.title' => __('posts.form.youtube.title'),
+        'platforms.*.meta.caption' => __('posts.form.tiktok.caption'),
         'platforms.*.meta.description' => __('posts.form.youtube.description'),
     ]);
 });
@@ -34,7 +36,7 @@ test('shared text rules cap titles and descriptions at the content limit', funct
     $validator = Validator::make(['platforms' => [['meta' => [$field => str_repeat('a', 10001)]]]], PostPlatformMetaRules::rules());
 
     expect($validator->errors()->has("platforms.0.meta.{$field}"))->toBeTrue();
-})->with(['title', 'description']);
+})->with(['title', 'description', 'caption']);
 
 test('stored youtube description is checked without requiring it for other networks', function () {
     expect(PostPlatformMetaRules::requiredMetaViolation(Platform::YouTube, ['description' => str_repeat('a', 5001)]))
@@ -58,6 +60,7 @@ test('shared meta rules cover the facebook, tiktok and youtube fields only', fun
         'platforms.*.meta.brand_organic_toggle',
         'platforms.*.meta.title',
         'platforms.*.meta.description',
+        'platforms.*.meta.caption',
     ]);
 });
 
@@ -96,5 +99,30 @@ test('youtube title text limits follow the youtube data api', function (mixed $t
 ]);
 
 test('youtube title limits do not apply to other platforms', function (Platform $platform) {
-    expect(PostPlatformMetaRules::textLimitViolations($platform, ['title' => str_repeat('<', 101)]))->toBe([]);
+    expect(PostPlatformMetaRules::textLimitViolations($platform, ['title' => str_repeat('<', 90)]))->toBe([]);
 })->with([Platform::Facebook, Platform::TikTok]);
+
+test('tiktok text limits count utf-16 runes as the content posting api does', function (string $field, string $text, ?string $key) {
+    expect(PostPlatformMetaRules::textLimitViolations(Platform::TikTok, [$field => $text]))
+        ->toBe($key === null ? [] : [$field => __($key)]);
+})->with([
+    'caption at the limit' => ['caption', str_repeat('a', 2200), null],
+    'caption over the limit' => ['caption', str_repeat('a', 2201), 'posts.form.tiktok.caption_max'],
+    'caption emoji count twice' => ['caption', str_repeat('😀', 1101), 'posts.form.tiktok.caption_max'],
+    'photo title at the limit' => ['title', str_repeat('é', 90), null],
+    'photo title over the limit' => ['title', str_repeat('a', 91), 'posts.form.tiktok.photo_title_max'],
+    'photo description at the limit' => ['description', str_repeat('a', 4000), null],
+    'photo description over the limit' => ['description', str_repeat('😀', 2001), 'posts.form.tiktok.photo_description_max'],
+]);
+
+test('replacement text lifts the content cap only for the content type that sends it', function (Platform $platform, ?ContentType $contentType, array $meta, bool $applies) {
+    expect(PostPlatformMetaRules::contentLimitApplies($platform, $contentType, $meta))->toBe($applies);
+})->with([
+    'tiktok video with caption' => [Platform::TikTok, ContentType::TikTokVideo, ['caption' => 'Caption'], false],
+    'tiktok video with blank caption' => [Platform::TikTok, ContentType::TikTokVideo, ['caption' => '  '], true],
+    'tiktok video with photo description' => [Platform::TikTok, ContentType::TikTokVideo, ['description' => 'Text'], true],
+    'tiktok photo with description' => [Platform::TikTok, ContentType::TikTokPhoto, ['description' => 'Text'], false],
+    'tiktok photo with caption' => [Platform::TikTok, ContentType::TikTokPhoto, ['caption' => 'Caption'], true],
+    'youtube with title' => [Platform::YouTube, ContentType::YouTubeShort, ['title' => 'Title'], false],
+    'facebook reel with description' => [Platform::Facebook, ContentType::FacebookReel, ['description' => 'Text'], true],
+]);
