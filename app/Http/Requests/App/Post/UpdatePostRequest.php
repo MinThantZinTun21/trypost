@@ -88,6 +88,8 @@ class UpdatePostRequest extends FormRequest
             $platformsById = $this->resolveSelectedPlatforms();
             $resolvePlatform = fn ($platform) => $platformsById[data_get($platform, 'id')] ?? null;
 
+            $this->addContentTypePlatformErrors($validator, $platforms, $resolvePlatform);
+
             $content = $this->has('content') ? $this->input('content') : $this->route('post')->content;
 
             PostPlatformMetaRules::addTextLimitErrors(
@@ -101,6 +103,28 @@ class UpdatePostRequest extends FormRequest
                 PostPlatformMetaRules::addRequiredOnPublishErrors($validator, $platforms, $resolvePlatform);
             }
         });
+    }
+
+    /**
+     * Rejects a submitted Content type that belongs to another Platform than
+     * the row's, so a Facebook type is never stored on a TikTok row.
+     *
+     * @param  callable(mixed): ?Platform  $resolvePlatform
+     */
+    private function addContentTypePlatformErrors(Validator $validator, mixed $platforms, callable $resolvePlatform): void
+    {
+        if (! is_array($platforms)) {
+            return;
+        }
+
+        foreach ($platforms as $index => $platform) {
+            $contentType = ContentType::tryFrom((string) data_get($platform, 'content_type'));
+            $rowPlatform = $resolvePlatform($platform);
+
+            if ($contentType !== null && $rowPlatform !== null && $contentType->platform() !== $rowPlatform) {
+                $validator->errors()->add("platforms.{$index}.content_type", __('posts.form.warnings.content_type_platform'));
+            }
+        }
     }
 
     private function isPublishingOrScheduling(): bool

@@ -1118,7 +1118,7 @@ test('draft post does not enforce media-vs-content-type compatibility', function
         'status' => PostStatus::Draft,
     ]);
 
-    $postPlatform = PostPlatform::factory()->create([
+    $postPlatform = PostPlatform::factory()->youtube()->create([
         'post_id' => $post->id,
         'social_account_id' => $youtubeAccount->id,
     ]);

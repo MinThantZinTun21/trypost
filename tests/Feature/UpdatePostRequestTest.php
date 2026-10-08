@@ -657,6 +657,35 @@ test('a content type from another platform does not skip the text limits', funct
     ])->assertSessionHasErrors(['platforms.0.meta.title' => __('posts.form.youtube.title_max')]);
 });
 
+test('a content type from another platform is rejected and not stored', function (string $status) {
+    $this->postPlatform->update(['content_type' => ContentType::TikTokVideo]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => $status,
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+        'media' => $this->mediaPayload,
+        'platforms' => [['id' => $this->postPlatform->id, 'content_type' => ContentType::FacebookReel->value, 'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]],
+    ])->assertSessionHasErrors(['platforms.0.content_type' => __('posts.form.warnings.content_type_platform')]);
+
+    expect($this->postPlatform->fresh()->content_type)->toBe(ContentType::TikTokVideo);
+})->with([Status::Draft->value, Status::Scheduled->value]);
+
+test('a content type from the platform passes the platform check', function () {
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [['id' => $this->postPlatform->id, 'content_type' => ContentType::TikTokPhoto->value]],
+    ])->assertSessionDoesntHaveErrors('platforms.0.content_type');
+
+    expect($this->postPlatform->fresh()->content_type)->toBe(ContentType::TikTokPhoto);
+});
+
+test('a draft whose platforms is not a list gets a validation error', function () {
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => 'tiktok',
+    ])->assertSessionHasErrors('platforms');
+});
+
 test('a tiktok caption lifts the 2200 character cap on the content', function (array $meta, bool $capped) {
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
         'status' => Status::Scheduled->value,
