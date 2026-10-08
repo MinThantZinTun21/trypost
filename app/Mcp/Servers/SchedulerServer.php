@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\CompleteMediaUpload;
 use App\Mcp\Tools\ListSocialAccounts;
+use App\Mcp\Tools\StartMediaUpload;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -21,6 +23,8 @@ class SchedulerServer extends Server
 {
     protected array $tools = [
         ListSocialAccounts::class,
+        StartMediaUpload::class,
+        CompleteMediaUpload::class,
     ];
 
     protected array $resources = [];
