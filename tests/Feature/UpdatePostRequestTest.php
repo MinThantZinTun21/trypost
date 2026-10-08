@@ -547,6 +547,31 @@ test('a youtube title lifts the 100 character cap on the content', function (arr
     'blank title' => [['title' => '   '], true],
 ]);
 
+test('a youtube post whose stored title lifts the cap keeps long content within the description limit', function (array $meta, bool $rejected) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['title' => 'Stored title'],
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'content' => str_repeat('é', 2501),
+        'platforms' => [
+            ['id' => $platform->id, 'meta' => $meta],
+        ],
+    ]);
+
+    $rejected
+        ? $response->assertSessionHasErrors(['platforms.0.meta.description' => __('posts.form.youtube.description_from_content_max')])
+        : $response->assertSessionDoesntHaveErrors('platforms.0.meta.description');
+})->with([
+    'no description' => [[], true],
+    'own description' => [['description' => 'A short description'], false],
+    'title cleared' => [['title' => null], false],
+]);
+
 test('facebook reel title and description save on a draft and reload in the editor', function () {
     $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
     $platform = PostPlatform::factory()->create([

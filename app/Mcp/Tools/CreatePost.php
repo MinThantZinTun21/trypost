@@ -25,6 +25,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator as ValidationValidator;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -64,6 +65,8 @@ class CreatePost extends Tool
 
         $mediaItems = collect(data_get($validated, 'media_ids', []))
             ->map(fn (string $id): MediaItem => MediaItem::fromMedia($assets->get($id)));
+        $this->assertTextFieldsPublish($validated, $accounts, $mediaItems);
+
         $status = self::MODE_STATUSES[data_get($validated, 'mode')];
         $scheduledAt = data_get($validated, 'scheduled_at');
 
@@ -124,9 +127,9 @@ class CreatePost extends Tool
             'social_accounts' => $schema->array()->items($schema->object([
                 'id' => $schema->string()->description('The Social account\'s id from list_social_accounts.')->required(),
                 'content_type' => $schema->string()->enum(array_column(ContentType::cases(), 'value'))->description('One of the account\'s content_types. Defaults from the media.'),
-                'title' => $schema->string()->description('YouTube Short title (max 100), Facebook Reel title, or TikTok Photo title (max 90).'),
-                'description' => $schema->string()->description('YouTube Short description (max 5000 bytes, defaults to the content), Facebook Reel description, or TikTok Photo description (max 4000).'),
-                'caption' => $schema->string()->description('TikTok Video caption (max 2200). Defaults to the content.'),
+                'title' => $schema->string()->description('YouTube Short title (max 100), Facebook Reel title, or TikTok Photo title (max 90). Not used by other Content types.'),
+                'description' => $schema->string()->description('YouTube Short description (max 5000 bytes, defaults to the content), Facebook Reel description, or TikTok Photo description (max 4000). Not used by other Content types.'),
+                'caption' => $schema->string()->description('TikTok Video caption (max 2200). Defaults to the content. Not used by other Content types.'),
                 'privacy_level' => $schema->string()->enum(PrivacyLevel::values())->description('TikTok only, required. Only SELF_ONLY works until the TikTok app is audited.'),
                 'allow_comments' => $schema->boolean()->description('TikTok only.'),
                 'allow_duet' => $schema->boolean()->description('TikTok Video only.'),
@@ -207,12 +210,12 @@ class CreatePost extends Tool
      */
     private function platformPayload(array $entry, SocialAccount $account, string $postPlatformId, Collection $mediaItems): array
     {
-        $contentType = ContentType::tryFrom((string) data_get($entry, 'content_type'))
-            ?? $this->defaultContentType($account->platform, $mediaItems);
+        $contentType = $this->contentType($entry, $account, $mediaItems);
 
-        $settings = $account->platform === Platform::TikTok
-            ? ['caption', 'title', 'description', ...self::TIKTOK_SETTINGS]
-            : ['title', 'description'];
+        $settings = [
+            ...$contentType->textFields(),
+            ...($account->platform === Platform::TikTok ? self::TIKTOK_SETTINGS : []),
+        ];
 
         return [
             'id' => $postPlatformId,
@@ -222,6 +225,50 @@ class CreatePost extends Tool
                 ->reject(fn (mixed $value): bool => $value === null)
                 ->all(),
         ];
+    }
+
+    /**
+     * Rejects a Title, Description or caption the Social account's Content
+     * type never publishes, rather than storing text that silently goes nowhere.
+     *
+     * @param  array<string, mixed>  $validated
+     * @param  Collection<string, SocialAccount>  $accounts
+     * @param  Collection<int, MediaItem>  $mediaItems
+     *
+     * @throws ValidationException
+     */
+    private function assertTextFieldsPublish(array $validated, Collection $accounts, Collection $mediaItems): void
+    {
+        $errors = [];
+
+        foreach ((array) data_get($validated, 'social_accounts', []) as $index => $entry) {
+            $contentType = $this->contentType($entry, $accounts->get(data_get($entry, 'id')), $mediaItems);
+
+            foreach (['title', 'description', 'caption'] as $field) {
+                if (filled(data_get($entry, $field)) && ! in_array($field, $contentType->textFields(), true)) {
+                    $errors["social_accounts.{$index}.{$field}"] = __('mcp.post.text_field_unused', [
+                        'field' => $field,
+                        'type' => $contentType->value,
+                    ]);
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * The given Content type, or the default for the account's Platform and the media.
+     *
+     * @param  array<string, mixed>  $entry
+     * @param  Collection<int, MediaItem>  $mediaItems
+     */
+    private function contentType(array $entry, SocialAccount $account, Collection $mediaItems): ContentType
+    {
+        return ContentType::tryFrom((string) data_get($entry, 'content_type'))
+            ?? $this->defaultContentType($account->platform, $mediaItems);
     }
 
     /**

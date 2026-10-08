@@ -25,6 +25,16 @@ test('youtube description text limit rejects multibyte overflow', function () {
         ->toBe(['description' => __('posts.form.youtube.description_max')]);
 });
 
+test('youtube content standing in for the description must fit the description limit once a title lifts the content cap', function (array $meta, ?string $key) {
+    $violations = PostPlatformMetaRules::textLimitViolations(Platform::YouTube, $meta, str_repeat('é', 2501));
+
+    expect(data_get($violations, 'description'))->toBe($key === null ? null : __($key));
+})->with([
+    'title, no description' => [['title' => 'My Short'], 'posts.form.youtube.description_from_content_max'],
+    'title and description' => [['title' => 'My Short', 'description' => 'Short and sweet'], null],
+    'no title, so the content cap applies instead' => [[], null],
+]);
+
 test('facebook reel text gets the shared cap only, since meta documents no limit', function () {
     $meta = ['title' => str_repeat('é', 3000), 'description' => str_repeat('é', 6000)];
 

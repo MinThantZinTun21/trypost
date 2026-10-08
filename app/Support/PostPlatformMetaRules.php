@@ -113,11 +113,12 @@ class PostPlatformMetaRules
      *
      * @param  array<int, mixed>  $platforms
      * @param  callable(mixed, int): ?Platform  $resolvePlatform
+     * @param  ?string  $content  The Post's content, for text that falls back to it.
      */
-    public static function addTextLimitErrors(Validator $validator, array $platforms, callable $resolvePlatform): void
+    public static function addTextLimitErrors(Validator $validator, array $platforms, callable $resolvePlatform, ?string $content = null): void
     {
         foreach ($platforms as $index => $platform) {
-            foreach (self::textLimitViolations($resolvePlatform($platform, $index), data_get($platform, 'meta')) as $field => $message) {
+            foreach (self::textLimitViolations($resolvePlatform($platform, $index), data_get($platform, 'meta'), $content) as $field => $message) {
                 $key = "platforms.{$index}.meta.{$field}";
 
                 if (! $validator->errors()->has($key)) {
@@ -132,14 +133,19 @@ class PostPlatformMetaRules
      * documents no limit for a Facebook Reel's Title or Description, so only
      * the shared cap in rules() applies there.
      *
+     * A YouTube Short with no Description uses the content as one, so the
+     * content must fit the Description's limit too once a Title lets it grow
+     * past the content cap.
+     *
      * @return array<string, string> field => message
      */
-    public static function textLimitViolations(?Platform $platform, mixed $meta): array
+    public static function textLimitViolations(?Platform $platform, mixed $meta, ?string $content = null): array
     {
         $violations = match ($platform) {
             Platform::YouTube => [
                 'title' => YouTubeTitle::violation(data_get($meta, 'title')),
-                'description' => YouTubeDescription::violation(data_get($meta, 'description')),
+                'description' => YouTubeDescription::violation(data_get($meta, 'description'))
+                    ?? YouTubeDescription::contentViolation($meta, $content),
             ],
             Platform::TikTok => [
                 'caption' => TikTokText::violation(data_get($meta, 'caption'), TikTokText::CAPTION_MAX, 'posts.form.tiktok.caption_max'),

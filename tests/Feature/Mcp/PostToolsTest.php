@@ -49,6 +49,20 @@ test('list_posts filters by status', function (string $status, array $expected) 
     'published includes partially published' => ['published', ['published', 'partial']],
 ]);
 
+test('list_posts puts the newest scheduled time first and undated drafts last', function () {
+    $undated = ownerPost(['scheduled_at' => null]);
+    $earlier = ownerPost(['scheduled_at' => now()->addDay()]);
+    $later = ownerPost(['scheduled_at' => now()->addDays(2)]);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListPosts::class, ['status' => 'draft'])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) use ($undated, $earlier, $later) {
+            expect(array_column($json->toArray()['posts'], 'id'))->toBe([$later->id, $earlier->id, $undated->id]);
+            $json->etc();
+        });
+});
+
 test('list_posts pages with the app page size', function () {
     config(['app.pagination.default' => 2]);
     collect(range(1, 3))->each(fn (int $day) => ownerPost(['scheduled_at' => now()->addDays($day)], 'scheduled'));

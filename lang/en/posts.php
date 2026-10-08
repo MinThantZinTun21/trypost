@@ -137,6 +137,7 @@ return [
             'description_placeholder' => 'Video description',
             'description_max' => 'The YouTube description must not exceed 5,000 bytes.',
             'description_invalid' => 'The YouTube description must be valid text.',
+            'description_from_content_max' => 'The post text becomes the YouTube description and must not exceed 5,000 bytes. Add a shorter YouTube description.',
             'description_bytes' => ':used / :limit bytes',
         ],
         'warnings' => [

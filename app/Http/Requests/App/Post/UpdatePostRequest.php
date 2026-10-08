@@ -83,7 +83,14 @@ class UpdatePostRequest extends FormRequest
             $platformsById = $this->resolveSelectedPlatforms();
             $resolvePlatform = fn ($platform) => $platformsById[data_get($platform, 'id')] ?? null;
 
-            PostPlatformMetaRules::addTextLimitErrors($validator, $platforms, $resolvePlatform);
+            $content = $this->has('content') ? $this->input('content') : $this->route('post')->content;
+
+            PostPlatformMetaRules::addTextLimitErrors(
+                $validator,
+                $this->platformsWithStoredMeta(),
+                $resolvePlatform,
+                is_string($content) ? $content : null,
+            );
 
             if ($this->isPublishingOrScheduling()) {
                 PostPlatformMetaRules::addRequiredOnPublishErrors($validator, $platforms, $resolvePlatform);
@@ -102,14 +109,13 @@ class UpdatePostRequest extends FormRequest
 
     /**
      * The selected platforms whose content cap applies, judged on the meta the
-     * update will store (stored meta merged with the submitted meta, as
-     * UpdatePost merges it).
+     * update will store.
      *
      * @return Collection<int|string, Platform>
      */
     private function resolveContentLimitedPlatforms(): Collection
     {
-        $submitted = collect($this->input('platforms', []))
+        $submitted = collect($this->platformsWithStoredMeta())
             ->filter(fn ($platform) => is_array($platform) && data_get($platform, 'id'))
             ->keyBy(fn (array $platform) => data_get($platform, 'id'));
 
@@ -120,17 +126,50 @@ class UpdatePostRequest extends FormRequest
         return $this->route('post')
             ->postPlatforms()
             ->whereIn('id', $submitted->keys()->all())
-            ->get(['id', 'platform', 'content_type', 'meta'])
-            ->filter(function (PostPlatform $postPlatform) use ($submitted): bool {
-                $submittedMeta = data_get($submitted->get($postPlatform->id), 'meta');
-
-                return PostPlatformMetaRules::contentLimitApplies(
-                    $postPlatform->platform,
-                    ContentType::tryFrom((string) data_get($submitted->get($postPlatform->id), 'content_type')) ?? $postPlatform->content_type,
-                    array_merge($postPlatform->meta ?? [], is_array($submittedMeta) ? $submittedMeta : []),
-                );
-            })
+            ->get(['id', 'platform', 'content_type'])
+            ->filter(fn (PostPlatform $postPlatform): bool => PostPlatformMetaRules::contentLimitApplies(
+                $postPlatform->platform,
+                ContentType::tryFrom((string) data_get($submitted->get($postPlatform->id), 'content_type')) ?? $postPlatform->content_type,
+                data_get($submitted->get($postPlatform->id), 'meta'),
+            ))
             ->pluck('platform', 'id');
+    }
+
+    /**
+     * The submitted platforms with the meta the update will store: the stored
+     * meta merged with the submitted meta, as UpdatePost merges it.
+     *
+     * @return array<int, mixed>
+     */
+    private function platformsWithStoredMeta(): array
+    {
+        $platforms = $this->input('platforms', []);
+
+        if (! is_array($platforms)) {
+            return [];
+        }
+
+        $storedMeta = $this->route('post')
+            ->postPlatforms()
+            ->whereIn('id', collect($platforms)->map(fn ($platform) => data_get($platform, 'id'))->filter()->all())
+            ->get(['id', 'meta'])
+            ->pluck('meta', 'id');
+
+        return collect($platforms)->map(function (mixed $platform) use ($storedMeta): mixed {
+            if (! is_array($platform)) {
+                return $platform;
+            }
+
+            $submittedMeta = data_get($platform, 'meta');
+
+            return [
+                ...$platform,
+                'meta' => array_filter(
+                    array_merge($storedMeta->get(data_get($platform, 'id')) ?? [], is_array($submittedMeta) ? $submittedMeta : []),
+                    fn (mixed $value): bool => $value !== null,
+                ),
+            ];
+        })->all();
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools;
 
 use App\Http\Requests\App\Asset\StoreDirectAssetRequest;
+use App\Services\Media\ChunkedCloudUploader;
 use App\Services\Media\DirectAssetReceiver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -51,7 +52,7 @@ class StartMediaUpload extends Tool
             'method' => 'PUT',
             'url' => $url,
             'headers' => $headers,
-            'expires_in_seconds' => 3600,
+            'expires_in_seconds' => ChunkedCloudUploader::UPLOAD_URL_TTL_SECONDS,
             'curl' => $this->curlCommand($fileName, $url, $headers),
         ]);
     }

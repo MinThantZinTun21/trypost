@@ -33,6 +33,21 @@ enum ContentType: string
         };
     }
 
+    /**
+     * The per-account text (PostPlatform meta keys) this content type
+     * publishes; the content stands in for any of them left blank.
+     *
+     * @return list<string>
+     */
+    public function textFields(): array
+    {
+        return match ($this) {
+            self::FacebookReel, self::TikTokPhoto, self::YouTubeShort => ['title', 'description'],
+            self::TikTokVideo => ['caption'],
+            self::FacebookPost, self::FacebookStory => [],
+        };
+    }
+
     public function description(): string
     {
         return (string) trans("posts.content_types.{$this->value}.description");

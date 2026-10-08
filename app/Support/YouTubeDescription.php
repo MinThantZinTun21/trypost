@@ -29,10 +29,30 @@ class YouTubeDescription
      */
     public static function resolve(?array $meta, ?string $content): string
     {
+        return self::custom($meta) ?? ($content ?? '');
+    }
+
+    /**
+     * The Description set for the Short, or null when the content stands in for it.
+     */
+    public static function custom(mixed $meta): ?string
+    {
         $description = data_get($meta, 'description');
 
-        return is_string($description) && filled(Str::trim($description))
-            ? $description
-            : ($content ?? '');
+        return is_string($description) && filled(Str::trim($description)) ? $description : null;
+    }
+
+    /**
+     * The limit the content breaks when it stands in for the Description. Only
+     * a Title lifts the Platform's content cap (PostPlatformMetaRules::contentLimitApplies),
+     * so without one the content is already short enough.
+     */
+    public static function contentViolation(mixed $meta, ?string $content): ?string
+    {
+        if (YouTubeTitle::custom($meta) === null || self::custom($meta) !== null) {
+            return null;
+        }
+
+        return self::violation($content ?? '') === null ? null : 'posts.form.youtube.description_from_content_max';
     }
 }

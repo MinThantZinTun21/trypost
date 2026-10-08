@@ -46,7 +46,10 @@ class ListPosts extends Tool
             default => $query,
         };
 
-        $posts = $query->latest('scheduled_at')
+        // PostgreSQL sorts nulls first on a descending order and MySQL last; undated drafts go last on both.
+        $posts = $query->orderByRaw('scheduled_at is null')
+            ->latest('scheduled_at')
+            ->latest('created_at')
             ->paginate((int) config('app.pagination.default'), page: (int) data_get($validated, 'page', 1));
 
         return Response::structured([

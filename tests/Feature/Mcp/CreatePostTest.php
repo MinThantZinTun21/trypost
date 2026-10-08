@@ -195,6 +195,18 @@ test('create_post rejects input before saving anything', function (Closure $argu
         fn () => ['mode' => 'draft', 'media_ids' => [Media::factory()->assets()->for(Workspace::factory(), 'mediable')->create()->id], 'social_accounts' => [['id' => test()->facebook->id]]],
         fn () => __('mcp.post.media_not_found'),
     ],
+    'title on a Facebook Post' => [
+        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->facebook->id, 'title' => 'Ignored']]],
+        fn () => __('mcp.post.text_field_unused', ['field' => 'title', 'type' => 'facebook_post']),
+    ],
+    'caption on a TikTok Photo' => [
+        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'caption' => 'Ignored']]],
+        fn () => __('mcp.post.text_field_unused', ['field' => 'caption', 'type' => 'tiktok_photo']),
+    ],
+    'title on a TikTok Video' => [
+        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset('video')->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'title' => 'Ignored']]],
+        fn () => __('mcp.post.text_field_unused', ['field' => 'title', 'type' => 'tiktok_video']),
+    ],
     'content type from another platform' => [
         fn () => ['mode' => 'draft', 'social_accounts' => [['id' => test()->facebook->id, 'content_type' => 'youtube_short']]],
         fn () => __('mcp.post.content_type_platform', ['type' => 'youtube_short', 'account' => test()->facebook->accountDisplayName()]),
