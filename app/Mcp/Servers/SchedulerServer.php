@@ -21,7 +21,7 @@ use Laravel\Mcp\Server\Attributes\Version;
  */
 #[Name('TryPost')]
 #[Version('1.0.0')]
-#[Instructions('Schedules the Owner\'s posts to their Facebook Pages, TikTok accounts and YouTube channels. Start with list_social_accounts to see where you can post.')]
+#[Instructions('Schedules the Owner\'s posts to their Social accounts on Facebook Pages, TikTok and YouTube. Start with list_social_accounts to see where you can post.')]
 class SchedulerServer extends Server
 {
     protected array $tools = [

@@ -16,6 +16,9 @@ use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\TikTokText;
+use App\Support\YouTubeDescription;
+use App\Support\YouTubeTitle;
 use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -124,6 +127,12 @@ class CreatePost extends Tool
      */
     public function schema(JsonSchema $schema): array
     {
+        $youtubeTitleMax = YouTubeTitle::MAX_CHARACTERS;
+        $youtubeDescriptionMax = YouTubeDescription::MAX_BYTES;
+        $photoTitleMax = TikTokText::PHOTO_TITLE_MAX;
+        $photoDescriptionMax = TikTokText::PHOTO_DESCRIPTION_MAX;
+        $captionMax = TikTokText::CAPTION_MAX;
+
         return [
             'content' => $schema->string()->description('The Post\'s text. It is the Facebook Post text, and the TikTok caption, Reel description and YouTube title when those are not given.'),
             'media_ids' => $schema->array()->items($schema->string())->description('Media ids from complete_media_upload, in order. One video, or up to the Platform\'s image limit.'),
@@ -132,9 +141,9 @@ class CreatePost extends Tool
             'social_accounts' => $schema->array()->items($schema->object([
                 'id' => $schema->string()->description('The Social account\'s id from list_social_accounts.')->required(),
                 'content_type' => $schema->string()->enum(array_column(ContentType::cases(), 'value'))->description('One of the account\'s content_types. Defaults from the media.'),
-                'title' => $schema->string()->description('YouTube Short title (max 100), Facebook Reel title, or TikTok Photo title (max 90). Not used by other Content types.'),
-                'description' => $schema->string()->description('YouTube Short description (max 5000 bytes, defaults to the content), Facebook Reel description, or TikTok Photo description (max 4000). Not used by other Content types.'),
-                'caption' => $schema->string()->description('TikTok Video caption (max 2200). Defaults to the content. Not used by other Content types.'),
+                'title' => $schema->string()->description("YouTube Short title (max {$youtubeTitleMax}), Facebook Reel title, or TikTok Photo title (max {$photoTitleMax}). Not used by other Content types."),
+                'description' => $schema->string()->description("YouTube Short description (max {$youtubeDescriptionMax} bytes, defaults to the content), Facebook Reel description, or TikTok Photo description (max {$photoDescriptionMax}). Not used by other Content types."),
+                'caption' => $schema->string()->description("TikTok Video caption (max {$captionMax}). Defaults to the content. Not used by other Content types."),
                 'privacy_level' => $schema->string()->enum(PrivacyLevel::values())->description('TikTok only, required. Only SELF_ONLY works until the TikTok app is audited.'),
                 'allow_comments' => $schema->boolean()->description('TikTok only.'),
                 'allow_duet' => $schema->boolean()->description('TikTok Video only.'),

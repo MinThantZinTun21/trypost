@@ -23,6 +23,11 @@ use Illuminate\Validation\Validator;
 class PostPlatformMetaRules
 {
     /**
+     * The stored cap on a Title, Description or caption, matching the content's own.
+     */
+    public const int TEXT_MAX_LENGTH = 10000;
+
+    /**
      * Validation rules for `platforms.*.meta` and all its per-platform sub-keys.
      * Spread into a FormRequest/MCP tool rule set as the complete meta contract.
      *
@@ -49,9 +54,9 @@ class PostPlatformMetaRules
 
             // Facebook Reel, TikTok and YouTube text. Platform-specific limits live in
             // textLimitViolations(); this cap matches the content's own.
-            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:10000'],
-            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:10000'],
-            'platforms.*.meta.caption' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
+            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
+            'platforms.*.meta.caption' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
         ];
     }
 

@@ -17,7 +17,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Name('list_social_accounts')]
-#[Description('Lists the Owner\'s connected Social accounts (Facebook Pages, TikTok accounts, YouTube channels) with the Content types each can post. Only post to accounts whose status is "connected".')]
+#[Description('Lists the Owner\'s connected Social accounts on Facebook Pages, TikTok and YouTube with the Content types each can post. Only post to accounts whose status is "connected".')]
 #[IsReadOnly]
 class ListSocialAccounts extends Tool
 {

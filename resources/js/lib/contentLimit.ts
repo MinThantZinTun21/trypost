@@ -1,5 +1,4 @@
-import { filledTikTokText } from '@/lib/tiktokText';
-import { customYouTubeTitle } from '@/lib/youtubeTitle';
+import { trimmedPostPlatformText } from '@/lib/postPlatformText';
 import { ContentType } from '@/types/content-type';
 import { Platform } from '@/types/platform';
 
@@ -15,21 +14,21 @@ export const contentLimitApplies = (
     meta: Record<string, unknown> | undefined,
 ): boolean => {
     if (platform === Platform.YouTube) {
-        return customYouTubeTitle(meta) === null;
+        return trimmedPostPlatformText(meta, 'title') === null;
     }
 
     if (
         platform === Platform.TikTok &&
         contentType === ContentType.TikTokVideo
     ) {
-        return filledTikTokText(meta, 'caption') === null;
+        return trimmedPostPlatformText(meta, 'caption') === null;
     }
 
     if (
         platform === Platform.TikTok &&
         contentType === ContentType.TikTokPhoto
     ) {
-        return filledTikTokText(meta, 'description') === null;
+        return trimmedPostPlatformText(meta, 'description') === null;
     }
 
     return true;
