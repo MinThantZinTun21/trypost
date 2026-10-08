@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Media;
 
 use App\Enums\Media\Type as MediaType;
+use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use finfo;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class ChunkedCloudUploader
@@ -61,6 +63,76 @@ class ChunkedCloudUploader
         ]);
 
         return (string) data_get($object, 'Body');
+    }
+
+    /**
+     * A presigned PUT lets the browser send the file straight to the bucket,
+     * so its bytes never pass through a request body limit (Vercel caps a
+     * request at 4.5 MB). The signature only covers the issued key.
+     *
+     * @return array{key: string, url: string, headers: array<string, string>}
+     */
+    public function presignUpload(string $fileName): array
+    {
+        $extension = MediaType::extensionOf($fileName);
+        $key = 'medias/'.Str::uuid().".{$extension}";
+        $mimeType = MediaType::mimeTypeFromExtension($extension) ?? 'application/octet-stream';
+
+        $request = $this->s3()->createPresignedRequest(
+            $this->s3()->getCommand('PutObject', [
+                'Bucket' => $this->bucket(),
+                'Key' => $key,
+                'ContentType' => $mimeType,
+            ]),
+            '+1 hour',
+        );
+
+        return [
+            'key' => $key,
+            'url' => (string) $request->getUri(),
+            'headers' => ['Content-Type' => $mimeType],
+        ];
+    }
+
+    /**
+     * Null when nothing was stored under the key.
+     */
+    public function storedSize(string $key): ?int
+    {
+        try {
+            $head = $this->s3()->headObject([
+                'Bucket' => $this->bucket(),
+                'Key' => $key,
+            ]);
+        } catch (S3Exception $exception) {
+            if ($exception->getStatusCode() === Response::HTTP_NOT_FOUND) {
+                return null;
+            }
+
+            throw $exception;
+        }
+
+        return (int) data_get($head, 'ContentLength');
+    }
+
+    /**
+     * Sniffs the stored bytes rather than trusting the name the browser sent.
+     */
+    public function storedMimeType(string $key, int $size): string
+    {
+        return $this->detectMimeType(
+            $this->readRange($key, 0, min($size, 4096)),
+            MediaType::extensionOf($key),
+        );
+    }
+
+    public function download(string $key, string $localPath): void
+    {
+        $this->s3()->getObject([
+            'Bucket' => $this->bucket(),
+            'Key' => $key,
+            'SaveAs' => $localPath,
+        ]);
     }
 
     /**

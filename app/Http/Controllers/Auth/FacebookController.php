@@ -136,7 +136,8 @@ class FacebookController extends MetaController
         } catch (\Exception $e) {
             Log::error('Facebook OAuth Error', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'exception' => $e::class,
+                'at' => "{$e->getFile()}:{$e->getLine()}",
             ]);
 
             return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);

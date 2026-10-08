@@ -35,6 +35,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cron Endpoint
+    |--------------------------------------------------------------------------
+    |
+    | GET /cron/run runs the due scheduled tasks, then works the queue for up
+    | to max_seconds. It exists for serverless hosts (Vercel) that cannot run
+    | schedule:work or a queue worker. Empty secret = endpoint disabled (404).
+    |
+    */
+
+    'cron' => [
+        'secret' => env('CRON_SECRET'),
+        'max_seconds' => (int) env('CRON_MAX_SECONDS', 240),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Media Size Limits
     |--------------------------------------------------------------------------
     |

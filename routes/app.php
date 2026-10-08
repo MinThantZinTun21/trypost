@@ -68,6 +68,10 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
 
     // Media uploads (chunked, from the post composer)
     Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');
+
+    // Media uploads straight to object storage (presigned PUT), bypassing request body limits
+    Route::post('assets/direct', [AssetController::class, 'storeDirect'])->name('app.assets.store-direct');
+    Route::post('assets/direct/complete', [AssetController::class, 'completeDirect'])->name('app.assets.complete-direct');
 });
 
 // Notifications (auth only)

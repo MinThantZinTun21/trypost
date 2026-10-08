@@ -74,6 +74,25 @@ The first boot runs the migrations and creates the Owner. If `OWNER_PASSWORD` is
 
 For local development in Docker, use `compose.yaml` with `docker/.env.docker.example`.
 
+### Vercel (free) with Supabase and Cloudflare R2
+
+Vercel cannot run the queue worker or the scheduler, so an external cron (for example cron-job.org) calls `GET /cron/run` every minute with `Authorization: Bearer <CRON_SECRET>`, or with a token that expires, from `php artisan cron:token --days=30 --env=production`. Each call runs the due scheduled tasks, publishes for up to 4 minutes, and returns the next scheduled post. Postgres comes from Supabase (use the **session pooler** connection string) and media lives in an R2 bucket (`FILESYSTEM_DISK=r2`). Limits on the free plans: a publish that takes longer than about 5 minutes (a large video) is cut off, and posts go out within a minute of their time.
+
+1. Put the production settings in `.env.production` (git-ignored): `APP_KEY`, `APP_URL`, `DB_URL`, the `R2_*` keys, `CRON_SECRET`, `OWNER_EMAIL` and the platform credentials, with `QUEUE_CONNECTION`, `CACHE_STORE` and `SESSION_DRIVER` set to `database` and `LOG_CHANNEL=stderr`.
+2. Create the schema and the Owner from your machine:
+
+   ```bash
+   php artisan migrate --force --env=production && php artisan db:seed --force --env=production
+   ```
+
+3. Paste `.env.production` into the Vercel project's environment variables (Vercel does not expand `${APP_URL}`, so write the `*_CLIENT_REDIRECT` URLs out in full), then build and deploy:
+
+   ```bash
+   npm run build && npx vercel deploy --prod
+   ```
+
+   The frontend is built locally because Vercel's build step has no PHP; the `vercel-php` runtime installs the Composer packages on Vercel.
+
 ## Tests
 
 ```bash

@@ -7,10 +7,21 @@ use App\Console\Commands\CheckUpcomingPostConnections;
 use App\Console\Commands\ProcessScheduledPosts;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command(ProcessScheduledPosts::class)->everyMinute()->withoutOverlapping()->onOneServer();
-Schedule::command(CheckSocialConnections::class)->daily()->withoutOverlapping()->onOneServer();
-Schedule::command(CheckUpcomingPostConnections::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
-Schedule::command(RefreshExpiringTokens::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
-Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
+/*
+ * Callbacks, not Schedule::command(): they run inside the schedule:run
+ * process, so GET /cron/run can drive the same schedule from a web request
+ * on serverless hosts, where spawning `php artisan` subprocesses is fragile.
+ */
+Schedule::call(fn () => Artisan::call(ProcessScheduledPosts::class))
+    ->name('posts:process-scheduled')->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::call(fn () => Artisan::call(CheckSocialConnections::class))
+    ->name('social:check-connections')->daily()->withoutOverlapping()->onOneServer();
+Schedule::call(fn () => Artisan::call(CheckUpcomingPostConnections::class))
+    ->name('social:check-upcoming-connections')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
+Schedule::call(fn () => Artisan::call(RefreshExpiringTokens::class))
+    ->name('social:refresh-expiring-tokens')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
+Schedule::call(fn () => Artisan::call(RecoverStuckPosts::class))
+    ->name('social:recover-stuck-posts')->everyThirtyMinutes()->withoutOverlapping()->onOneServer();

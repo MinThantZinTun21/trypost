@@ -259,6 +259,20 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 - `queue.connections.database.retry_after` (960) must stay above
   `PublishToSocialPlatform::$timeout` (900). Below it, a slow video upload is
   handed to a second worker while the first is still running.
+- The schedule in `routes/console.php` is `Schedule::call(fn () => Artisan::call(...))`,
+  never `Schedule::command()`. Callbacks run inside the `schedule:run` process,
+  which is what lets `GET /cron/run` drive the same schedule from a web request;
+  `Schedule::command()` spawns `php artisan` subprocesses that a serverless
+  request cannot rely on (`RunScheduleTest` fails with them).
+- On Vercel there are no long-lived processes. An external cron calls
+  `GET /cron/run` every minute with `Authorization: Bearer $CRON_SECRET` (or
+  `?token=`), or with an expiring token from `php artisan cron:token --days=30`
+  (signed with `CRON_SECRET`; rotating the secret revokes them); it runs
+  `schedule:run`, then works the queue for
+  `CRON_MAX_SECONDS` (240), and returns the next scheduled post. An empty
+  `CRON_SECRET` disables it (404). Keep `CRON_MAX_SECONDS` below `maxDuration`
+  in `vercel.json` (300) — `VercelConfigTest` enforces it. Uploads longer than
+  that budget are cut off on Vercel and settled by `RecoverStuckPosts`.
 
 ## Publishing status updates (polling, no websockets)
 

@@ -14,7 +14,7 @@ interface ChunkedUploadOptions {
     onError?: (error: any) => void;
 }
 
-interface ChunkedUploadResult {
+export interface ChunkedUploadResult {
     id: string;
     path?: string;
     url: string;

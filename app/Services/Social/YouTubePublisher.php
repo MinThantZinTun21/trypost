@@ -120,7 +120,8 @@ class YouTubePublisher
         } catch (\Throwable $e) {
             Log::error('YouTube upload failed', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'exception' => $e::class,
+                'at' => "{$e->getFile()}:{$e->getLine()}",
             ]);
 
             throw $e;

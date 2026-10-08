@@ -43,9 +43,10 @@ import {
     isVideo,
     MediaType,
 } from '@/lib/mediaType';
-import { storeChunked } from '@/routes/app/assets';
+import { completeDirect, storeChunked, storeDirect } from '@/routes/app/assets';
 import type { MediaItem } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
+import { uploadDirect } from '@/utils/directUpload';
 
 interface PlatformLimit {
     platform: string;
@@ -131,7 +132,10 @@ const removeMedia = (mediaId: string) => {
     media.value = media.value.filter((m) => m.id !== mediaId);
 };
 
-/** Uploads go through the chunked endpoint so large videos stay within request limits. */
+/**
+ * Uploads go straight to object storage when the server offers it (no request
+ * body limit), otherwise through the chunked endpoint.
+ */
 const uploadFiles = async (files: File[]) => {
     if (uploading.value || files.length === 0) return;
     uploading.value = true;
@@ -139,14 +143,22 @@ const uploadFiles = async (files: File[]) => {
     for (const file of files) {
         uploadProgress.value = 0;
         try {
-            const uploaded = await uploadChunked({
-                file,
-                url: storeChunked.url(),
-                collection: 'assets',
-                onProgress: (progress) => {
-                    uploadProgress.value = progress;
-                },
-            });
+            const onProgress = (progress: number) => {
+                uploadProgress.value = progress;
+            };
+            const uploaded =
+                (await uploadDirect({
+                    file,
+                    startUrl: storeDirect.url(),
+                    completeUrl: completeDirect.url(),
+                    onProgress,
+                })) ??
+                (await uploadChunked({
+                    file,
+                    url: storeChunked.url(),
+                    collection: 'assets',
+                    onProgress,
+                }));
             media.value = [
                 ...media.value,
                 {
