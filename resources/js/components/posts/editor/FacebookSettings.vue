@@ -2,9 +2,15 @@
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import InputError from '@/components/InputError.vue';
 import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { toNullableText } from '@/lib/utils';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -20,6 +26,7 @@ interface SocialAccount {
 
 interface Props {
     socialAccount: SocialAccount | null;
+    platformIndex: number;
     contentType: string;
     media: MediaItem[];
     meta?: Record<string, any>;
@@ -61,6 +68,30 @@ const aspectRatios = [
 ];
 
 const isFeed = computed(() => props.contentType === ContentType.FacebookPost);
+const isReel = computed(() => props.contentType === ContentType.FacebookReel);
+const errors = usePageErrors();
+const titleId = computed(() => `facebook-reel-title-${props.platformIndex}`);
+const descriptionId = computed(
+    () => `facebook-reel-description-${props.platformIndex}`,
+);
+
+const metaText = (key: 'title' | 'description') =>
+    computed({
+        get: () => toNullableText(props.meta[key]) ?? '',
+        set: (value: string) =>
+            emit('update:meta', {
+                ...props.meta,
+                [key]: toNullableText(value),
+            }),
+    });
+const title = metaText('title');
+const description = metaText('description');
+const titleError = computed(
+    () => errors.value[`platforms.${props.platformIndex}.meta.title`],
+);
+const descriptionError = computed(
+    () => errors.value[`platforms.${props.platformIndex}.meta.description`],
+);
 const selectedAspectRatio = computed(
     () => props.meta.aspect_ratio ?? 'original',
 );
@@ -194,6 +225,50 @@ const pickAspectRatio = (value: string) => {
                     </button>
                 </div>
             </div>
+
+            <template v-if="isReel">
+                <div class="space-y-2">
+                    <Label
+                        :for="titleId"
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
+                        {{ $t('posts.form.facebook.reel_title') }}
+                    </Label>
+                    <Input
+                        :id="titleId"
+                        v-model="title"
+                        :data-testid="titleId"
+                        :disabled="disabled"
+                        :aria-invalid="titleError ? true : undefined"
+                        :placeholder="
+                            $t('posts.form.facebook.reel_title_placeholder')
+                        "
+                    />
+                    <InputError :message="titleError" />
+                </div>
+                <div class="space-y-2">
+                    <Label
+                        :for="descriptionId"
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
+                        {{ $t('posts.form.facebook.reel_description') }}
+                    </Label>
+                    <Textarea
+                        :id="descriptionId"
+                        v-model="description"
+                        :data-testid="descriptionId"
+                        :disabled="disabled"
+                        :aria-invalid="descriptionError ? true : undefined"
+                        :placeholder="
+                            $t(
+                                'posts.form.facebook.reel_description_placeholder',
+                            )
+                        "
+                        class="field-sizing-fixed min-h-24 w-full resize-y"
+                    />
+                    <InputError :message="descriptionError" />
+                </div>
+            </template>
 
             <MediaRulesWarning
                 :content-type="contentType"

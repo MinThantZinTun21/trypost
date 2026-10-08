@@ -197,6 +197,7 @@ const settingsProps = (channel: Channel) => ({
             <FacebookSettings
                 v-if="channel.platform === Platform.Facebook"
                 v-bind="settingsProps(channel)"
+                :platform-index="index"
                 :content-type="channel.contentType"
                 :media="media"
                 @update:content-type="

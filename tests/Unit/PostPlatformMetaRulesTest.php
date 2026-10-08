@@ -18,11 +18,23 @@ test('custom meta attributes use translated field names', function () {
     ]);
 });
 
-test('shared description validation rejects multibyte overflow', function () {
-    $validator = Validator::make(['platforms' => [['meta' => ['description' => str_repeat('é', 2501)]]]], PostPlatformMetaRules::rules());
-    expect($validator->fails())->toBeTrue()
-        ->and($validator->errors()->has('platforms.0.meta.description'))->toBeTrue();
+test('youtube description text limit rejects multibyte overflow', function () {
+    expect(PostPlatformMetaRules::textLimitViolations(Platform::YouTube, ['description' => str_repeat('é', 2501)]))
+        ->toBe(['description' => __('posts.form.youtube.description_max')]);
 });
+
+test('facebook reel text gets the shared cap only, since meta documents no limit', function () {
+    $meta = ['title' => str_repeat('é', 3000), 'description' => str_repeat('é', 6000)];
+
+    expect(PostPlatformMetaRules::textLimitViolations(Platform::Facebook, $meta))->toBe([])
+        ->and(Validator::make(['platforms' => [['meta' => $meta]]], PostPlatformMetaRules::rules())->passes())->toBeTrue();
+});
+
+test('shared text rules cap titles and descriptions at the content limit', function (string $field) {
+    $validator = Validator::make(['platforms' => [['meta' => [$field => str_repeat('a', 10001)]]]], PostPlatformMetaRules::rules());
+
+    expect($validator->errors()->has("platforms.0.meta.{$field}"))->toBeTrue();
+})->with(['title', 'description']);
 
 test('stored youtube description is checked without requiring it for other networks', function () {
     expect(PostPlatformMetaRules::requiredMetaViolation(Platform::YouTube, ['description' => str_repeat('a', 5001)]))

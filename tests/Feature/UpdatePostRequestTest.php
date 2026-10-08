@@ -546,3 +546,31 @@ test('a youtube title lifts the 100 character cap on the content', function (arr
     'title cleared' => [['title' => null], true],
     'blank title' => [['title' => '   '], true],
 ]);
+
+test('facebook reel title and description save on a draft and reload in the editor', function () {
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Facebook,
+        'content_type' => ContentType::FacebookReel,
+        'meta' => [],
+    ]);
+    $description = trim(str_repeat('Long Reel description. ', 300));
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value,
+        'platforms' => [
+            ['id' => $platform->id, 'meta' => ['title' => 'Reel title', 'description' => $description]],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect($platform->fresh()->meta)->toEqual(['title' => 'Reel title', 'description' => $description]);
+
+    $this->actingAs($this->user)->get(route('app.posts.edit', $this->post))
+        ->assertInertia(fn ($page) => $page->where(
+            'post.post_platforms',
+            fn ($platforms) => data_get(collect($platforms)->firstWhere('id', $platform->id), 'meta.title') === 'Reel title'
+                && data_get(collect($platforms)->firstWhere('id', $platform->id), 'meta.description') === $description,
+        ));
+});

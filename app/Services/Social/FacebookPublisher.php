@@ -23,6 +23,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
 
 class FacebookPublisher
 {
@@ -57,7 +58,7 @@ class FacebookPublisher
         $contentType = $postPlatform->content_type;
 
         return match ($contentType) {
-            ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $this->requireVideo($media->first(), 'Reels')),
+            ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $postPlatform->meta, $content, $this->requireVideo($media->first(), 'Reels')),
             ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $this->requireVideo($media->first(), 'Stories')),
             ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, data_get($postPlatform->meta, 'aspect_ratio')),
             default => throw new FacebookPublishException(
@@ -253,9 +254,13 @@ class FacebookPublisher
     }
 
     /**
+     * The Reel's Title and Description go in the `finish` call (Reels
+     * publishing guide, step 3). An empty Description means the content.
+     *
+     * @param  array<string, mixed>|null  $meta
      * @return array{id: mixed, url: string}
      */
-    private function publishReel(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
+    private function publishReel(string $pageId, string $accessToken, ?array $meta, ?string $content, MediaItem $media): array
     {
         $videoId = $this->uploadVideo($pageId, $accessToken, 'video_reels', $media);
 
@@ -264,7 +269,8 @@ class FacebookPublisher
             'video_id' => $videoId,
             'video_state' => 'PUBLISHED',
             'access_token' => $accessToken,
-            ...$this->optionalField('description', $content),
+            ...$this->optionalField('title', $this->metaText($meta, 'title')),
+            ...$this->optionalField('description', $this->metaText($meta, 'description') ?? $content),
         ], 'reel finish');
 
         $reelId = data_get($response->json(), 'id') ?? $videoId;
@@ -552,6 +558,18 @@ class FacebookPublisher
                 retryDelaySeconds: self::UNREACHABLE_RETRY_DELAY_SECONDS,
             );
         }
+    }
+
+    /**
+     * A trimmed text field from the Post platform's meta, or null when blank.
+     *
+     * @param  array<string, mixed>|null  $meta
+     */
+    private function metaText(?array $meta, string $key): ?string
+    {
+        $value = data_get($meta, $key);
+
+        return is_string($value) && filled(Str::trim($value)) ? Str::trim($value) : null;
     }
 
     /**

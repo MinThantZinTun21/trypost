@@ -108,6 +108,10 @@ return [
                 'landscape' => 'Landscape (16:9)',
                 'original' => 'Original',
             ],
+            'reel_title' => 'Reel title',
+            'reel_title_placeholder' => 'Optional',
+            'reel_description' => 'Reel description',
+            'reel_description_placeholder' => 'Defaults to your post',
         ],
         'youtube' => [
             'settings' => 'YouTube settings',

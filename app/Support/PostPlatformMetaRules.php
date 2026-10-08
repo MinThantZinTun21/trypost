@@ -9,7 +9,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
 use App\Models\PostPlatform;
-use App\Rules\ValidYouTubeDescription;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
@@ -47,9 +46,10 @@ class PostPlatformMetaRules
             'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
 
-            // YouTube (Platform-specific limits: textLimitViolations())
-            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', new ValidYouTubeDescription],
+            // Facebook Reel and YouTube text. Platform-specific limits live in
+            // textLimitViolations(); this cap matches the content's own.
+            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:10000'],
         ];
     }
 
@@ -125,14 +125,19 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Per-Platform text limits, taken from each Platform's API docs.
+     * Per-Platform text limits, taken from each Platform's API docs. Meta
+     * documents no limit for a Facebook Reel's Title or Description, so only
+     * the shared cap in rules() applies there.
      *
      * @return array<string, string> field => message
      */
     public static function textLimitViolations(?Platform $platform, mixed $meta): array
     {
         $violations = match ($platform) {
-            Platform::YouTube => ['title' => YouTubeTitle::violation(data_get($meta, 'title'))],
+            Platform::YouTube => [
+                'title' => YouTubeTitle::violation(data_get($meta, 'title')),
+                'description' => YouTubeDescription::violation(data_get($meta, 'description')),
+            ],
             default => [],
         };
 
