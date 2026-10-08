@@ -7,7 +7,6 @@ namespace App\Mcp\Tools;
 use App\Actions\Post\CreatePost as CreatePostAction;
 use App\Actions\Post\UpdatePost;
 use App\Dto\MediaItem;
-use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -43,6 +42,12 @@ class CreatePost extends Tool
         'scheduled' => PostStatus::Scheduled,
         'now' => PostStatus::Publishing,
     ];
+
+    /**
+     * The per-account text an Assistant may set; ContentType::textFields() says
+     * which of them a Content type publishes.
+     */
+    private const TEXT_FIELDS = ['title', 'description', 'caption'];
 
     /**
      * The TikTok settings an Assistant may set, copied onto the Social account's meta.
@@ -142,7 +147,9 @@ class CreatePost extends Tool
     /**
      * The tool's own input checks: what the composer gets from its UI (known
      * accounts and assets, an offset on the schedule time, a privacy choice for
-     * every TikTok account) rather than from its update rules.
+     * every TikTok account) rather than from its update rules. The text and
+     * TikTok settings are only collected here; PostPlatformMetaRules checks
+     * them through the composer's rules.
      *
      * @param  array<string, mixed>  $input
      * @param  Collection<string, SocialAccount>  $accounts
@@ -160,14 +167,9 @@ class CreatePost extends Tool
             'social_accounts' => ['required', 'array', 'min:1'],
             'social_accounts.*.id' => ['required', 'string', 'distinct', Rule::in($accounts->keys()->all())],
             'social_accounts.*.content_type' => ['sometimes', 'nullable', 'string', Rule::enum(ContentType::class)],
-            'social_accounts.*.title' => ['sometimes', 'nullable', 'string'],
-            'social_accounts.*.description' => ['sometimes', 'nullable', 'string'],
-            'social_accounts.*.caption' => ['sometimes', 'nullable', 'string'],
-            'social_accounts.*.privacy_level' => ['sometimes', 'nullable', 'string', Rule::enum(PrivacyLevel::class)],
-            'social_accounts.*.allow_comments' => ['sometimes', 'boolean'],
-            'social_accounts.*.allow_duet' => ['sometimes', 'boolean'],
-            'social_accounts.*.allow_stitch' => ['sometimes', 'boolean'],
-            'social_accounts.*.is_aigc' => ['sometimes', 'boolean'],
+            ...collect([...self::TEXT_FIELDS, ...self::TIKTOK_SETTINGS])
+                ->mapWithKeys(fn (string $key): array => ["social_accounts.*.{$key}" => ['sometimes']])
+                ->all(),
         ], [
             'media_ids.*.in' => __('mcp.post.media_not_found'),
             'social_accounts.*.id.in' => __('mcp.post.account_not_found'),
@@ -244,7 +246,7 @@ class CreatePost extends Tool
         foreach ((array) data_get($validated, 'social_accounts', []) as $index => $entry) {
             $contentType = $this->contentType($entry, $accounts->get(data_get($entry, 'id')), $mediaItems);
 
-            foreach (['title', 'description', 'caption'] as $field) {
+            foreach (self::TEXT_FIELDS as $field) {
                 if (filled(data_get($entry, $field)) && ! in_array($field, $contentType->textFields(), true)) {
                     $errors["social_accounts.{$index}.{$field}"] = __('mcp.post.text_field_unused', [
                         'field' => $field,
@@ -268,25 +270,7 @@ class CreatePost extends Tool
     private function contentType(array $entry, SocialAccount $account, Collection $mediaItems): ContentType
     {
         return ContentType::tryFrom((string) data_get($entry, 'content_type'))
-            ?? $this->defaultContentType($account->platform, $mediaItems);
-    }
-
-    /**
-     * @param  Collection<int, MediaItem>  $mediaItems
-     */
-    private function defaultContentType(Platform $platform, Collection $mediaItems): ContentType
-    {
-        if ($mediaItems->isEmpty()) {
-            return ContentType::defaultFor($platform);
-        }
-
-        $hasVideo = $mediaItems->contains(fn (MediaItem $item): bool => $item->kind() === MediaType::Video);
-
-        return match ($platform) {
-            Platform::Facebook => $hasVideo ? ContentType::FacebookReel : ContentType::FacebookPost,
-            Platform::TikTok => $hasVideo ? ContentType::TikTokVideo : ContentType::TikTokPhoto,
-            Platform::YouTube => ContentType::YouTubeShort,
-        };
+            ?? ContentType::defaultForMedia($account->platform, $mediaItems);
     }
 
     /**

@@ -33,7 +33,8 @@ class YouTubeDescription
     }
 
     /**
-     * The Description set for the Short, or null when the content stands in for it.
+     * The Description set for the Short, as written (YouTube keeps its
+     * whitespace), or null when the content stands in for it.
      */
     public static function custom(mixed $meta): ?string
     {

@@ -20,6 +20,11 @@ use Illuminate\Validation\Validator;
 
 class UpdatePostRequest extends FormRequest
 {
+    /**
+     * @var array<int, mixed>|null
+     */
+    private ?array $platformsWithStoredMeta = null;
+
     public function authorize(): bool
     {
         return true;
@@ -143,10 +148,14 @@ class UpdatePostRequest extends FormRequest
      */
     private function platformsWithStoredMeta(): array
     {
+        if ($this->platformsWithStoredMeta !== null) {
+            return $this->platformsWithStoredMeta;
+        }
+
         $platforms = $this->input('platforms', []);
 
         if (! is_array($platforms)) {
-            return [];
+            return $this->platformsWithStoredMeta = [];
         }
 
         $storedMeta = $this->route('post')
@@ -155,7 +164,7 @@ class UpdatePostRequest extends FormRequest
             ->get(['id', 'meta'])
             ->pluck('meta', 'id');
 
-        return collect($platforms)->map(function (mixed $platform) use ($storedMeta): mixed {
+        return $this->platformsWithStoredMeta = collect($platforms)->map(function (mixed $platform) use ($storedMeta): mixed {
             if (! is_array($platform)) {
                 return $platform;
             }

@@ -47,9 +47,7 @@ class YouTubeTitle
      */
     public static function custom(mixed $meta): ?string
     {
-        $title = data_get($meta, 'title');
-
-        return is_string($title) && filled(Str::trim($title)) ? Str::trim($title) : null;
+        return PostPlatformText::trimmed($meta, 'title');
     }
 
     /**

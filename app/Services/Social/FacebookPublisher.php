@@ -16,6 +16,7 @@ use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
 use App\Support\FacebookLinkPreview;
+use App\Support\PostPlatformText;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -23,7 +24,6 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
-use Illuminate\Support\Str;
 
 class FacebookPublisher
 {
@@ -269,8 +269,8 @@ class FacebookPublisher
             'video_id' => $videoId,
             'video_state' => 'PUBLISHED',
             'access_token' => $accessToken,
-            ...$this->optionalField('title', $this->metaText($meta, 'title')),
-            ...$this->optionalField('description', $this->metaText($meta, 'description') ?? $content),
+            ...$this->optionalField('title', PostPlatformText::trimmed($meta, 'title')),
+            ...$this->optionalField('description', PostPlatformText::trimmed($meta, 'description') ?? $content),
         ], 'reel finish');
 
         $reelId = data_get($response->json(), 'id') ?? $videoId;
@@ -558,18 +558,6 @@ class FacebookPublisher
                 retryDelaySeconds: self::UNREACHABLE_RETRY_DELAY_SECONDS,
             );
         }
-    }
-
-    /**
-     * A trimmed text field from the Post platform's meta, or null when blank.
-     *
-     * @param  array<string, mixed>|null  $meta
-     */
-    private function metaText(?array $meta, string $key): ?string
-    {
-        $value = data_get($meta, $key);
-
-        return is_string($value) && filled(Str::trim($value)) ? Str::trim($value) : null;
     }
 
     /**

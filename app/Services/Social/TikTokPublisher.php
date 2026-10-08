@@ -16,6 +16,7 @@ use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
+use App\Support\PostPlatformText;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use App\Support\TikTokText;
@@ -132,7 +133,7 @@ class TikTokPublisher
         $meta = $postPlatform->meta ?? [];
 
         $postInfo = [
-            'title' => TikTokText::filled($meta, 'caption') ?? $content ?? '',
+            'title' => PostPlatformText::trimmed($meta, 'caption') ?? $content ?? '',
             'privacy_level' => $this->resolveRequiredPrivacyLevel($postPlatform)->value,
             'disable_duet' => ! data_get($meta, 'allow_duet', false),
             'disable_comment' => ! data_get($meta, 'allow_comments', false),
@@ -164,11 +165,11 @@ class TikTokPublisher
     private function buildPhotoPostInfo(PostPlatform $postPlatform, ?string $content): array
     {
         $meta = $postPlatform->meta ?? [];
-        $title = TikTokText::filled($meta, 'title');
+        $title = PostPlatformText::trimmed($meta, 'title');
 
         $postInfo = [
             ...($title !== null ? ['title' => $title] : []),
-            'description' => TikTokText::filled($meta, 'description') ?? $content ?? '',
+            'description' => PostPlatformText::trimmed($meta, 'description') ?? $content ?? '',
             'privacy_level' => $this->resolveRequiredPrivacyLevel($postPlatform)->value,
             'disable_comment' => ! data_get($meta, 'allow_comments', false),
         ];

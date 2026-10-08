@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Enums\PostPlatform;
 
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use Illuminate\Support\Collection;
 
 enum ContentType: string
 {
@@ -374,6 +376,28 @@ enum ContentType: string
             self::cases(),
             fn (self $type) => $type->platform() === $platform
         );
+    }
+
+    /**
+     * The default content type for a platform and the media a Post carries:
+     * a Reel, TikTok Video or Short for a video, a Post or TikTok Photo for
+     * images, and the platform's default without media.
+     *
+     * @param  Collection<int, MediaItem>  $mediaItems
+     */
+    public static function defaultForMedia(SocialPlatform $platform, Collection $mediaItems): self
+    {
+        if ($mediaItems->isEmpty()) {
+            return self::defaultFor($platform);
+        }
+
+        $hasVideo = $mediaItems->contains(fn (MediaItem $item): bool => $item->isVideo());
+
+        return match ($platform) {
+            SocialPlatform::Facebook => $hasVideo ? self::FacebookReel : self::FacebookPost,
+            SocialPlatform::TikTok => $hasVideo ? self::TikTokVideo : self::TikTokPhoto,
+            SocialPlatform::YouTube => self::YouTubeShort,
+        };
     }
 
     /**

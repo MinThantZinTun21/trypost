@@ -169,8 +169,8 @@ class PostPlatformMetaRules
         return match ($platform) {
             Platform::YouTube => YouTubeTitle::custom($meta) === null,
             Platform::TikTok => match ($contentType) {
-                ContentType::TikTokVideo => TikTokText::filled($meta, 'caption') === null,
-                ContentType::TikTokPhoto => TikTokText::filled($meta, 'description') === null,
+                ContentType::TikTokVideo => PostPlatformText::trimmed($meta, 'caption') === null,
+                ContentType::TikTokPhoto => PostPlatformText::trimmed($meta, 'description') === null,
                 default => true,
             },
             default => true,
