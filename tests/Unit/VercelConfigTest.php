@@ -47,3 +47,10 @@ test('vercel serves static files from a copy of public without the php front con
         ->toContain('cp -R public/. '.data_get($config, 'outputDirectory'))
         ->toContain('rm -f '.data_get($config, 'outputDirectory').'/index.php');
 });
+
+test('vercel never builds from git pushes, because the frontend is built before a cli deploy', function () {
+    $config = json_decode((string) file_get_contents(dirname(__DIR__, 2).'/vercel.json'), true);
+
+    expect(data_get($config, 'git.deploymentEnabled'))->toBeFalse()
+        ->and(data_get($config, 'buildCommand'))->toContain('public/build/manifest.json');
+});

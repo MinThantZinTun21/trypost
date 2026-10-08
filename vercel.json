@@ -1,6 +1,9 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "framework": null,
+    "git": {
+        "deploymentEnabled": false
+    },
     "installCommand": "echo 'Composer runs in the vercel-php runtime; the frontend is built before deploy'",
     "buildCommand": "if [ ! -f public/build/manifest.json ]; then echo 'Run npm run build before deploying'; exit 1; fi; rm -rf .vercel-static && mkdir .vercel-static && cp -R public/. .vercel-static && rm -f .vercel-static/index.php",
     "outputDirectory": ".vercel-static",
