@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\Account;
+use App\Models\ContentIdea;
 use App\Models\Media;
 use App\Models\Notification;
 use App\Models\Post;
@@ -44,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
             'media' => Media::class,
             'notification' => Notification::class,
             'post' => Post::class,
+            'contentIdea' => ContentIdea::class,
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,
             'user' => User::class,

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\App\AssetController;
+use App\Http\Controllers\App\ContentIdeaController;
 use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
@@ -65,6 +66,10 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     Route::put('posts/{post}', [PostController::class, 'update'])->name('app.posts.update');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('app.posts.destroy');
     Route::post('posts/{post}/duplicate', [PostController::class, 'duplicate'])->name('app.posts.duplicate');
+
+    // Content ideas
+    Route::get('ideas/{status?}', [ContentIdeaController::class, 'index'])->name('app.ideas.index')->where('status', 'new|in_progress|done');
+    Route::post('ideas', [ContentIdeaController::class, 'store'])->name('app.ideas.store');
 
     // Media uploads (chunked, from the post composer)
     Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');
