@@ -252,3 +252,45 @@ test('deleting another workspace idea returns 404', function () {
 
     $this->assertModelExists($foreign);
 });
+
+// Update status
+test('changing an idea status saves it', function (string $status) {
+    $idea = ContentIdea::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.ideas.index'))
+        ->put(route('app.ideas.status', $idea), ['status' => $status])
+        ->assertRedirect(route('app.ideas.index'));
+
+    expect($idea->refresh()->status)->toBe(Status::from($status));
+})->with(['new', 'in_progress', 'done']);
+
+test('a status change shows up in the filtered list', function () {
+    $idea = ContentIdea::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)->put(route('app.ideas.status', $idea), ['status' => 'done']);
+
+    $this->actingAs($this->user)
+        ->get(route('app.ideas.index', 'done'))
+        ->assertInertia(fn ($page) => $page->has('ideas.data', 1)->where('ideas.data.0.id', $idea->id));
+});
+
+test('changing an idea status rejects an invalid status', function (mixed $status) {
+    $idea = ContentIdea::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.ideas.status', $idea), ['status' => $status])
+        ->assertSessionHasErrors('status');
+
+    expect($idea->refresh()->status)->toBe(Status::New);
+})->with(['archived', '', null]);
+
+test('changing another workspace idea status returns 404', function () {
+    $foreign = ContentIdea::factory()->create();
+
+    $this->actingAs($this->user)
+        ->put(route('app.ideas.status', $foreign), ['status' => 'done'])
+        ->assertNotFound();
+
+    expect($foreign->refresh()->status)->toBe(Status::New);
+});

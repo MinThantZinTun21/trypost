@@ -30,6 +30,7 @@ return [
         'added' => 'Added',
     ],
     'back' => 'All ideas',
+    'change_status' => 'Change status',
     'no_details' => 'No details yet.',
     'actions' => [
         'edit' => 'Edit',

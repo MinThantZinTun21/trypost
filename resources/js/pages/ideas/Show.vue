@@ -16,9 +16,8 @@ import {
 } from '@/actions/App/Http/Controllers/App/ContentIdeaController';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import ContentIdeaFormDialog from '@/components/ideas/ContentIdeaFormDialog.vue';
-import { Badge } from '@/components/ui/badge';
+import ContentIdeaStatusPicker from '@/components/ideas/ContentIdeaStatusPicker.vue';
 import { Button } from '@/components/ui/button';
-import { getContentIdeaStatusConfig } from '@/composables/useContentIdeaStatus';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { ContentIdeaSummary } from '@/types/content-idea';
@@ -67,18 +66,10 @@ const handleDelete = () => {
                 <div
                     class="flex flex-wrap items-center gap-3 text-sm text-foreground/60"
                 >
-                    <Badge
-                        :variant="
-                            getContentIdeaStatusConfig(idea.status).variant
-                        "
-                        data-testid="idea-status"
-                    >
-                        <component
-                            :is="getContentIdeaStatusConfig(idea.status).icon"
-                            class="size-3"
-                        />
-                        {{ getContentIdeaStatusConfig(idea.status).label }}
-                    </Badge>
+                    <ContentIdeaStatusPicker
+                        :idea-id="idea.id"
+                        :status="idea.status"
+                    />
                     <span>{{ date.formatDateTime(idea.created_at) }}</span>
                     <span class="flex items-center gap-1">
                         <IconRobot

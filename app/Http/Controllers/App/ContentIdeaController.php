@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\ContentIdea\ChangeContentIdeaStatus;
 use App\Actions\ContentIdea\CreateContentIdea;
 use App\Actions\ContentIdea\DeleteContentIdea;
 use App\Actions\ContentIdea\UpdateContentIdea;
@@ -11,6 +12,7 @@ use App\Enums\ContentIdea\Status;
 use App\Enums\Post\CreatedVia;
 use App\Http\Requests\App\ContentIdea\StoreContentIdeaRequest;
 use App\Http\Requests\App\ContentIdea\UpdateContentIdeaRequest;
+use App\Http\Requests\App\ContentIdea\UpdateContentIdeaStatusRequest;
 use App\Http\Resources\App\ContentIdeaResource;
 use App\Models\ContentIdea;
 use Illuminate\Http\RedirectResponse;
@@ -69,6 +71,15 @@ class ContentIdeaController extends Controller
         $this->authorize('update', $contentIdea);
 
         UpdateContentIdea::execute($contentIdea, $request->validated());
+
+        return back();
+    }
+
+    public function updateStatus(UpdateContentIdeaStatusRequest $request, ContentIdea $contentIdea): RedirectResponse
+    {
+        $this->authorize('update', $contentIdea);
+
+        ChangeContentIdeaStatus::execute($contentIdea, Status::from((string) $request->validated('status')));
 
         return back();
     }

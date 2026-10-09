@@ -11,8 +11,8 @@ import {
 } from '@/actions/App/Http/Controllers/App/ContentIdeaController';
 import EmptyState from '@/components/EmptyState.vue';
 import ContentIdeaFormDialog from '@/components/ideas/ContentIdeaFormDialog.vue';
+import ContentIdeaStatusPicker from '@/components/ideas/ContentIdeaStatusPicker.vue';
 import PageHeader from '@/components/PageHeader.vue';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -27,7 +27,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     CONTENT_IDEA_STATUSES,
     type ContentIdeaStatus,
-    getContentIdeaStatusConfig,
 } from '@/composables/useContentIdeaStatus';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -156,28 +155,12 @@ const createDialogOpen = ref(false);
                                         </p>
                                     </div>
                                 </TableCell>
-                                <TableCell>
-                                    <Badge
-                                        :variant="
-                                            getContentIdeaStatusConfig(
-                                                idea.status,
-                                            ).variant
-                                        "
-                                    >
-                                        <component
-                                            :is="
-                                                getContentIdeaStatusConfig(
-                                                    idea.status,
-                                                ).icon
-                                            "
-                                            class="size-3"
-                                        />
-                                        {{
-                                            getContentIdeaStatusConfig(
-                                                idea.status,
-                                            ).label
-                                        }}
-                                    </Badge>
+                                <TableCell @click.stop>
+                                    <ContentIdeaStatusPicker
+                                        :idea-id="idea.id"
+                                        :status="idea.status"
+                                        :reset="['ideas']"
+                                    />
                                 </TableCell>
                                 <TableCell>
                                     <div class="space-y-0.5 text-sm">
