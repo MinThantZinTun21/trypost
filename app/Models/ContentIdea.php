@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\ContentIdea\Status;
 use App\Enums\Post\CreatedVia;
 use Database\Factories\ContentIdeaFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +49,15 @@ class ContentIdea extends Model
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    /**
+     * Newest first. The time-ordered UUID breaks ties between ideas saved in
+     * the same second, so "the latest 3" is stable.
+     */
+    public function scopeNewestFirst(Builder $query): Builder
+    {
+        return $query->latest()->latest('id');
     }
 
     /**

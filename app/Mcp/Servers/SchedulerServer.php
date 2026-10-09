@@ -9,6 +9,7 @@ use App\Mcp\Tools\CreateContentIdea;
 use App\Mcp\Tools\CreatePost;
 use App\Mcp\Tools\GetContentIdea;
 use App\Mcp\Tools\GetPost;
+use App\Mcp\Tools\ListContentIdeas;
 use App\Mcp\Tools\ListPosts;
 use App\Mcp\Tools\ListSocialAccounts;
 use App\Mcp\Tools\StartMediaUpload;
@@ -33,8 +34,9 @@ class SchedulerServer extends Server
         ListPosts::class,
         GetPost::class,
         CreatePost::class,
-        CreateContentIdea::class,
+        ListContentIdeas::class,
         GetContentIdea::class,
+        CreateContentIdea::class,
     ];
 
     protected array $resources = [];

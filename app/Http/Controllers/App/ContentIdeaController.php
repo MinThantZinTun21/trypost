@@ -36,7 +36,7 @@ class ContentIdeaController extends Controller
 
         return Inertia::render('ideas/Index', [
             'ideas' => Inertia::scroll(fn () => ContentIdeaResource::collection(
-                $query->latest()->paginate(config('app.pagination.default'))
+                $query->newestFirst()->paginate(config('app.pagination.default'))
             )),
             'currentStatus' => $status,
         ]);

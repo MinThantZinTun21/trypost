@@ -7,6 +7,7 @@ use App\Enums\Post\CreatedVia;
 use App\Mcp\Servers\SchedulerServer;
 use App\Mcp\Tools\CreateContentIdea;
 use App\Mcp\Tools\GetContentIdea;
+use App\Mcp\Tools\ListContentIdeas;
 use App\Models\ContentIdea;
 use App\Models\User;
 use App\Models\Workspace;
@@ -99,3 +100,95 @@ test('get_content_idea does not find an idea outside the owner\'s workspace', fu
     'unknown' => [fn () => fake()->uuid()],
     'not a uuid' => [fn () => '42'],
 ]);
+
+// list_content_ideas
+function contentIdeaTitles(AssertableJson $json): array
+{
+    return array_column($json->toArray()['content_ideas'], 'title');
+}
+
+test('list_content_ideas returns the latest 3, newest first, done included', function () {
+    foreach (['Oldest', 'Older', 'Middle', 'Newer', 'Newest'] as $minutesAgo => $title) {
+        ownerContentIdea(['title' => $title, 'created_at' => now()->subMinutes(10 - $minutesAgo)]);
+    }
+    ContentIdea::query()->where('title', 'Newest')->update(['status' => Status::Done]);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListContentIdeas::class, [])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) {
+            expect(contentIdeaTitles($json))->toBe(['Newest', 'Newer', 'Middle'])
+                ->and($json->toArray()['content_ideas'][0])->toMatchArray(['status' => 'done', 'details' => ContentIdea::query()->where('title', 'Newest')->value('details')])
+                ->and(array_keys($json->toArray()['content_ideas'][0]))->toEqualCanonicalizing(['id', 'title', 'details', 'status', 'created_via', 'created_at', 'updated_at', 'url']);
+            $json->etc();
+        });
+});
+
+test('list_content_ideas returns count ideas', function (int $count, int $expected) {
+    foreach (range(1, 4) as $minutesAgo) {
+        ownerContentIdea(['created_at' => now()->subMinutes($minutesAgo)]);
+    }
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListContentIdeas::class, ['count' => $count])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('content_ideas', $expected));
+})->with([
+    'one' => [1, 1],
+    'more than exist' => [50, 4],
+]);
+
+test('list_content_ideas breaks a same-second tie by creation order', function () {
+    $this->freezeSecond();
+    ownerContentIdea(['title' => 'First']);
+    ownerContentIdea(['title' => 'Second']);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListContentIdeas::class, ['count' => 1])
+        ->assertStructuredContent(function (AssertableJson $json) {
+            expect(contentIdeaTitles($json))->toBe(['Second']);
+            $json->etc();
+        });
+});
+
+test('list_content_ideas rejects a count outside 1 to 50', function (mixed $count) {
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListContentIdeas::class, ['count' => $count])
+        ->assertHasErrors();
+})->with([0, 51, -1, 'three']);
+
+test('list_content_ideas filters by status', function (string $status, array $expected) {
+    ownerContentIdea(['title' => 'Fresh', 'created_at' => now()->subMinutes(3)]);
+    ownerContentIdea(['title' => 'Working', 'status' => Status::InProgress, 'created_at' => now()->subMinutes(2)]);
+    ownerContentIdea(['title' => 'Shipped', 'status' => Status::Done, 'created_at' => now()->subMinute()]);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListContentIdeas::class, ['status' => $status])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) use ($expected) {
+            expect(contentIdeaTitles($json))->toBe($expected);
+            $json->etc();
+        });
+})->with([
+    'new' => ['new', ['Fresh']],
+    'in progress' => ['in_progress', ['Working']],
+    'done' => ['done', ['Shipped']],
+]);
+
+test('list_content_ideas rejects an unknown status', function () {
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListContentIdeas::class, ['status' => 'archived'])
+        ->assertHasErrors();
+});
+
+test('list_content_ideas only lists the owner\'s workspace', function () {
+    ContentIdea::factory()->create(['title' => 'Someone else']);
+    ownerContentIdea(['title' => 'Mine']);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListContentIdeas::class, [])
+        ->assertStructuredContent(function (AssertableJson $json) {
+            expect(contentIdeaTitles($json))->toBe(['Mine']);
+            $json->etc();
+        });
+});
