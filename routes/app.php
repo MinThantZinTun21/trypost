@@ -79,6 +79,7 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
 
     // Insights (Facebook Pages only, ADR 0004)
     Route::get('insights', [InsightsController::class, 'index'])->name('app.insights.index');
+    Route::post('insights/{socialAccount}/refresh', [InsightsController::class, 'refresh'])->name('app.insights.refresh')->whereUuid('socialAccount')->can('refreshInsights', 'socialAccount');
 
     // Media uploads (chunked, from the post composer)
     Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');

@@ -75,3 +75,22 @@ test('the insights page shows an empty state without a Facebook Page', function 
     $page->assertVisible('@insights-empty')
         ->assertNoJavaScriptErrors();
 });
+
+test('the insights page shows the last read error and the refresh button', function () {
+    $user = insightsOwner();
+    SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'insights_error' => '(#10) Not enough permission',
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights.index'));
+
+    waitForInsightsTestId($page, 'insights-error');
+
+    $page->assertVisible('@insights-error')
+        ->assertVisible('@insights-refresh')
+        ->assertVisible('@insights-not-read')
+        ->assertNoJavaScriptErrors();
+});

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -22,5 +23,17 @@ class SocialAccountPolicy
         }
 
         return true;
+    }
+
+    /**
+     * Only a Facebook Page has Insights (ADR 0004); anything else is a 404.
+     */
+    public function refreshInsights(User $user, SocialAccount $account): bool|Response
+    {
+        if ($account->platform !== Platform::Facebook) {
+            return Response::denyAsNotFound();
+        }
+
+        return $this->view($user, $account);
     }
 }

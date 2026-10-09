@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { IconAlertTriangle, IconChartLine } from '@tabler/icons-vue';
-import { computed } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import {
+    IconAlertTriangle,
+    IconChartLine,
+    IconRefresh,
+} from '@tabler/icons-vue';
+import { computed, ref } from 'vue';
 
-import { index as insightsIndex } from '@/actions/App/Http/Controllers/App/InsightsController';
+import {
+    index as insightsIndex,
+    refresh as refreshInsights,
+} from '@/actions/App/Http/Controllers/App/InsightsController';
 import EmptyState from '@/components/EmptyState.vue';
 import PageInsightsChart from '@/components/insights/PageInsightsChart.vue';
 import PageMetricCard from '@/components/insights/PageMetricCard.vue';
@@ -18,6 +25,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePollWhile } from '@/composables/usePollWhile';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accounts as accountsPage } from '@/routes/app';
@@ -43,6 +51,38 @@ const selectAccount = (accountId: unknown) => {
         router.visit(insightsUrl(accountId, props.range));
     }
 };
+
+const page = usePage();
+const refreshError = computed(() => page.props.errors?.refresh ?? null);
+const submittingRefresh = ref(false);
+
+const canRefresh = computed(
+    () =>
+        props.account !== null &&
+        !props.account.refresh_pending &&
+        props.account.refresh_available_at === null &&
+        !submittingRefresh.value,
+);
+
+const refreshNow = () => {
+    if (!props.account || !canRefresh.value) {
+        return;
+    }
+
+    router.post(
+        refreshInsights.url(props.account.id),
+        {},
+        {
+            preserveScroll: true,
+            onStart: () => (submittingRefresh.value = true),
+            onFinish: () => (submittingRefresh.value = false),
+        },
+    );
+};
+
+usePollWhile(() => props.account?.refresh_pending === true, {
+    only: ['account', 'summary'],
+});
 
 const period = computed(() =>
     props.summary
@@ -143,16 +183,55 @@ const period = computed(() =>
                     <span v-if="period" data-testid="insights-period">
                         {{ $t('insights.period', period) }}
                     </span>
-                    <span data-testid="insights-read-at">
-                        {{
-                            account.read_at
-                                ? $t('insights.read_at', {
-                                      time: date.diffForHumans(account.read_at),
-                                  })
-                                : $t('insights.never_read')
-                        }}
+                    <span
+                        class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                    >
+                        <span data-testid="insights-read-at">
+                            {{
+                                account.read_at
+                                    ? $t('insights.read_at', {
+                                          time: date.diffForHumans(
+                                              account.read_at,
+                                          ),
+                                      })
+                                    : $t('insights.never_read')
+                            }}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            :disabled="!canRefresh"
+                            data-testid="insights-refresh"
+                            @click="refreshNow"
+                        >
+                            <IconRefresh
+                                class="size-4"
+                                :class="{
+                                    'animate-spin': account.refresh_pending,
+                                }"
+                            />
+                            {{
+                                account.refresh_pending
+                                    ? $t('insights.refresh.pending')
+                                    : account.refresh_available_at
+                                      ? $t('insights.refresh.available_in', {
+                                            time: date.diffForHumans(
+                                                account.refresh_available_at,
+                                            ),
+                                        })
+                                      : $t('insights.refresh.action')
+                            }}
+                        </Button>
                     </span>
                 </div>
+
+                <p
+                    v-if="refreshError"
+                    class="text-sm text-destructive"
+                    data-testid="insights-refresh-error"
+                >
+                    {{ refreshError }}
+                </p>
 
                 <Alert
                     v-if="account.error"

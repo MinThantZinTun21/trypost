@@ -32,7 +32,10 @@ class ReadFacebookInsights implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 300;
 
-    public int $uniqueFor = 900;
+    /** How long a queued read blocks another, and counts as pending. */
+    public const UNIQUE_FOR_SECONDS = 900;
+
+    public int $uniqueFor = self::UNIQUE_FOR_SECONDS;
 
     public function __construct(public SocialAccount $account) {}
 

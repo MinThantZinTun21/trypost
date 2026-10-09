@@ -8,7 +8,9 @@ use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Jobs\ReadFacebookInsights;
 use App\Jobs\SendNotification;
+use Carbon\CarbonImmutable;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
@@ -170,6 +172,28 @@ class SocialAccount extends Model
     public function pageInsightSnapshots(): HasMany
     {
         return $this->hasMany(PageInsightSnapshot::class);
+    }
+
+    /**
+     * Whether an Insights refresh is queued and still has time to finish. A
+     * mark older than the job's unique lock belongs to a read that died, so it
+     * stops blocking (and polling) instead of hanging forever.
+     */
+    public function insightsRefreshPending(): bool
+    {
+        return $this->insights_refresh_queued_at !== null
+            && $this->insights_refresh_queued_at->isAfter(now()->subSeconds(ReadFacebookInsights::UNIQUE_FOR_SECONDS));
+    }
+
+    /**
+     * When the Owner may next ask for an Insights refresh, or null for now.
+     * Refresh now is allowed once an hour (ADR 0004).
+     */
+    public function insightsRefreshAvailableAt(): ?CarbonImmutable
+    {
+        $availableAt = $this->insights_read_at?->addHour();
+
+        return $availableAt !== null && $availableAt->isFuture() ? $availableAt : null;
     }
 
     protected function isTokenExpired(): Attribute

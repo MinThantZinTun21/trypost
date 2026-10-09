@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
+use App\Jobs\ReadFacebookInsights;
 use App\Models\PageInsightSnapshot;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->travelTo(now()->parse('2026-10-09 10:00:00'));
@@ -144,3 +146,83 @@ test('insights lists every day in the range for the chart, with gaps as nulls', 
             ->where('summary.days.6.date', '2026-10-08')
         );
 });
+
+// Refresh now
+test('refresh now queues a read and marks it pending', function () {
+    Queue::fake();
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'insights_read_at' => now()->subHours(2),
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.insights.index'))
+        ->post(route('app.insights.refresh', $account))
+        ->assertRedirect(route('app.insights.index'))
+        ->assertSessionHasNoErrors();
+
+    Queue::assertPushed(ReadFacebookInsights::class, fn (ReadFacebookInsights $job): bool => $job->account->is($account));
+
+    $account->refresh();
+    expect($account->insights_refresh_queued_at)->not->toBeNull()
+        ->and($account->insightsRefreshPending())->toBeTrue();
+
+    $this->actingAs($this->user)
+        ->get(route('app.insights.index'))
+        ->assertInertia(fn ($page) => $page->where('account.refresh_pending', true));
+});
+
+test('refresh now is refused within an hour of the last read', function () {
+    Queue::fake();
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'insights_read_at' => now()->subMinutes(20),
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.insights.refresh', $account))
+        ->assertSessionHasErrors(['refresh' => 'You can refresh again in 40 minutes.']);
+
+    Queue::assertNothingPushed();
+
+    $this->actingAs($this->user)
+        ->get(route('app.insights.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('account.refresh_pending', false)
+            ->where('account.refresh_available_at', now()->addMinutes(40)->toIso8601String())
+        );
+});
+
+test('refresh now is refused while a read is queued, until the mark goes stale', function () {
+    Queue::fake();
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'insights_refresh_queued_at' => now()->subMinutes(5),
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.insights.refresh', $account))
+        ->assertSessionHasErrors(['refresh' => 'A read is already running for this Page.']);
+
+    $account->update(['insights_refresh_queued_at' => now()->subMinutes(16)]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.insights.refresh', $account))
+        ->assertSessionHasNoErrors();
+
+    Queue::assertPushed(ReadFacebookInsights::class, 1);
+});
+
+test('refresh now is a 404 for another workspace or a non-Facebook account', function (Closure $makeAccount) {
+    Queue::fake();
+    $account = $makeAccount($this->workspace);
+
+    $this->actingAs($this->user)
+        ->post(route('app.insights.refresh', $account))
+        ->assertNotFound();
+
+    Queue::assertNothingPushed();
+})->with([
+    'another workspace' => [fn () => SocialAccount::factory()->facebook()->create()],
+    'a YouTube account' => [fn (Workspace $workspace) => SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id])],
+]);

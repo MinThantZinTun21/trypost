@@ -33,6 +33,8 @@ export interface InsightsAccount {
     read_at: string | null;
     error: string | null;
     has_snapshots: boolean;
+    refresh_pending: boolean;
+    refresh_available_at: string | null;
 }
 
 export type PageInsightsDay = { date: string } & Record<

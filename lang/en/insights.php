@@ -32,6 +32,13 @@ return [
     'chart_label' => ':metric per day',
     'read_at' => 'Read from Facebook :time',
     'never_read' => 'Not read from Facebook yet',
+    'refresh' => [
+        'action' => 'Refresh now',
+        'pending' => 'Reading from Facebook…',
+        'available_in' => 'Refresh available :time',
+        'too_soon' => 'You can refresh again in :minutes minute.|You can refresh again in :minutes minutes.',
+        'queued' => 'A read is already running for this Page.',
+    ],
     'error' => [
         'title' => 'Facebook refused the last read',
         'description' => 'The numbers below may be out of date. Facebook said: :message',
