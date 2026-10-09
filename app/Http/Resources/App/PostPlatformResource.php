@@ -30,6 +30,7 @@ class PostPlatformResource extends JsonResource
             'display_username' => $this->display_username,
             'display_avatar' => $this->display_avatar,
             'social_account' => new SocialAccountSummaryResource($this->whenLoaded('socialAccount')),
+            'insights' => $this->whenLoaded('insight', fn () => $this->insight === null ? null : (new PostInsightResource($this->insight))->resolve()),
         ];
     }
 }

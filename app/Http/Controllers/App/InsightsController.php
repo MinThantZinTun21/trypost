@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Insights\ListTopPosts;
 use App\Actions\Insights\RefreshPageInsights;
 use App\Actions\Insights\SummarizePageInsights;
 use App\Enums\Insights\Range;
@@ -31,6 +32,7 @@ class InsightsController extends Controller
 
         $account = $accounts->firstWhere('id', $request->validated('account')) ?? $accounts->first();
         $range = $request->range();
+        $summary = $account === null ? null : SummarizePageInsights::execute($account, $range);
 
         return Inertia::render('insights/Index', [
             'accounts' => $accounts->map(fn (SocialAccount $facebookAccount): array => [
@@ -49,7 +51,8 @@ class InsightsController extends Controller
             ],
             'range' => $range->value,
             'ranges' => Range::values(),
-            'summary' => $account === null ? null : SummarizePageInsights::execute($account, $range),
+            'summary' => $summary,
+            'topPosts' => $account === null ? [] : ListTopPosts::execute($account, data_get($summary, 'from'), data_get($summary, 'to')),
         ]);
     }
 

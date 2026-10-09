@@ -146,7 +146,7 @@ class PostController extends Controller
             return redirect()->route('app.posts.edit', $post);
         }
 
-        $post->load('postPlatforms.socialAccount');
+        $post->load(['postPlatforms.socialAccount', 'postPlatforms.insight']);
 
         return Inertia::render('posts/Show', [
             'workspace' => $workspace,

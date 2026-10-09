@@ -39,6 +39,28 @@ return [
         'too_soon' => 'You can refresh again in :minutes minute.|You can refresh again in :minutes minutes.',
         'queued' => 'A read is already running for this Page.',
     ],
+    'post' => [
+        'title' => 'Insights',
+        'not_read' => 'Not read from Facebook yet. Insights are read daily for 30 days after a Post publishes.',
+        'read_at' => 'Read :time',
+        'metrics' => [
+            'views' => 'Views',
+            'reach' => 'Reach',
+            'reactions' => 'Reactions',
+            'clicks' => 'Clicks',
+            'video_views' => 'Video views',
+            'avg_watch_time_ms' => 'Avg. watch time',
+            'watch_time_ms' => 'Watch time',
+            'reel_plays' => 'Reel plays',
+        ],
+    ],
+    'top_posts' => [
+        'title' => 'Top Posts',
+        'description' => 'Posts this app published in the range, by views.',
+        'empty' => 'No Post published in this range has Insights yet.',
+        'untitled' => 'Post without text',
+        'views' => ':count view|:count views',
+    ],
     'error' => [
         'title' => 'Facebook refused the last read',
         'description' => 'The numbers below may be out of date. Facebook said: :message',

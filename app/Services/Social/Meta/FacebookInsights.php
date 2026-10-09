@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Social\Meta;
 
 use App\Enums\Insights\PageMetric;
+use App\Enums\Insights\PostMetric;
 use App\Exceptions\Social\InsightsReadException;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -61,6 +63,79 @@ class FacebookInsights
         ksort($days);
 
         return $days;
+    }
+
+    /**
+     * Lifetime Post insights for one Post platform. A text or photo Post's
+     * stored id is already its feed post id; a video Post or Reel stores the
+     * video id, so its feed post id is resolved (once: pass it back in) and
+     * the video's own insights are read too.
+     *
+     * @return array<string, int|string|null> feed_post_id plus each PostMetric column read
+     */
+    public function postTotals(SocialAccount $account, PostPlatform $postPlatform, ?string $feedPostId = null): array
+    {
+        $platformPostId = (string) $postPlatform->platform_post_id;
+        $isVideo = ! str_contains($platformPostId, '_');
+        $feedPostId ??= $isVideo ? $this->resolveFeedPostId($account, $platformPostId) : $platformPostId;
+
+        $totals = [
+            'feed_post_id' => $feedPostId,
+            ...$this->lifetimeValues($account, "{$feedPostId}/insights", PostMetric::feedMetrics($isVideo)),
+        ];
+
+        if ($isVideo) {
+            $totals = [
+                ...$totals,
+                ...$this->lifetimeValues($account, "{$platformPostId}/video_insights", PostMetric::videoMetrics()),
+            ];
+        }
+
+        return $totals;
+    }
+
+    private function resolveFeedPostId(SocialAccount $account, string $videoId): string
+    {
+        $postId = $this->get($account, $videoId, ['fields' => 'post_id'])->json('post_id');
+
+        if (! is_string($postId) || $postId === '') {
+            throw new InsightsReadException("Facebook has no feed post for video {$videoId} yet.");
+        }
+
+        return str_contains($postId, '_') ? $postId : "{$this->pageId($account)}_{$postId}";
+    }
+
+    /**
+     * A lifetime metric's value is a number, or a count per reaction type,
+     * which is summed.
+     *
+     * @param  array<int, PostMetric>  $metrics
+     * @return array<string, int|null>
+     */
+    private function lifetimeValues(SocialAccount $account, string $path, array $metrics): array
+    {
+        $response = $this->get($account, $path, [
+            'metric' => implode(',', array_map(fn (PostMetric $metric): string => $metric->graphMetric(), $metrics)),
+        ]);
+
+        $values = array_fill_keys(array_map(fn (PostMetric $metric): string => $metric->value, $metrics), null);
+
+        foreach ($response->json('data') ?? [] as $series) {
+            $metric = collect($metrics)->first(fn (PostMetric $metric): bool => $metric->graphMetric() === data_get($series, 'name'));
+            $value = data_get($series, 'values.0.value');
+
+            if ($metric === null) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $values[$metric->value] = (int) array_sum($value);
+            } elseif (is_numeric($value)) {
+                $values[$metric->value] = (int) round((float) $value);
+            }
+        }
+
+        return $values;
     }
 
     private function pageId(SocialAccount $account): string

@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Status;
 use App\Jobs\ReadFacebookInsights;
 use App\Models\PageInsightSnapshot;
+use App\Models\PostInsight;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -128,4 +130,101 @@ test('a successful read clears an earlier error', function () {
 
 test('reads are unique per Social account', function () {
     expect((new ReadFacebookInsights($this->account))->uniqueId())->toBe($this->account->id);
+});
+
+// Post insights
+test('it reads Post insights for a text or photo Post through its feed post id', function () {
+    $graph = config('trypost.platforms.facebook.graph_api');
+    $postPlatform = PostPlatform::factory()->facebook()->published()->create([
+        'social_account_id' => $this->account->id,
+        'platform_post_id' => '1234_555',
+    ]);
+
+    Http::fake([
+        $this->insightsUrl => Http::response(['data' => []]),
+        "{$graph}/1234_555/insights*" => Http::response(['data' => [
+            ['name' => 'post_media_view', 'period' => 'lifetime', 'values' => [['value' => 420]]],
+            ['name' => 'post_total_media_view_unique', 'period' => 'lifetime', 'values' => [['value' => 300]]],
+            ['name' => 'post_reactions_by_type_total', 'period' => 'lifetime', 'values' => [['value' => ['like' => 10, 'love' => 3]]]],
+            ['name' => 'post_clicks', 'period' => 'lifetime', 'values' => [['value' => 7]]],
+        ]]),
+    ]);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '1234_555/insights')
+        && $request['metric'] === 'post_media_view,post_total_media_view_unique,post_reactions_by_type_total,post_clicks');
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'video_insights'));
+
+    $insight = $postPlatform->insight()->first();
+
+    expect($insight->feed_post_id)->toBe('1234_555')
+        ->and($insight->views)->toBe(420)
+        ->and($insight->reach)->toBe(300)
+        ->and($insight->reactions)->toBe(13)
+        ->and($insight->clicks)->toBe(7)
+        ->and($insight->video_views)->toBeNull()
+        ->and($insight->read_at)->not->toBeNull();
+});
+
+test('it resolves a Reel feed post id once and reads its video insights', function () {
+    $graph = config('trypost.platforms.facebook.graph_api');
+    $postPlatform = PostPlatform::factory()->facebookReel()->published()->create([
+        'social_account_id' => $this->account->id,
+        'platform_post_id' => '9001',
+    ]);
+
+    Http::fake([
+        $this->insightsUrl => Http::response(['data' => []]),
+        "{$graph}/9001/video_insights*" => Http::response(['data' => [
+            ['name' => 'post_video_avg_time_watched', 'values' => [['value' => 5400]]],
+            ['name' => 'post_video_view_time', 'values' => [['value' => 81000]]],
+            ['name' => 'blue_reels_play_count', 'values' => [['value' => 640]]],
+        ]]),
+        "{$graph}/9001*" => Http::response(['post_id' => '777', 'id' => '9001']),
+        "{$graph}/1234_777/insights*" => Http::response(['data' => [
+            ['name' => 'post_media_view', 'values' => [['value' => 700]]],
+            ['name' => 'post_video_views', 'values' => [['value' => 610]]],
+        ]]),
+    ]);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    $insight = $postPlatform->insight()->first();
+
+    expect($insight->feed_post_id)->toBe('1234_777')
+        ->and($insight->views)->toBe(700)
+        ->and($insight->video_views)->toBe(610)
+        ->and($insight->avg_watch_time_ms)->toBe(5400)
+        ->and($insight->watch_time_ms)->toBe(81000)
+        ->and($insight->reel_plays)->toBe(640);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    $feedPostLookups = Http::recorded(fn (Request $request): bool => data_get($request->data(), 'fields') === 'post_id');
+
+    expect($feedPostLookups)->toHaveCount(1);
+});
+
+test('one refused Post does not stop the others, and Stories and old or other Posts are skipped', function () {
+    $graph = config('trypost.platforms.facebook.graph_api');
+    PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_1']);
+    $second = PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_2']);
+    PostPlatform::factory()->facebookStory()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_3']);
+    $old = PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_4', 'published_at' => now()->subDays(40)]);
+    PostInsight::factory()->create(['post_platform_id' => $old->id, 'views' => 5]);
+    PostPlatform::factory()->facebook()->published()->create(['platform_post_id' => '9999_5']);
+
+    Http::fake([
+        $this->insightsUrl => Http::response(['data' => []]),
+        "{$graph}/1234_1/insights*" => Http::response(['error' => ['message' => 'Unsupported get request', 'code' => 100]], 400),
+        "{$graph}/1234_2/insights*" => Http::response(['data' => [['name' => 'post_media_view', 'values' => [['value' => 9]]]]]),
+    ]);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    expect(PostInsight::query()->count())->toBe(2)
+        ->and($second->insight()->first()->views)->toBe(9)
+        ->and($old->insight()->first()->views)->toBe(5)
+        ->and($this->account->refresh()->insights_error)->toBeNull();
 });

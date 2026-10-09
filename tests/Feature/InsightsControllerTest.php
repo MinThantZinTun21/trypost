@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\ReadFacebookInsights;
 use App\Models\PageInsightSnapshot;
+use App\Models\Post;
+use App\Models\PostInsight;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -226,3 +229,50 @@ test('refresh now is a 404 for another workspace or a non-Facebook account', fun
     'another workspace' => [fn () => SocialAccount::factory()->facebook()->create()],
     'a YouTube account' => [fn (Workspace $workspace) => SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id])],
 ]);
+
+// Post insights
+test('insights lists the top Posts published in the range by views', function () {
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $makeInsight = function (string $content, string $publishedAt, int $views) use ($account): PostInsight {
+        $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => $content]);
+        $postPlatform = PostPlatform::factory()->facebook()->published()->create([
+            'post_id' => $post->id,
+            'social_account_id' => $account->id,
+            'published_at' => $publishedAt,
+        ]);
+
+        return PostInsight::factory()->create(['post_platform_id' => $postPlatform->id, 'views' => $views]);
+    };
+
+    $makeInsight('Quiet one', '2026-10-03 09:00:00', 40);
+    $top = $makeInsight('Desk tour', '2026-10-08 20:00:00', 900);
+    $makeInsight('Too old', '2026-09-20 09:00:00', 5000);
+    $makeInsight('Published today', '2026-10-09 08:00:00', 5000);
+
+    $this->actingAs($this->user)
+        ->get(route('app.insights.index', ['range' => 7]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('topPosts', 2)
+            ->where('topPosts.0.post_id', $top->postPlatform->post_id)
+            ->where('topPosts.0.content', 'Desk tour')
+            ->where('topPosts.0.insights.views', 900)
+            ->where('topPosts.1.content', 'Quiet one')
+        );
+});
+
+test('the Post page shows Post insights for each Facebook Post platform', function () {
+    $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $read = PostPlatform::factory()->facebookReel()->published()->create(['post_id' => $post->id]);
+    PostInsight::factory()->create(['post_platform_id' => $read->id, 'views' => 321, 'reel_plays' => 200]);
+    PostPlatform::factory()->facebook()->published()->create(['post_id' => $post->id]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.show', $post))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('post.platforms', fn ($platforms) => collect($platforms)->firstWhere('id', $read->id)['insights']['views'] === 321
+                && collect($platforms)->firstWhere('id', $read->id)['insights']['reel_plays'] === 200
+                && collect($platforms)->firstWhere('id', '!=', $read->id)['insights'] === null)
+        );
+});

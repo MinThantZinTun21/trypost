@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
 use App\Models\PageInsightSnapshot;
+use App\Models\Post;
+use App\Models\PostInsight;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -59,6 +62,7 @@ test('the insights page shows Page insights without javascript errors', function
     $page->assertVisible('@insights-metric-followers')
         ->assertVisible('@insights-metric-views')
         ->assertVisible('@insights-chart')
+        ->assertVisible('@insights-top-posts')
         ->click('@insights-chart-metric-reach')
         ->assertVisible('@insights-range-7')
         ->assertVisible('@insights-read-at')
@@ -92,5 +96,22 @@ test('the insights page shows the last read error and the refresh button', funct
     $page->assertVisible('@insights-error')
         ->assertVisible('@insights-refresh')
         ->assertVisible('@insights-not-read')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the Post page shows Post insights for a Facebook Reel', function () {
+    $user = insightsOwner();
+    $post = Post::factory()->published()->create(['workspace_id' => $user->current_workspace_id, 'user_id' => $user->id, 'content' => 'Desk tour']);
+    $postPlatform = PostPlatform::factory()->facebookReel()->published()->create(['post_id' => $post->id]);
+    PostInsight::factory()->create(['post_platform_id' => $postPlatform->id, 'views' => 1234, 'avg_watch_time_ms' => 5400]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.show', $post));
+
+    waitForInsightsTestId($page, 'post-insights-views');
+
+    $page->assertVisible('@post-insights-views')
+        ->assertVisible('@post-insights-avg_watch_time_ms')
         ->assertNoJavaScriptErrors();
 });

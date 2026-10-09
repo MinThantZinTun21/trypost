@@ -14,6 +14,7 @@ import {
 import EmptyState from '@/components/EmptyState.vue';
 import PageInsightsChart from '@/components/insights/PageInsightsChart.vue';
 import PageMetricCard from '@/components/insights/PageMetricCard.vue';
+import TopPostsList from '@/components/insights/TopPostsList.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import type {
     InsightsAccount,
     InsightsAccountOption,
     PageInsightsSummary,
+    TopPost,
 } from '@/types/insights';
 
 const props = defineProps<{
@@ -41,6 +43,7 @@ const props = defineProps<{
     range: number;
     ranges: number[];
     summary: PageInsightsSummary | null;
+    topPosts: TopPost[];
 }>();
 
 const insightsUrl = (accountId: string | undefined, range: number) =>
@@ -81,7 +84,7 @@ const refreshNow = () => {
 };
 
 usePollWhile(() => props.account?.refresh_pending === true, {
-    only: ['account', 'summary'],
+    only: ['account', 'summary', 'topPosts'],
 });
 
 const period = computed(() =>
@@ -274,6 +277,8 @@ const period = computed(() =>
                     v-if="account.has_snapshots && summary"
                     :days="summary.days"
                 />
+
+                <TopPostsList v-if="account.has_snapshots" :posts="topPosts" />
             </template>
         </div>
     </AppLayout>
