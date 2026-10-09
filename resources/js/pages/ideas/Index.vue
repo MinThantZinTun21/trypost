@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Head, InfiniteScroll, Link } from '@inertiajs/vue3';
+import { Head, InfiniteScroll, Link, router } from '@inertiajs/vue3';
 import { IconBulb, IconRobot } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import {
     index as ideasIndex,
+    show as showIdea,
     store as storeIdea,
 } from '@/actions/App/Http/Controllers/App/ContentIdeaController';
 import EmptyState from '@/components/EmptyState.vue';
@@ -137,6 +138,8 @@ const createDialogOpen = ref(false);
                                 v-for="idea in ideas.data"
                                 :key="idea.id"
                                 :data-testid="`idea-row-${idea.id}`"
+                                class="cursor-pointer"
+                                @click="router.visit(showIdea.url(idea.id))"
                             >
                                 <TableCell class="max-w-md py-3">
                                     <div class="space-y-1">

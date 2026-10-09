@@ -29,8 +29,24 @@ return [
         'status' => 'Status',
         'added' => 'Added',
     ],
+    'back' => 'All ideas',
+    'no_details' => 'No details yet.',
+    'actions' => [
+        'edit' => 'Edit',
+        'delete' => 'Delete',
+    ],
+    'delete_modal' => [
+        'title' => 'Delete this idea?',
+        'description' => 'The idea and its details will be removed.',
+        'action' => 'Delete idea',
+        'cancel' => 'Cancel',
+    ],
+    'flash' => [
+        'deleted' => 'Idea deleted.',
+    ],
     'form' => [
         'create_title' => 'New idea',
+        'edit_title' => 'Edit idea',
         'create_description' => 'Write the details in Markdown: a brief, a script or a prompt.',
         'title' => 'Title',
         'title_placeholder' => 'What is the idea?',

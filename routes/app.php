@@ -70,6 +70,9 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     // Content ideas
     Route::get('ideas/{status?}', [ContentIdeaController::class, 'index'])->name('app.ideas.index')->where('status', 'new|in_progress|done');
     Route::post('ideas', [ContentIdeaController::class, 'store'])->name('app.ideas.store');
+    Route::get('ideas/{contentIdea}', [ContentIdeaController::class, 'show'])->name('app.ideas.show')->whereUuid('contentIdea');
+    Route::put('ideas/{contentIdea}', [ContentIdeaController::class, 'update'])->name('app.ideas.update')->whereUuid('contentIdea');
+    Route::delete('ideas/{contentIdea}', [ContentIdeaController::class, 'destroy'])->name('app.ideas.destroy')->whereUuid('contentIdea');
 
     // Media uploads (chunked, from the post composer)
     Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');
