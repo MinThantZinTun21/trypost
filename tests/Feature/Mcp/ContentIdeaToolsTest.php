@@ -139,6 +139,17 @@ test('list_content_ideas returns count ideas', function (int $count, int $expect
     'more than exist' => [50, 4],
 ]);
 
+test('list_content_ideas treats a null count as the default 3', function () {
+    foreach (range(1, 4) as $minutesAgo) {
+        ownerContentIdea(['created_at' => now()->subMinutes($minutesAgo)]);
+    }
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(ListContentIdeas::class, ['count' => null])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('content_ideas', 3));
+});
+
 test('list_content_ideas breaks a same-second tie by creation order', function () {
     $this->freezeSecond();
     ownerContentIdea(['title' => 'First']);

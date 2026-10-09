@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Mcp\Tools\Concerns\PresentsContentIdea;
+use App\Mcp\Tools\Concerns\HandlesContentIdeas;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Laravel\Mcp\Request;
@@ -20,15 +20,13 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly]
 class GetContentIdea extends Tool
 {
-    use PresentsContentIdea;
+    use HandlesContentIdeas;
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $validated = $request->validate(['id' => ['required', 'string', 'uuid']]);
+        $validated = $request->validate($this->contentIdeaIdRules());
 
-        $contentIdea = $request->user()->resolveCurrentWorkspace()
-            ->contentIdeas()
-            ->find(data_get($validated, 'id'));
+        $contentIdea = $this->findContentIdea($request, (string) data_get($validated, 'id'));
 
         if ($contentIdea === null) {
             return Response::error(__('mcp.content_idea.not_found'));

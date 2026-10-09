@@ -48,7 +48,7 @@ return [
     'form' => [
         'create_title' => 'New idea',
         'edit_title' => 'Edit idea',
-        'create_description' => 'Write the details in Markdown: a brief, a script or a prompt.',
+        'details_hint' => 'Write the details in Markdown: a brief, a script or a prompt.',
         'title' => 'Title',
         'title_placeholder' => 'What is the idea?',
         'details' => 'Details',

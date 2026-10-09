@@ -42,10 +42,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'account' => Account::class,
+            'contentIdea' => ContentIdea::class,
             'media' => Media::class,
             'notification' => Notification::class,
             'post' => Post::class,
-            'contentIdea' => ContentIdea::class,
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,
             'user' => User::class,

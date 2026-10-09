@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import {
-    IconArrowLeft,
-    IconPencil,
-    IconRobot,
-    IconTrash,
-} from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
+import { IconArrowLeft, IconPencil, IconTrash } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import {
@@ -16,6 +10,7 @@ import {
 } from '@/actions/App/Http/Controllers/App/ContentIdeaController';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import ContentIdeaFormDialog from '@/components/ideas/ContentIdeaFormDialog.vue';
+import ContentIdeaSource from '@/components/ideas/ContentIdeaSource.vue';
 import ContentIdeaStatusPicker from '@/components/ideas/ContentIdeaStatusPicker.vue';
 import { Button } from '@/components/ui/button';
 import date from '@/date';
@@ -71,13 +66,7 @@ const handleDelete = () => {
                         :status="idea.status"
                     />
                     <span>{{ date.formatDateTime(idea.created_at) }}</span>
-                    <span class="flex items-center gap-1">
-                        <IconRobot
-                            v-if="idea.created_via === 'mcp'"
-                            class="size-4"
-                        />
-                        {{ $t(`ideas.created_via.${idea.created_via}`) }}
-                    </span>
+                    <ContentIdeaSource :created-via="idea.created_via" />
                 </div>
 
                 <div class="flex flex-wrap gap-2">
@@ -115,8 +104,8 @@ const handleDelete = () => {
     <ContentIdeaFormDialog
         v-model:open="editDialogOpen"
         :action="updateIdea.form(idea.id)"
-        :title="trans('ideas.form.edit_title')"
-        :description="trans('ideas.form.create_description')"
+        :title="$t('ideas.form.edit_title')"
+        :description="$t('ideas.form.details_hint')"
         :initial-title="idea.title"
         :initial-details="idea.details"
     />

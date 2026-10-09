@@ -16,23 +16,20 @@ class ContentIdeaPolicy
 {
     public function view(User $user, ContentIdea $contentIdea): bool|Response
     {
-        if ($contentIdea->workspace_id !== $user->current_workspace_id) {
-            return Response::denyAsNotFound();
-        }
-
-        return true;
+        return $this->canManage($user, $contentIdea);
     }
 
     public function update(User $user, ContentIdea $contentIdea): bool|Response
     {
-        if ($contentIdea->workspace_id !== $user->current_workspace_id) {
-            return Response::denyAsNotFound();
-        }
-
-        return $user->can('manageContentIdeas', $user->currentWorkspace);
+        return $this->canManage($user, $contentIdea);
     }
 
     public function delete(User $user, ContentIdea $contentIdea): bool|Response
+    {
+        return $this->canManage($user, $contentIdea);
+    }
+
+    private function canManage(User $user, ContentIdea $contentIdea): bool|Response
     {
         if ($contentIdea->workspace_id !== $user->current_workspace_id) {
             return Response::denyAsNotFound();

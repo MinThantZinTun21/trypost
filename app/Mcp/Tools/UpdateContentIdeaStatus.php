@@ -6,7 +6,7 @@ namespace App\Mcp\Tools;
 
 use App\Actions\ContentIdea\ChangeContentIdeaStatus;
 use App\Enums\ContentIdea\Status;
-use App\Mcp\Tools\Concerns\PresentsContentIdea;
+use App\Mcp\Tools\Concerns\HandlesContentIdeas;
 use App\Support\ContentIdeaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -21,18 +21,16 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Moves one of the Owner\'s Content ideas to new, in_progress or done. Mark it in_progress when you start on it and done once its Post is made.')]
 class UpdateContentIdeaStatus extends Tool
 {
-    use PresentsContentIdea;
+    use HandlesContentIdeas;
 
     public function handle(Request $request): Response|ResponseFactory
     {
         $validated = $request->validate([
-            'id' => ['required', 'string', 'uuid'],
+            ...$this->contentIdeaIdRules(),
             ...ContentIdeaRules::status(),
         ]);
 
-        $contentIdea = $request->user()->resolveCurrentWorkspace()
-            ->contentIdeas()
-            ->find(data_get($validated, 'id'));
+        $contentIdea = $this->findContentIdea($request, (string) data_get($validated, 'id'));
 
         if ($contentIdea === null) {
             return Response::error(__('mcp.content_idea.not_found'));

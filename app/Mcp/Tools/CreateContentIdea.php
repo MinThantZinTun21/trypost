@@ -6,7 +6,7 @@ namespace App\Mcp\Tools;
 
 use App\Actions\ContentIdea\CreateContentIdea as CreateContentIdeaAction;
 use App\Enums\Post\CreatedVia;
-use App\Mcp\Tools\Concerns\PresentsContentIdea;
+use App\Mcp\Tools\Concerns\HandlesContentIdeas;
 use App\Support\ContentIdeaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -21,7 +21,7 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Saves a Content idea for the Owner to post later: a title and optional Markdown details such as a brief, script or prompt. It starts as "new" and shows on the Owner\'s Content ideas page.')]
 class CreateContentIdea extends Tool
 {
-    use PresentsContentIdea;
+    use HandlesContentIdeas;
 
     public function handle(Request $request): ResponseFactory
     {

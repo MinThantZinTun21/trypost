@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools;
 
 use App\Enums\ContentIdea\Status;
-use App\Mcp\Tools\Concerns\PresentsContentIdea;
+use App\Mcp\Tools\Concerns\HandlesContentIdeas;
 use App\Models\ContentIdea;
 use App\Support\ContentIdeaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -24,7 +24,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly]
 class ListContentIdeas extends Tool
 {
-    use PresentsContentIdea;
+    use HandlesContentIdeas;
 
     private const int DEFAULT_COUNT = 3;
 
@@ -44,7 +44,7 @@ class ListContentIdeas extends Tool
         }
 
         $contentIdeas = $query->newestFirst()
-            ->limit((int) data_get($validated, 'count', self::DEFAULT_COUNT))
+            ->limit((int) (data_get($validated, 'count') ?? self::DEFAULT_COUNT))
             ->get();
 
         return Response::structured([

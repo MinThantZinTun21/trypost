@@ -26,7 +26,7 @@ class ContentIdeaController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('view', $workspace);
+        $this->authorize('manageContentIdeas', $workspace);
 
         $query = $workspace->contentIdeas();
 
@@ -36,7 +36,7 @@ class ContentIdeaController extends Controller
 
         return Inertia::render('ideas/Index', [
             'ideas' => Inertia::scroll(fn () => ContentIdeaResource::collection(
-                $query->newestFirst()->paginate(config('app.pagination.default'))
+                $query->newestFirst()->paginate((int) config('app.pagination.default'))
             )),
             'currentStatus' => $status,
         ]);
@@ -79,7 +79,7 @@ class ContentIdeaController extends Controller
     {
         $this->authorize('update', $contentIdea);
 
-        ChangeContentIdeaStatus::execute($contentIdea, Status::from((string) $request->validated('status')));
+        ChangeContentIdeaStatus::execute($contentIdea, $request->enum('status', Status::class));
 
         return back();
     }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/vue3';
-import { IconBulb, IconRobot } from '@tabler/icons-vue';
+import { IconBulb } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
@@ -11,6 +11,7 @@ import {
 } from '@/actions/App/Http/Controllers/App/ContentIdeaController';
 import EmptyState from '@/components/EmptyState.vue';
 import ContentIdeaFormDialog from '@/components/ideas/ContentIdeaFormDialog.vue';
+import ContentIdeaSource from '@/components/ideas/ContentIdeaSource.vue';
 import ContentIdeaStatusPicker from '@/components/ideas/ContentIdeaStatusPicker.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
@@ -169,21 +170,10 @@ const createDialogOpen = ref(false);
                                                 date.formatDate(idea.created_at)
                                             }}
                                         </p>
-                                        <p
-                                            class="flex items-center gap-1 text-xs text-foreground/60"
-                                        >
-                                            <IconRobot
-                                                v-if="
-                                                    idea.created_via === 'mcp'
-                                                "
-                                                class="size-3"
-                                            />
-                                            {{
-                                                $t(
-                                                    `ideas.created_via.${idea.created_via}`,
-                                                )
-                                            }}
-                                        </p>
+                                        <ContentIdeaSource
+                                            :created-via="idea.created_via"
+                                            class="text-xs text-foreground/60"
+                                        />
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -202,7 +192,7 @@ const createDialogOpen = ref(false);
         v-model:open="createDialogOpen"
         :action="storeIdea.form()"
         :title="$t('ideas.form.create_title')"
-        :description="$t('ideas.form.create_description')"
+        :description="$t('ideas.form.details_hint')"
         :reset="['ideas']"
     />
 </template>
