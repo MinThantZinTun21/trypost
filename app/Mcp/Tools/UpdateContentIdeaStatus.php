@@ -26,7 +26,7 @@ class UpdateContentIdeaStatus extends Tool
     public function handle(Request $request): Response|ResponseFactory
     {
         $validated = $request->validate([
-            ...$this->contentIdeaIdRules(),
+            ...ContentIdeaRules::id(),
             ...ContentIdeaRules::status(),
         ]);
 
@@ -50,7 +50,7 @@ class UpdateContentIdeaStatus extends Tool
     {
         return [
             'id' => $schema->string()->description('The Content idea\'s id, from list_content_ideas or create_content_idea.')->required(),
-            'status' => $schema->string()->enum(ContentIdeaRules::statusValues())->description('The new status.')->required(),
+            'status' => $schema->string()->enum(Status::values())->description('The new status.')->required(),
         ];
     }
 }

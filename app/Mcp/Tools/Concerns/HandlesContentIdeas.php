@@ -13,14 +13,6 @@ use Laravel\Mcp\Request;
  */
 trait HandlesContentIdeas
 {
-    /**
-     * @return array{id: array<int, string>}
-     */
-    protected function contentIdeaIdRules(): array
-    {
-        return ['id' => ['required', 'string', 'uuid']];
-    }
-
     protected function findContentIdea(Request $request, string $id): ?ContentIdea
     {
         return $request->user()->resolveCurrentWorkspace()->contentIdeas()->find($id);

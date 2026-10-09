@@ -29,6 +29,16 @@ class ContentIdeaRules
     }
 
     /**
+     * @return array{id: array<int, string>}
+     */
+    public static function id(): array
+    {
+        return [
+            'id' => ['required', 'string', 'uuid'],
+        ];
+    }
+
+    /**
      * @return array{status: array<int, mixed>}
      */
     public static function status(): array
@@ -36,13 +46,5 @@ class ContentIdeaRules
         return [
             'status' => ['required', 'string', Rule::enum(Status::class)],
         ];
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public static function statusValues(): array
-    {
-        return array_map(fn (Status $status): string => $status->value, Status::cases());
     }
 }

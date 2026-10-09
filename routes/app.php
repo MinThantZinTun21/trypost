@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\ContentIdea\Status as ContentIdeaStatus;
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\ContentIdeaController;
 use App\Http\Controllers\App\NotificationController;
@@ -14,7 +15,6 @@ use App\Http\Controllers\Auth\SocialController;
 use App\Http\Controllers\Auth\TikTokController;
 use App\Http\Controllers\Auth\YouTubeController;
 use App\Http\Middleware\App\EnsureHasWorkspace;
-use App\Support\ContentIdeaRules;
 use Illuminate\Support\Facades\Route;
 
 // Home (auth only)
@@ -69,7 +69,7 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     Route::post('posts/{post}/duplicate', [PostController::class, 'duplicate'])->name('app.posts.duplicate');
 
     // Content ideas
-    Route::get('ideas/{status?}', [ContentIdeaController::class, 'index'])->name('app.ideas.index')->whereIn('status', ContentIdeaRules::statusValues());
+    Route::get('ideas/{status?}', [ContentIdeaController::class, 'index'])->name('app.ideas.index')->whereIn('status', ContentIdeaStatus::values());
     Route::post('ideas', [ContentIdeaController::class, 'store'])->name('app.ideas.store');
     Route::get('ideas/{contentIdea}', [ContentIdeaController::class, 'show'])->name('app.ideas.show')->whereUuid('contentIdea');
     Route::put('ideas/{contentIdea}', [ContentIdeaController::class, 'update'])->name('app.ideas.update')->whereUuid('contentIdea');

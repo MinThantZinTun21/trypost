@@ -7,7 +7,6 @@ namespace App\Mcp\Tools;
 use App\Enums\ContentIdea\Status;
 use App\Mcp\Tools\Concerns\HandlesContentIdeas;
 use App\Models\ContentIdea;
-use App\Support\ContentIdeaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Illuminate\Validation\Rule;
@@ -43,6 +42,7 @@ class ListContentIdeas extends Tool
             $query->where('status', $status);
         }
 
+        // `??`, not data_get's default: an explicit null count is kept by validation and means "the default".
         $contentIdeas = $query->newestFirst()
             ->limit((int) (data_get($validated, 'count') ?? self::DEFAULT_COUNT))
             ->get();
@@ -62,7 +62,7 @@ class ListContentIdeas extends Tool
     {
         return [
             'count' => $schema->integer()->min(1)->max(self::MAX_COUNT)->default(self::DEFAULT_COUNT)->description('How many of the latest ideas to return. Defaults to 3.'),
-            'status' => $schema->string()->enum(ContentIdeaRules::statusValues())->description('Optional: only ideas with this status. Leave it out to include every status, Done too.'),
+            'status' => $schema->string()->enum(Status::values())->description('Optional: only ideas with this status. Leave it out to include every status, Done too.'),
         ];
     }
 }

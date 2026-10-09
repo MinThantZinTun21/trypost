@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools;
 
 use App\Mcp\Tools\Concerns\HandlesContentIdeas;
+use App\Support\ContentIdeaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Laravel\Mcp\Request;
@@ -24,7 +25,7 @@ class GetContentIdea extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $validated = $request->validate($this->contentIdeaIdRules());
+        $validated = $request->validate(ContentIdeaRules::id());
 
         $contentIdea = $this->findContentIdea($request, (string) data_get($validated, 'id'));
 
