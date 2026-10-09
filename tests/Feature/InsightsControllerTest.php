@@ -276,3 +276,19 @@ test('the Post page shows Post insights for each Facebook Post platform', functi
                 && collect($platforms)->firstWhere('id', '!=', $read->id)['insights'] === null)
         );
 });
+
+// Cleanup
+test('disconnecting a Facebook Page deletes its Page insights and keeps Post insights with the Post history', function () {
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    PageInsightSnapshot::factory()->count(2)->sequence(['date' => '2026-10-01'], ['date' => '2026-10-02'])->create(['social_account_id' => $account->id]);
+    $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $postPlatform = PostPlatform::factory()->facebook()->published()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
+    PostInsight::factory()->create(['post_platform_id' => $postPlatform->id]);
+
+    $this->actingAs($this->user)
+        ->delete(route('app.accounts.disconnect', $account))
+        ->assertRedirect();
+
+    expect(PageInsightSnapshot::query()->count())->toBe(0)
+        ->and(PostInsight::query()->count())->toBe(1);
+});
