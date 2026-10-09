@@ -16,7 +16,7 @@ class InsightsReadException extends Exception
 {
     public static function fromResponse(Response $response): self
     {
-        $message = data_get($response->json(), 'error.message') ?? "Facebook answered HTTP {$response->status()}.";
+        $message = data_get($response->json(), 'error.message') ?? __('insights.http_error', ['status' => $response->status()]);
 
         return new self((string) TokenRedactor::redact((string) $message));
     }

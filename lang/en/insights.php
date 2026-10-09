@@ -61,6 +61,12 @@ return [
         'untitled' => 'Post without text',
         'views' => ':count view|:count views',
     ],
+    'http_error' => 'Facebook answered HTTP :status.',
+    'duration' => [
+        'seconds' => ':seconds s',
+        'minutes' => ':minutes m :seconds s',
+        'hours' => ':hours h :minutes m',
+    ],
     'error' => [
         'title' => 'Facebook refused the last read',
         'description' => 'The numbers below may be out of date. Facebook said: :message',
@@ -72,6 +78,6 @@ return [
     ],
     'not_read' => [
         'title' => 'Insights not read yet',
-        'description' => 'The app reads Insights from Facebook every day at 03:00 UTC. The first read fetches the last 90 days.',
+        'description' => 'The app reads Insights from Facebook every day at 09:00 UTC. The first read fetches the last 90 days.',
     ],
 ];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Status;
 use App\Jobs\ReadFacebookInsights;
 use App\Models\PageInsightSnapshot;
+use App\Models\Post;
 use App\Models\PostInsight;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -104,6 +105,7 @@ test('a refused read records the error, keeps history and leaves the connection 
     expect($this->account->insights_error)->toBe('(#100) The value must be a valid insights metric')
         ->and($this->account->insights_refresh_queued_at)->toBeNull()
         ->and($this->account->insights_read_at)->toBeNull()
+        ->and($this->account->insights_attempted_at?->toDateTimeString())->toBe('2026-10-09 10:00:00')
         ->and($this->account->status)->toBe(Status::Connected)
         ->and($this->account->pageInsightSnapshots()->count())->toBe(1);
 });
@@ -208,11 +210,12 @@ test('it resolves a Reel feed post id once and reads its video insights', functi
 
 test('one refused Post does not stop the others, and Stories and old or other Posts are skipped', function () {
     $graph = config('trypost.platforms.facebook.graph_api');
-    PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_1']);
+    $refused = PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_1']);
     $second = PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_2']);
     PostPlatform::factory()->facebookStory()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_3']);
     $old = PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_4', 'published_at' => now()->subDays(40)]);
     PostInsight::factory()->create(['post_platform_id' => $old->id, 'views' => 5]);
+    PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_6', 'published_at' => now()->subDays(40)]);
     PostPlatform::factory()->facebook()->published()->create(['platform_post_id' => '9999_5']);
 
     Http::fake([
@@ -223,8 +226,87 @@ test('one refused Post does not stop the others, and Stories and old or other Po
 
     ReadFacebookInsights::dispatchSync($this->account);
 
-    expect(PostInsight::query()->count())->toBe(2)
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '1234_3')
+        || str_contains($request->url(), '1234_4')
+        || str_contains($request->url(), '1234_6')
+        || str_contains($request->url(), '9999_5'));
+
+    expect(PostInsight::query()->whereNotNull('read_at')->count())->toBe(2)
+        ->and($refused->insight()->first()->read_at)->toBeNull()
         ->and($second->insight()->first()->views)->toBe(9)
         ->and($old->insight()->first()->views)->toBe(5)
         ->and($this->account->refresh()->insights_error)->toBeNull();
+});
+
+test('a video Post is read as a video, and a photo Post never is, whatever its id looks like', function () {
+    $graph = config('trypost.platforms.facebook.graph_api');
+    $videoPost = Post::factory()->published()->create(['media' => [['id' => 'm1', 'path' => 'clips/desk.mp4', 'url' => 'https://example.com/desk.mp4', 'type' => 'video']]]);
+    $photoPost = Post::factory()->published()->create(['media' => [['id' => 'm2', 'path' => 'photos/desk.jpg', 'url' => 'https://example.com/desk.jpg', 'type' => 'image']]]);
+    $video = PostPlatform::factory()->facebook()->published()->create(['post_id' => $videoPost->id, 'social_account_id' => $this->account->id, 'platform_post_id' => '8001']);
+    $photo = PostPlatform::factory()->facebook()->published()->create(['post_id' => $photoPost->id, 'social_account_id' => $this->account->id, 'platform_post_id' => '8002']);
+
+    Http::fake([
+        $this->insightsUrl => Http::response(['data' => []]),
+        "{$graph}/8001/video_insights*" => Http::response(['data' => [['name' => 'post_video_view_time', 'values' => [['value' => 12000]]]]]),
+        "{$graph}/8001*" => Http::response(['post_id' => '1234_888', 'id' => '8001']),
+        "{$graph}/1234_888/insights*" => Http::response(['data' => [['name' => 'post_video_views', 'values' => [['value' => 75]]]]]),
+        "{$graph}/8002/insights*" => Http::response(['data' => [['name' => 'post_media_view', 'values' => [['value' => 30]]]]]),
+    ]);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '1234_888/insights')
+        && $request['metric'] === 'post_media_view,post_total_media_view_unique,post_reactions_by_type_total,post_clicks,post_video_views');
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '8002/video_insights')
+        || data_get($request->data(), 'fields') === 'post_id' && str_contains($request->url(), '8002'));
+
+    expect($video->insight()->first())
+        ->feed_post_id->toBe('1234_888')
+        ->video_views->toBe(75)
+        ->watch_time_ms->toBe(12000)
+        ->and($photo->insight()->first())
+        ->feed_post_id->toBe('8002')
+        ->views->toBe(30)
+        ->video_views->toBeNull();
+});
+
+test('a resolved feed post id is kept when its totals are refused, and not looked up again', function () {
+    $graph = config('trypost.platforms.facebook.graph_api');
+    $reel = PostPlatform::factory()->facebookReel()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '9001']);
+
+    Http::fake([
+        $this->insightsUrl => Http::response(['data' => []]),
+        "{$graph}/1234_777/insights*" => Http::response(['error' => ['message' => 'Video still processing', 'code' => 100]], 400),
+        "{$graph}/9001*" => Http::response(['post_id' => '777', 'id' => '9001']),
+    ]);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    expect($reel->insight()->first())
+        ->feed_post_id->toBe('1234_777')
+        ->read_at->toBeNull()
+        ->and(Http::recorded(fn (Request $request): bool => data_get($request->data(), 'fields') === 'post_id'))->toHaveCount(1);
+});
+
+test('the refresh mark stays until the Post reads are done', function () {
+    $graph = config('trypost.platforms.facebook.graph_api');
+    PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_1']);
+    $this->account->update(['insights_refresh_queued_at' => now()]);
+    $markWhilePostsRead = 'not read';
+
+    Http::fake([
+        $this->insightsUrl => Http::response(['data' => []]),
+        "{$graph}/1234_1/insights*" => function () use (&$markWhilePostsRead) {
+            $markWhilePostsRead = $this->account->fresh()->insights_refresh_queued_at;
+
+            return Http::response(['data' => []]);
+        },
+    ]);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    expect($markWhilePostsRead)->not->toBeNull()
+        ->and($markWhilePostsRead)->not->toBe('not read')
+        ->and($this->account->refresh()->insights_refresh_queued_at)->toBeNull();
 });

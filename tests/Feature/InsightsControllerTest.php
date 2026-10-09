@@ -156,6 +156,7 @@ test('refresh now queues a read and marks it pending', function () {
     $account = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $this->workspace->id,
         'insights_read_at' => now()->subHours(2),
+        'insights_attempted_at' => now()->subHours(2),
     ]);
 
     $this->actingAs($this->user)
@@ -175,11 +176,13 @@ test('refresh now queues a read and marks it pending', function () {
         ->assertInertia(fn ($page) => $page->where('account.refresh_pending', true));
 });
 
-test('refresh now is refused within an hour of the last read', function () {
+test('refresh now is refused within an hour of the last read, even one that failed', function (?string $readAt) {
     Queue::fake();
     $account = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $this->workspace->id,
-        'insights_read_at' => now()->subMinutes(20),
+        'insights_read_at' => $readAt,
+        'insights_attempted_at' => now()->subMinutes(20),
+        'insights_error' => $readAt === null ? 'Facebook answered HTTP 500.' : null,
     ]);
 
     $this->actingAs($this->user)
@@ -194,7 +197,10 @@ test('refresh now is refused within an hour of the last read', function () {
             ->where('account.refresh_pending', false)
             ->where('account.refresh_available_at', now()->addMinutes(40)->toIso8601String())
         );
-});
+})->with([
+    'a successful read' => [fn () => now()->subMinutes(20)->toDateTimeString()],
+    'a failed read' => [null],
+]);
 
 test('refresh now is refused while a read is queued, until the mark goes stale', function () {
     Queue::fake();
@@ -261,34 +267,48 @@ test('insights lists the top Posts published in the range by views', function ()
         );
 });
 
-test('the Post page shows Post insights for each Facebook Post platform', function () {
+test('the Post page shows Post insights only where a Facebook Post platform has them', function () {
     $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
     $read = PostPlatform::factory()->facebookReel()->published()->create(['post_id' => $post->id]);
     PostInsight::factory()->create(['post_platform_id' => $read->id, 'views' => 321, 'reel_plays' => 200]);
-    PostPlatform::factory()->facebook()->published()->create(['post_id' => $post->id]);
+    $unread = PostPlatform::factory()->facebook()->published()->create(['post_id' => $post->id]);
+    $lookedUp = PostPlatform::factory()->facebookReel()->published()->create(['post_id' => $post->id]);
+    PostInsight::factory()->create(['post_platform_id' => $lookedUp->id, 'feed_post_id' => '1_2', 'read_at' => null]);
+    $story = PostPlatform::factory()->facebookStory()->published()->create(['post_id' => $post->id]);
+    $tooOld = PostPlatform::factory()->facebook()->published()->create(['post_id' => $post->id, 'published_at' => now()->subDays(40)]);
 
     $this->actingAs($this->user)
         ->get(route('app.posts.show', $post))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('post.platforms', fn ($platforms) => collect($platforms)->firstWhere('id', $read->id)['insights']['views'] === 321
-                && collect($platforms)->firstWhere('id', $read->id)['insights']['reel_plays'] === 200
-                && collect($platforms)->firstWhere('id', '!=', $read->id)['insights'] === null)
+            ->where('post.platforms', function ($platforms) use ($read, $unread, $lookedUp, $story, $tooOld): bool {
+                $byId = collect($platforms)->keyBy('id');
+
+                return data_get($byId, "{$read->id}.insights.views") === 321
+                    && data_get($byId, "{$read->id}.insights.reel_plays") === 200
+                    && array_key_exists('insights', $byId[$unread->id]) && $byId[$unread->id]['insights'] === null
+                    && array_key_exists('insights', $byId[$lookedUp->id]) && $byId[$lookedUp->id]['insights'] === null
+                    && ! array_key_exists('insights', $byId[$story->id])
+                    && ! array_key_exists('insights', $byId[$tooOld->id]);
+            })
         );
 });
 
 // Cleanup
-test('disconnecting a Facebook Page deletes its Page insights and keeps Post insights with the Post history', function () {
+test('disconnecting a Facebook Page deletes its Page insights and its Post insights', function () {
     $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
     PageInsightSnapshot::factory()->count(2)->sequence(['date' => '2026-10-01'], ['date' => '2026-10-02'])->create(['social_account_id' => $account->id]);
     $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
     $postPlatform = PostPlatform::factory()->facebook()->published()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
     PostInsight::factory()->create(['post_platform_id' => $postPlatform->id]);
+    $otherPage = PostPlatform::factory()->facebook()->published()->create();
+    PostInsight::factory()->create(['post_platform_id' => $otherPage->id]);
 
     $this->actingAs($this->user)
         ->delete(route('app.accounts.disconnect', $account))
         ->assertRedirect();
 
     expect(PageInsightSnapshot::query()->count())->toBe(0)
-        ->and(PostInsight::query()->count())->toBe(1);
+        ->and(PostInsight::query()->pluck('post_platform_id')->all())->toBe([$otherPage->id])
+        ->and($postPlatform->fresh())->not->toBeNull();
 });

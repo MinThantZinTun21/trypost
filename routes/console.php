@@ -27,4 +27,4 @@ Schedule::call(fn () => Artisan::call(RefreshExpiringTokens::class))
 Schedule::call(fn () => Artisan::call(RecoverStuckPosts::class))
     ->name('social:recover-stuck-posts')->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
 Schedule::call(fn () => Artisan::call(ReadInsights::class))
-    ->name('insights:read')->dailyAt('03:00')->withoutOverlapping()->onOneServer();
+    ->name('insights:read')->dailyAt('09:00')->withoutOverlapping()->onOneServer();

@@ -30,7 +30,12 @@ class PostPlatformResource extends JsonResource
             'display_username' => $this->display_username,
             'display_avatar' => $this->display_avatar,
             'social_account' => new SocialAccountSummaryResource($this->whenLoaded('socialAccount')),
-            'insights' => $this->whenLoaded('insight', fn () => $this->insight === null ? null : (new PostInsightResource($this->insight))->resolve()),
+            // Only Post platforms that have (or will get) Post insights carry
+            // the key, so Stories and old unread Posts show no empty panel.
+            'insights' => $this->when(
+                $this->relationLoaded('insight') && ($this->insight?->read_at !== null || $this->readsInsights()),
+                fn () => PostInsightResource::resolveOrNull($this->insight),
+            ),
         ];
     }
 }

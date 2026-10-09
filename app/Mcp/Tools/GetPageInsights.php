@@ -7,7 +7,6 @@ namespace App\Mcp\Tools;
 use App\Actions\Insights\ListTopPosts;
 use App\Actions\Insights\SummarizePageInsights;
 use App\Enums\Insights\Range;
-use App\Enums\SocialAccount\Platform;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Illuminate\Validation\Rule;
@@ -33,9 +32,7 @@ class GetPageInsights extends Tool
 
         $accounts = $request->user()->resolveCurrentWorkspace()
             ->socialAccounts()
-            ->where('platform', Platform::Facebook)
-            ->orderBy('created_at')
-            ->orderBy('id');
+            ->facebookPages();
 
         $accountId = data_get($validated, 'social_account_id');
         $account = $accountId === null ? $accounts->first() : $accounts->find($accountId);

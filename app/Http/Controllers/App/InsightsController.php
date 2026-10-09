@@ -8,7 +8,6 @@ use App\Actions\Insights\ListTopPosts;
 use App\Actions\Insights\RefreshPageInsights;
 use App\Actions\Insights\SummarizePageInsights;
 use App\Enums\Insights\Range;
-use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Insights\RefreshInsightsRequest;
 use App\Http\Requests\App\Insights\ShowInsightsRequest;
 use App\Models\SocialAccount;
@@ -24,11 +23,7 @@ class InsightsController extends Controller
 
         $this->authorize('viewInsights', $workspace);
 
-        $accounts = $workspace->socialAccounts()
-            ->where('platform', Platform::Facebook)
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get();
+        $accounts = $workspace->socialAccounts()->facebookPages()->get();
 
         $account = $accounts->firstWhere('id', $request->validated('account')) ?? $accounts->first();
         $range = $request->range();

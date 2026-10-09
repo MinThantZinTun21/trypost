@@ -25,7 +25,7 @@ return [
             ],
             'deletion' => [
                 'title' => 'Deleting your data',
-                'body' => 'Disconnecting an account in TryPost deletes its stored tokens and its Page Insights; Insights for posts already published stay with those posts\' history. You can also remove the app from your Facebook settings (Settings & privacy → Settings → Business integrations), TikTok or Google account permissions at any time. To have everything deleted, email the address below and it will be removed within 30 days.',
+                'body' => 'Disconnecting an account in TryPost deletes its stored tokens and every Insight stored for it, for the Page and for its posts. You can also remove the app from your Facebook settings (Settings & privacy → Settings → Business integrations), TikTok or Google account permissions at any time. To have everything deleted, email the address below and it will be removed within 30 days.',
             ],
             'contact' => [
                 'title' => 'Contact',

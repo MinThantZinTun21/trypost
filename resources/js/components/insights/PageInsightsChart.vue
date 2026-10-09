@@ -11,7 +11,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import { formatCount } from '@/lib/utils';
 import type { PageInsightsDay, PageMetricKey } from '@/types/insights';
 
@@ -46,7 +46,7 @@ const y = (point: Point) => point.value ?? undefined;
 const dayLabel = (index: number) => {
     const day = props.days[Math.round(index)];
 
-    return day ? dayjs(day.date).format('MMM D') : '';
+    return day ? date.formatMonthDay(day.date) : '';
 };
 
 const tooltip = (point: Point) =>

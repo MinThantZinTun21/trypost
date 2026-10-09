@@ -43,7 +43,7 @@ class GetPostInsights extends Tool
                 'content_type' => $postPlatform->content_type?->value,
                 'status' => $postPlatform->status->value,
                 'url' => $postPlatform->platform_url,
-                'insights' => $postPlatform->insight === null ? null : (new PostInsightResource($postPlatform->insight))->resolve(),
+                'insights' => PostInsightResource::resolveOrNull($postPlatform->insight),
             ])->values()->all(),
         ]);
     }

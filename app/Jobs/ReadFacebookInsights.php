@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Enums\Insights\PageMetric;
-use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Exceptions\Social\InsightsReadException;
 use App\Models\SocialAccount;
 use App\Services\Social\Meta\FacebookInsights;
@@ -20,6 +18,9 @@ use Illuminate\Support\Facades\Log;
  * (ADR 0004), and Post insights for its Posts published in the last 30
  * days. A failed Page read records the error for the Insights page and
  * keeps the history; it never changes the Social account's connection status.
+ *
+ * The refresh mark is cleared only once the Post reads are done too, so the
+ * Insights page keeps polling until top Posts are current.
  */
 class ReadFacebookInsights implements ShouldBeUnique, ShouldQueue
 {
@@ -47,16 +48,19 @@ class ReadFacebookInsights implements ShouldBeUnique, ShouldQueue
         return $this->account->id;
     }
 
-    /**
-     * Days after publishing that a Post's insights keep being read. A Post
-     * never read yet is read once if it is within the backfill window.
-     */
+    /** Days after publishing that a Post's insights keep being read. */
     public const POST_DAYS = 30;
 
     public function handle(FacebookInsights $insights): void
     {
-        $this->readPage($insights);
-        $this->readPosts($insights);
+        $this->account->update(['insights_attempted_at' => now()]);
+
+        try {
+            $this->readPage($insights);
+            $this->readPosts($insights);
+        } finally {
+            $this->account->update(['insights_refresh_queued_at' => null]);
+        }
     }
 
     private function readPage(FacebookInsights $insights): void
@@ -67,7 +71,6 @@ class ReadFacebookInsights implements ShouldBeUnique, ShouldQueue
             $this->account->update([
                 'insights_read_at' => now(),
                 'insights_error' => null,
-                'insights_refresh_queued_at' => null,
             ]);
         } catch (InsightsReadException $e) {
             Log::warning('Facebook Insights read failed', [
@@ -75,34 +78,33 @@ class ReadFacebookInsights implements ShouldBeUnique, ShouldQueue
                 'error' => $e->getMessage(),
             ]);
 
-            $this->account->update([
-                'insights_error' => $e->getMessage(),
-                'insights_refresh_queued_at' => null,
-            ]);
+            $this->account->update(['insights_error' => $e->getMessage()]);
         }
     }
 
     /**
      * Each Post platform is read on its own: one Post Facebook refuses (for
-     * example a video still processing) does not stop the others.
+     * example a video still processing) does not stop the others. A resolved
+     * feed post id is stored before the totals are read, so a failed read
+     * does not look it up again next time.
      */
     private function readPosts(FacebookInsights $insights): void
     {
         $postPlatforms = $this->account->postPlatforms()
-            ->with('insight')
-            ->where('status', PostPlatformStatus::Published)
-            ->whereNotNull('platform_post_id')
-            ->whereIn('content_type', [ContentType::FacebookPost, ContentType::FacebookReel])
-            ->where(fn ($query) => $query
-                ->where('published_at', '>=', now()->subDays(self::POST_DAYS))
-                ->orWhere(fn ($query) => $query
-                    ->doesntHave('insight')
-                    ->where('published_at', '>=', now()->subDays(self::BACKFILL_DAYS))))
+            ->readsInsights()
+            ->with(['insight', 'post'])
             ->get();
 
         foreach ($postPlatforms as $postPlatform) {
             try {
-                $totals = $insights->postTotals($this->account, $postPlatform, $postPlatform->insight?->feed_post_id);
+                $feedPostId = $postPlatform->insight?->feed_post_id;
+
+                if ($feedPostId === null) {
+                    $feedPostId = $insights->feedPostId($this->account, $postPlatform);
+                    $postPlatform->insight()->updateOrCreate([], ['feed_post_id' => $feedPostId]);
+                }
+
+                $totals = $insights->postTotals($this->account, $postPlatform, $feedPostId);
 
                 $postPlatform->insight()->updateOrCreate([], [...$totals, 'read_at' => now()]);
             } catch (InsightsReadException $e) {

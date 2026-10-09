@@ -21,10 +21,10 @@ test('it queues a read for each connected Facebook Page only', function () {
     Queue::assertPushed(ReadFacebookInsights::class, fn (ReadFacebookInsights $job): bool => $job->account->is($connected));
 });
 
-test('the schedule reads Insights daily at 03:00 UTC', function () {
+test('the schedule reads Insights daily at 09:00 UTC', function () {
     $event = collect(app(Schedule::class)->events())
         ->first(fn ($event): bool => $event->description === 'insights:read');
 
     expect($event)->not->toBeNull()
-        ->and($event->expression)->toBe('0 3 * * *');
+        ->and($event->expression)->toBe('0 9 * * *');
 });

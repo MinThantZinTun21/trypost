@@ -48,6 +48,7 @@ class SocialAccount extends Model
         'last_used_at',
         'last_verified_at',
         'insights_read_at',
+        'insights_attempted_at',
         'insights_refresh_queued_at',
         'insights_error',
     ];
@@ -76,6 +77,7 @@ class SocialAccount extends Model
             'last_used_at' => 'datetime',
             'last_verified_at' => 'datetime',
             'insights_read_at' => 'datetime',
+            'insights_attempted_at' => 'datetime',
             'insights_refresh_queued_at' => 'datetime',
             'scopes' => 'array',
             'meta' => 'array',
@@ -187,11 +189,12 @@ class SocialAccount extends Model
 
     /**
      * When the Owner may next ask for an Insights refresh, or null for now.
-     * Refresh now is allowed once an hour (ADR 0004).
+     * Refresh now is allowed once an hour after the last read started (ADR
+     * 0004), whether it succeeded or not: a failed read spent the rate limit too.
      */
     public function insightsRefreshAvailableAt(): ?CarbonImmutable
     {
-        $availableAt = $this->insights_read_at?->addHour();
+        $availableAt = $this->insights_attempted_at?->addHour();
 
         return $availableAt !== null && $availableAt->isFuture() ? $availableAt : null;
     }
@@ -375,6 +378,14 @@ class SocialAccount extends Model
     public function isDisconnected(): bool
     {
         return $this->status === Status::Disconnected || $this->status === Status::TokenExpired;
+    }
+
+    /**
+     * Facebook Pages, oldest connected first: the accounts that have Insights.
+     */
+    public function scopeFacebookPages(Builder $query): Builder
+    {
+        return $query->where('platform', SocialPlatform::Facebook)->orderBy('created_at')->orderBy('id');
     }
 
     public function scopeActive(Builder $query): Builder

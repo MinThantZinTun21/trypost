@@ -15,6 +15,17 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class PostInsightResource extends JsonResource
 {
     /**
+     * A Post platform's Post insights, or null before the first read (a row
+     * may already hold the feed post id without any totals).
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function resolveOrNull(?PostInsight $insight): ?array
+    {
+        return $insight?->read_at === null ? null : (new self($insight))->resolve();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

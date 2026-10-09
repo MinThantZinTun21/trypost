@@ -66,43 +66,46 @@ class FacebookInsights
     }
 
     /**
-     * Lifetime Post insights for one Post platform. A text or photo Post's
-     * stored id is already its feed post id; a video Post or Reel stores the
-     * video id, so its feed post id is resolved (once: pass it back in) and
-     * the video's own insights are read too.
-     *
-     * @return array<string, int|string|null> feed_post_id plus each PostMetric column read
+     * The feed post id a Post platform's Post insights live under. A text or
+     * photo Post's stored id is already one; a video Post or Reel stores the
+     * video id, so its feed post is looked up (once: the caller stores it).
      */
-    public function postTotals(SocialAccount $account, PostPlatform $postPlatform, ?string $feedPostId = null): array
+    public function feedPostId(SocialAccount $account, PostPlatform $postPlatform): string
     {
         $platformPostId = (string) $postPlatform->platform_post_id;
-        $isVideo = ! str_contains($platformPostId, '_');
-        $feedPostId ??= $isVideo ? $this->resolveFeedPostId($account, $platformPostId) : $platformPostId;
 
-        $totals = [
-            'feed_post_id' => $feedPostId,
-            ...$this->lifetimeValues($account, "{$feedPostId}/insights", PostMetric::feedMetrics($isVideo)),
-        ];
+        if (! $postPlatform->publishesVideo()) {
+            return $platformPostId;
+        }
+
+        $postId = $this->get($account, $platformPostId, ['fields' => 'post_id'])->json('post_id');
+
+        if (! is_string($postId) || $postId === '') {
+            throw new InsightsReadException("Facebook has no feed post for video {$platformPostId} yet.");
+        }
+
+        return str_contains($postId, '_') ? $postId : "{$this->pageId($account)}_{$postId}";
+    }
+
+    /**
+     * Lifetime Post insights for one Post platform, read under its feed post
+     * id. For a video the video's own insights are read too.
+     *
+     * @return array<string, int|null> each PostMetric column read
+     */
+    public function postTotals(SocialAccount $account, PostPlatform $postPlatform, string $feedPostId): array
+    {
+        $isVideo = $postPlatform->publishesVideo();
+        $totals = $this->lifetimeValues($account, "{$feedPostId}/insights", PostMetric::feedMetrics($isVideo));
 
         if ($isVideo) {
             $totals = [
                 ...$totals,
-                ...$this->lifetimeValues($account, "{$platformPostId}/video_insights", PostMetric::videoMetrics()),
+                ...$this->lifetimeValues($account, "{$postPlatform->platform_post_id}/video_insights", PostMetric::videoMetrics()),
             ];
         }
 
         return $totals;
-    }
-
-    private function resolveFeedPostId(SocialAccount $account, string $videoId): string
-    {
-        $postId = $this->get($account, $videoId, ['fields' => 'post_id'])->json('post_id');
-
-        if (! is_string($postId) || $postId === '') {
-            throw new InsightsReadException("Facebook has no feed post for video {$videoId} yet.");
-        }
-
-        return str_contains($postId, '_') ? $postId : "{$this->pageId($account)}_{$postId}";
     }
 
     /**

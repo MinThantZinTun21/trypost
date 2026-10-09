@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import date from '@/date';
@@ -31,14 +32,20 @@ const formatDuration = (milliseconds: number): string => {
     const seconds = Math.round(milliseconds / 1000);
 
     if (seconds < 60) {
-        return `${seconds}s`;
+        return trans('insights.duration.seconds', { seconds: `${seconds}` });
     }
 
     const minutes = Math.floor(seconds / 60);
 
     return minutes < 60
-        ? `${minutes}m ${seconds % 60}s`
-        : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+        ? trans('insights.duration.minutes', {
+              minutes: `${minutes}`,
+              seconds: `${seconds % 60}`,
+          })
+        : trans('insights.duration.hours', {
+              hours: `${Math.floor(minutes / 60)}`,
+              minutes: `${minutes % 60}`,
+          });
 };
 
 const shownMetrics = computed(() =>

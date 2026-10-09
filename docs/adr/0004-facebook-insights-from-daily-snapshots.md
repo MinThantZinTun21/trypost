@@ -2,7 +2,7 @@
 
 ADR 0001 removed TryPost's analytics. The Owner now deliberately wants Insights back, for Facebook only: how their Facebook Page grows and reaches people, and how each Post the app published there performs. TikTok and YouTube stay without Insights.
 
-The app does not ask Facebook each time the dashboard opens. A daily job (03:00 UTC, and a 90-day backfill the first time) stores one Insights snapshot per Page per day, and lifetime Post insights for each Post published in the last 30 days. The Owner can ask for a fresh fetch at most once an hour. The dashboard and the Assistant's MCP tools read only what is stored.
+The app does not ask Facebook each time the dashboard opens. A daily job (09:00 UTC, after Facebook's Pacific-time day has ended in summer and winter, and a 90-day backfill the first time) stores one Insights snapshot per Page per day, and lifetime Post insights for each Post published in the last 30 days. The Owner can ask for a fresh fetch at most once an hour after the last read started, successful or not. The dashboard and the Assistant's MCP tools read only what is stored.
 
 ## Considered Options
 
@@ -12,7 +12,8 @@ The app does not ask Facebook each time the dashboard opens. A daily job (03:00 
 
 ## Consequences
 
-- Insights lag by up to a day unless the Owner uses Refresh now.
+- Page insights end with yesterday. Refresh now brings Post insights up to the minute and re-reads the last 3 days, but today's partial day is never shown, so a range is never compared against an unfinished day.
+- Disconnecting a Page deletes its Page insights and the Post insights of its Posts.
 - Only the metrics Facebook still answers on Graph v25 are stored. Page follower demographics come back empty and are left out. Comment and share counts need `pages_read_user_content`, which this app does not request, so Post insights do not have them.
 - Reach over a range is the sum of daily reach, so a person reached on two days counts twice. The dashboard says so.
 - Facebook retires metrics without much notice. When a fetch fails, the dashboard shows the error and keeps the stored history; it does not send a Notification.

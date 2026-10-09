@@ -27,6 +27,7 @@ class SocialAccountPolicy
 
     /**
      * Only a Facebook Page has Insights (ADR 0004); anything else is a 404.
+     * The Page's workspace decides who may see its Insights.
      */
     public function refreshInsights(User $user, SocialAccount $account): bool|Response
     {
@@ -34,6 +35,12 @@ class SocialAccountPolicy
             return Response::denyAsNotFound();
         }
 
-        return $this->view($user, $account);
+        $view = $this->view($user, $account);
+
+        if ($view !== true) {
+            return $view;
+        }
+
+        return $user->can('viewInsights', $account->workspace);
     }
 }
