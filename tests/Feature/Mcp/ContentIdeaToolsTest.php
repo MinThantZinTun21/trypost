@@ -8,6 +8,7 @@ use App\Mcp\Servers\SchedulerServer;
 use App\Mcp\Tools\CreateContentIdea;
 use App\Mcp\Tools\GetContentIdea;
 use App\Mcp\Tools\ListContentIdeas;
+use App\Mcp\Tools\UpdateContentIdeaStatus;
 use App\Models\ContentIdea;
 use App\Models\User;
 use App\Models\Workspace;
@@ -192,3 +193,52 @@ test('list_content_ideas only lists the owner\'s workspace', function () {
             $json->etc();
         });
 });
+
+// update_content_idea_status
+test('update_content_idea_status moves the idea and returns it', function (string $status) {
+    $idea = ownerContentIdea(['title' => 'Working on it']);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(UpdateContentIdeaStatus::class, ['id' => $idea->id, 'status' => $status])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('content_idea.id', $idea->id)
+            ->where('content_idea.title', 'Working on it')
+            ->where('content_idea.status', $status)
+            ->etc());
+
+    expect($idea->refresh()->status)->toBe(Status::from($status));
+})->with(['in_progress', 'done', 'new']);
+
+test('a status the assistant sets shows on the web page', function () {
+    $idea = ownerContentIdea();
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(UpdateContentIdeaStatus::class, ['id' => $idea->id, 'status' => 'done']);
+
+    $this->actingAs($this->owner)
+        ->get(route('app.ideas.index', 'done'))
+        ->assertInertia(fn ($page) => $page->has('ideas.data', 1)->where('ideas.data.0.status', 'done'));
+});
+
+test('update_content_idea_status rejects an invalid status', function (mixed $status) {
+    $idea = ownerContentIdea();
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(UpdateContentIdeaStatus::class, ['id' => $idea->id, 'status' => $status])
+        ->assertHasErrors();
+
+    expect($idea->refresh()->status)->toBe(Status::New);
+})->with(['archived', '', null]);
+
+test('update_content_idea_status does not find an idea outside the owner\'s workspace', function (Closure $id) {
+    SchedulerServer::actingAs($this->owner)
+        ->tool(UpdateContentIdeaStatus::class, ['id' => $id(), 'status' => 'done'])
+        ->assertHasErrors();
+
+    expect(ContentIdea::query()->where('status', Status::Done)->count())->toBe(0);
+})->with([
+    'other workspace' => [fn () => ContentIdea::factory()->create()->id],
+    'unknown' => [fn () => fake()->uuid()],
+    'not a uuid' => [fn () => '42'],
+]);

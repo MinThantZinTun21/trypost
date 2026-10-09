@@ -13,6 +13,7 @@ use App\Mcp\Tools\ListContentIdeas;
 use App\Mcp\Tools\ListPosts;
 use App\Mcp\Tools\ListSocialAccounts;
 use App\Mcp\Tools\StartMediaUpload;
+use App\Mcp\Tools\UpdateContentIdeaStatus;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -37,6 +38,7 @@ class SchedulerServer extends Server
         ListContentIdeas::class,
         GetContentIdea::class,
         CreateContentIdea::class,
+        UpdateContentIdeaStatus::class,
     ];
 
     protected array $resources = [];
