@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\ContentIdea\Status as ContentIdeaStatus;
 use App\Http\Controllers\App\AssetController;
+use App\Http\Controllers\App\ContentIdeaController;
 use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
@@ -65,6 +67,14 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     Route::put('posts/{post}', [PostController::class, 'update'])->name('app.posts.update');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('app.posts.destroy');
     Route::post('posts/{post}/duplicate', [PostController::class, 'duplicate'])->name('app.posts.duplicate');
+
+    // Content ideas
+    Route::get('ideas/{status?}', [ContentIdeaController::class, 'index'])->name('app.ideas.index')->whereIn('status', ContentIdeaStatus::values());
+    Route::post('ideas', [ContentIdeaController::class, 'store'])->name('app.ideas.store');
+    Route::get('ideas/{contentIdea}', [ContentIdeaController::class, 'show'])->name('app.ideas.show')->whereUuid('contentIdea');
+    Route::put('ideas/{contentIdea}', [ContentIdeaController::class, 'update'])->name('app.ideas.update')->whereUuid('contentIdea');
+    Route::put('ideas/{contentIdea}/status', [ContentIdeaController::class, 'updateStatus'])->name('app.ideas.status')->whereUuid('contentIdea');
+    Route::delete('ideas/{contentIdea}', [ContentIdeaController::class, 'destroy'])->name('app.ideas.destroy')->whereUuid('contentIdea');
 
     // Media uploads (chunked, from the post composer)
     Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');

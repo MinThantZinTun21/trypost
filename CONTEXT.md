@@ -51,6 +51,10 @@ _Avoid_: Body, summary
 Text that replaces the Post's content for one TikTok account's Video, so a single Post can say something different on TikTok.
 _Avoid_: TikTok title
 
+**Content idea**:
+A note about something the Owner might post later: a title and Markdown details such as a brief, script or prompt. The Owner or the Assistant writes it, and its status moves from New to In progress to Done.
+_Avoid_: Idea backlog item, draft (a Draft is a Post)
+
 **Assistant**:
 An AI tool, such as Claude Code, connected to the app over MCP that reads Social accounts and creates Posts on the Owner's behalf.
 _Avoid_: Bot, agent, API client

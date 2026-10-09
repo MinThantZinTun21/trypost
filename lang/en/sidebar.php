@@ -21,6 +21,7 @@ return [
         'scheduled' => 'Scheduled',
         'posted' => 'Posted',
         'drafts' => 'Drafts',
+        'ideas' => 'Content ideas',
     ],
     'notifications' => 'Notifications',
     'mark_all_read' => 'Mark all as read',
