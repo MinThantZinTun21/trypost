@@ -32,6 +32,7 @@ export interface InsightsAccount {
     name: string;
     read_at: string | null;
     error: string | null;
+    connected: boolean;
     has_snapshots: boolean;
     refresh_pending: boolean;
     refresh_available_at: string | null;

@@ -8,7 +8,6 @@ use App\Enums\Insights\PageMetric;
 use App\Enums\Insights\Range;
 use App\Models\PageInsightSnapshot;
 use App\Models\SocialAccount;
-use App\Services\Social\Meta\FacebookInsights;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -61,7 +60,7 @@ class SummarizePageInsights
 
     private static function lastStoredDay(SocialAccount $account): CarbonImmutable
     {
-        $lastCompleteDay = FacebookInsights::lastCompleteDay();
+        $lastCompleteDay = PageInsightSnapshot::lastCompleteDay();
         $latest = $account->pageInsightSnapshots()
             ->where('date', '<=', $lastCompleteDay->toDateString())
             ->max('date');

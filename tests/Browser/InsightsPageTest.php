@@ -99,6 +99,21 @@ test('the insights page shows the last read error and the refresh button', funct
         ->assertNoJavaScriptErrors();
 });
 
+test('the insights page disables refresh for a Page that is not connected', function () {
+    $user = insightsOwner();
+    SocialAccount::factory()->facebook()->tokenExpired()->create(['workspace_id' => $user->current_workspace_id]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights.index'));
+
+    waitForInsightsTestId($page, 'insights-disconnected');
+
+    $page->assertVisible('@insights-disconnected')
+        ->assertDisabled('@insights-refresh')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the Post page shows Post insights for a Facebook Reel', function () {
     $user = insightsOwner();
     $post = Post::factory()->published()->create(['workspace_id' => $user->current_workspace_id, 'user_id' => $user->id, 'content' => 'Desk tour']);

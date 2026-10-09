@@ -62,6 +62,7 @@ const submittingRefresh = ref(false);
 const canRefresh = computed(
     () =>
         props.account !== null &&
+        props.account.connected &&
         !props.account.refresh_pending &&
         props.account.refresh_available_at === null &&
         !submittingRefresh.value,
@@ -234,6 +235,13 @@ const period = computed(() =>
                     data-testid="insights-refresh-error"
                 >
                     {{ refreshError }}
+                </p>
+                <p
+                    v-else-if="!account.connected"
+                    class="text-sm text-muted-foreground"
+                    data-testid="insights-disconnected"
+                >
+                    {{ $t('insights.refresh.disconnected') }}
                 </p>
 
                 <Alert

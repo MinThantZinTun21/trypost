@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Enums\Insights\PageMetric;
 use App\Exceptions\Social\InsightsReadException;
+use App\Models\PageInsightSnapshot;
 use App\Models\SocialAccount;
 use App\Services\Social\Meta\FacebookInsights;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -119,7 +120,7 @@ class ReadFacebookInsights implements ShouldBeUnique, ShouldQueue
     private function storePageDays(FacebookInsights $insights): void
     {
         $days = $this->account->pageInsightSnapshots()->exists() ? self::RECENT_DAYS : self::BACKFILL_DAYS;
-        $until = FacebookInsights::lastCompleteDay();
+        $until = PageInsightSnapshot::lastCompleteDay();
 
         foreach ($insights->pageDays($this->account, $until->subDays($days - 1), $until) as $date => $values) {
             $this->account->pageInsightSnapshots()->updateOrCreate(

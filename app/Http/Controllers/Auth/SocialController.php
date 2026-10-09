@@ -17,6 +17,7 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -68,18 +69,20 @@ class SocialController extends Controller
         // Drop pending platform rows from drafts/scheduled posts so the account
         // disappears cleanly from their UI. Published/failed rows survive via the
         // FK's nullOnDelete cascade and keep their snapshot fields for history.
-        $account->postPlatforms()
-            ->where('status', PostPlatformStatus::Pending->value)
-            ->delete();
+        DB::transaction(function () use ($account): void {
+            $account->postPlatforms()
+                ->where('status', PostPlatformStatus::Pending->value)
+                ->delete();
 
-        // Insights are Facebook's data about the Page: they go with it. Page
-        // insights cascade; Post insights hang off the surviving rows, so
-        // they are deleted here (ADR 0004).
-        PostInsight::query()
-            ->whereIn('post_platform_id', $account->postPlatforms()->select('id'))
-            ->delete();
+            // Insights are Facebook's data about the Page: they go with it. Page
+            // insights cascade; Post insights hang off the surviving rows, so
+            // they are deleted here (ADR 0004).
+            PostInsight::query()
+                ->whereIn('post_platform_id', $account->postPlatforms()->select('id'))
+                ->delete();
 
-        $account->delete();
+            $account->delete();
+        });
 
         $this->flashAccountChange('disconnected');
 

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Jobs\ReadFacebookInsights;
 use Database\Factories\PostPlatformFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -96,12 +97,12 @@ class PostPlatform extends Model
     /**
      * Post platforms whose Post insights are still read: a Facebook Post or
      * Reel published in the last ReadFacebookInsights::POST_DAYS days to a
-     * Page whose Social account still exists. Stories have no Post insights.
+     * Page that is still connected. Stories have no Post insights.
      */
     public function scopeReadsInsights(Builder $query): Builder
     {
         return $query->published()
-            ->whereNotNull('post_platforms.social_account_id')
+            ->whereHas('socialAccount', fn (Builder $account) => $account->where('status', SocialAccountStatus::Connected))
             ->whereNotNull('post_platforms.platform_post_id')
             ->whereIn('post_platforms.content_type', self::INSIGHTS_CONTENT_TYPES)
             ->where('post_platforms.published_at', '>=', now()->subDays(ReadFacebookInsights::POST_DAYS));
@@ -113,7 +114,7 @@ class PostPlatform extends Model
     public function readsInsights(): bool
     {
         return $this->status === Status::Published
-            && $this->social_account_id !== null
+            && $this->socialAccount?->status === SocialAccountStatus::Connected
             && $this->platform_post_id !== null
             && in_array($this->content_type, self::INSIGHTS_CONTENT_TYPES, true)
             && $this->published_at?->isAfter(now()->subDays(ReadFacebookInsights::POST_DAYS)) === true;

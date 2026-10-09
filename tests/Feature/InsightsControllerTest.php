@@ -256,6 +256,10 @@ test('refresh now is refused for a Page that is not connected', function (string
     $account = SocialAccount::factory()->facebook()->{$state}()->create(['workspace_id' => $this->workspace->id]);
 
     $this->actingAs($this->user)
+        ->get(route('app.insights.index'))
+        ->assertInertia(fn ($page) => $page->where('account.connected', false));
+
+    $this->actingAs($this->user)
         ->post(route('app.insights.refresh', $account))
         ->assertSessionHasErrors(['refresh' => 'Reconnect this Page on the Accounts page to read its Insights again.']);
 
@@ -293,17 +297,20 @@ test('insights lists the top Posts published in the range by views', function ()
     $makeInsight('Quiet one', '2026-10-03 09:00:00', 40);
     $top = $makeInsight('Desk tour', '2026-10-08 20:00:00', 900);
     $makeInsight('Too old', '2026-09-20 09:00:00', 5000);
+    $makeInsight('Before the range in Pacific time', '2026-10-02 05:00:00', 5000);
+    $lateEvening = $makeInsight('Last evening in Pacific time', '2026-10-09 03:00:00', 500);
     $makeInsight('Published today', '2026-10-09 08:00:00', 5000);
 
     $this->actingAs($this->user)
         ->get(route('app.insights.index', ['range' => 7]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('topPosts', 2)
+            ->has('topPosts', 3)
             ->where('topPosts.0.post_id', $top->postPlatform->post_id)
             ->where('topPosts.0.content', 'Desk tour')
             ->where('topPosts.0.insights.views', 900)
-            ->where('topPosts.1.content', 'Quiet one')
+            ->where('topPosts.1.post_id', $lateEvening->postPlatform->post_id)
+            ->where('topPosts.2.content', 'Quiet one')
         );
 });
 
@@ -316,12 +323,16 @@ test('the Post page shows Post insights only where a Facebook Post platform has 
     PostInsight::factory()->create(['post_platform_id' => $lookedUp->id, 'feed_post_id' => '1_2', 'read_at' => null]);
     $story = PostPlatform::factory()->facebookStory()->published()->create(['post_id' => $post->id]);
     $tooOld = PostPlatform::factory()->facebook()->published()->create(['post_id' => $post->id, 'published_at' => now()->subDays(40)]);
+    $disconnected = PostPlatform::factory()->facebook()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->tokenExpired(),
+    ]);
 
     $this->actingAs($this->user)
         ->get(route('app.posts.show', $post))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('post.platforms', function ($platforms) use ($read, $unread, $lookedUp, $story, $tooOld): bool {
+            ->where('post.platforms', function ($platforms) use ($read, $unread, $lookedUp, $story, $tooOld, $disconnected): bool {
                 $byId = collect($platforms)->keyBy('id');
 
                 return data_get($byId, "{$read->id}.insights.views") === 321
@@ -329,7 +340,8 @@ test('the Post page shows Post insights only where a Facebook Post platform has 
                     && array_key_exists('insights', $byId[$unread->id]) && $byId[$unread->id]['insights'] === null
                     && array_key_exists('insights', $byId[$lookedUp->id]) && $byId[$lookedUp->id]['insights'] === null
                     && ! array_key_exists('insights', $byId[$story->id])
-                    && ! array_key_exists('insights', $byId[$tooOld->id]);
+                    && ! array_key_exists('insights', $byId[$tooOld->id])
+                    && ! array_key_exists('insights', $byId[$disconnected->id]);
             })
         );
 });

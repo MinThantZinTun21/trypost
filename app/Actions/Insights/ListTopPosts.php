@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Insights;
 
 use App\Http\Resources\App\PostInsightResource;
+use App\Models\PageInsightSnapshot;
 use App\Models\PostInsight;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
@@ -16,7 +17,8 @@ class ListTopPosts
 
     /**
      * The Posts this app published to the Facebook Page between two dates
-     * (inclusive), ranked by their Post insights views.
+     * (inclusive, as Facebook's Pacific-time days), ranked by their Post
+     * insights views.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -28,8 +30,8 @@ class ListTopPosts
             ->whereHas('postPlatform', fn ($query) => $query
                 ->where('social_account_id', $account->id)
                 ->whereBetween('published_at', [
-                    CarbonImmutable::parse($from)->startOfDay(),
-                    CarbonImmutable::parse($to)->endOfDay(),
+                    CarbonImmutable::parse($from, PageInsightSnapshot::DAY_TIMEZONE)->startOfDay()->utc(),
+                    CarbonImmutable::parse($to, PageInsightSnapshot::DAY_TIMEZONE)->endOfDay()->utc(),
                 ]))
             ->orderByDesc('views')
             ->orderBy('id')

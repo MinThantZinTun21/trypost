@@ -8,6 +8,7 @@ use App\Actions\Insights\ListTopPosts;
 use App\Actions\Insights\RefreshPageInsights;
 use App\Actions\Insights\SummarizePageInsights;
 use App\Enums\Insights\Range;
+use App\Enums\SocialAccount\Status;
 use App\Http\Requests\App\Insights\RefreshInsightsRequest;
 use App\Http\Requests\App\Insights\ShowInsightsRequest;
 use App\Models\SocialAccount;
@@ -40,6 +41,7 @@ class InsightsController extends Controller
                 'name' => $account->display_label,
                 'read_at' => $account->insights_read_at?->toIso8601String(),
                 'error' => $account->insights_error,
+                'connected' => $account->status === Status::Connected,
                 'has_snapshots' => $account->pageInsightSnapshots()->exists(),
                 'refresh_pending' => $account->insightsRefreshPending(),
                 'refresh_available_at' => $account->insightsRefreshAvailableAt()?->toIso8601String(),
