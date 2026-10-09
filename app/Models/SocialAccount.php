@@ -45,6 +45,9 @@ class SocialAccount extends Model
         'disconnected_at',
         'last_used_at',
         'last_verified_at',
+        'insights_read_at',
+        'insights_refresh_queued_at',
+        'insights_error',
     ];
 
     protected $hidden = [
@@ -70,6 +73,8 @@ class SocialAccount extends Model
             'disconnected_at' => 'datetime',
             'last_used_at' => 'datetime',
             'last_verified_at' => 'datetime',
+            'insights_read_at' => 'datetime',
+            'insights_refresh_queued_at' => 'datetime',
             'scopes' => 'array',
             'meta' => 'array',
         ];
@@ -160,6 +165,11 @@ class SocialAccount extends Model
     public function postPlatforms(): HasMany
     {
         return $this->hasMany(PostPlatform::class);
+    }
+
+    public function pageInsightSnapshots(): HasMany
+    {
+        return $this->hasMany(PageInsightSnapshot::class);
     }
 
     protected function isTokenExpired(): Attribute

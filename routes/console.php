@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Console\Commands\CheckSocialConnections;
 use App\Console\Commands\CheckUpcomingPostConnections;
 use App\Console\Commands\ProcessScheduledPosts;
+use App\Console\Commands\ReadInsights;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
 use Illuminate\Support\Facades\Artisan;
@@ -25,3 +26,5 @@ Schedule::call(fn () => Artisan::call(RefreshExpiringTokens::class))
     ->name('social:refresh-expiring-tokens')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::call(fn () => Artisan::call(RecoverStuckPosts::class))
     ->name('social:recover-stuck-posts')->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
+Schedule::call(fn () => Artisan::call(ReadInsights::class))
+    ->name('insights:read')->dailyAt('03:00')->withoutOverlapping()->onOneServer();

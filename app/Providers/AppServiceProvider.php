@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\ContentIdea;
 use App\Models\Media;
 use App\Models\Notification;
+use App\Models\PageInsightSnapshot;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -45,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
             'contentIdea' => ContentIdea::class,
             'media' => Media::class,
             'notification' => Notification::class,
+            'pageInsightSnapshot' => PageInsightSnapshot::class,
             'post' => Post::class,
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,

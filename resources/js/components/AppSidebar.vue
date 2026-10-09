@@ -4,6 +4,7 @@ import {
     IconAffiliate,
     IconBulb,
     IconCalendar,
+    IconChartLine,
     IconChevronRight,
     IconClock,
     IconFileCheck,
@@ -15,6 +16,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { index as ideasIndex } from '@/actions/App/Http/Controllers/App/ContentIdeaController';
+import { index as insightsIndex } from '@/actions/App/Http/Controllers/App/InsightsController';
 import { index as postsIndex } from '@/actions/App/Http/Controllers/App/PostController';
 import NavMain from '@/components/NavMain.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
@@ -51,6 +53,11 @@ const mainNavItems = computed<NavItem[]>(() => [
         title: trans('sidebar.posts.calendar'),
         href: calendar.url(),
         icon: IconCalendar,
+    },
+    {
+        title: trans('sidebar.insights'),
+        href: insightsIndex.url(),
+        icon: IconChartLine,
     },
 ]);
 

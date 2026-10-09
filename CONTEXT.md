@@ -58,3 +58,19 @@ _Avoid_: Idea backlog item, draft (a Draft is a Post)
 **Assistant**:
 An AI tool, such as Claude Code, connected to the app over MCP that reads Social accounts and creates Posts on the Owner's behalf.
 _Avoid_: Bot, agent, API client
+
+**Insights**:
+Numbers Facebook reports about how a Facebook Page and its posts perform. Facebook only; TikTok and YouTube have none in this app.
+_Avoid_: Analytics, stats, metrics (in prose)
+
+**Page insights**:
+Insights about one Social account's Facebook Page as a whole: its followers, how many times and to how many people its content was shown, and how people engaged with it.
+_Avoid_: Account analytics, page stats
+
+**Post insights**:
+Insights about one Post platform that published to a Facebook Page: views, reach, reactions and clicks, plus video views, watch time and Reel plays for videos. Facebook does not give this app comment or share counts.
+_Avoid_: Post analytics, post stats
+
+**Insights snapshot**:
+The Page insights the app stored for one day, so the dashboard shows history without asking Facebook each time.
+_Avoid_: Cache, sync

@@ -29,6 +29,9 @@ export const formatMoney = (cents: number): string => {
     });
 };
 
+export const formatCount = (value: number): string =>
+    new Intl.NumberFormat('en-US').format(value);
+
 export const formatMoneyCompact = (cents: number): string => {
     const dollars = cents / 100;
     return new Intl.NumberFormat('en-US', {
