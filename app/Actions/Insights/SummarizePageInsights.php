@@ -23,6 +23,7 @@ class SummarizePageInsights
      *     from: string,
      *     to: string,
      *     metrics: array<int, array{key: string, current: int|null, previous: int|null}>,
+     *     days: array<int, array<string, int|string|null>>,
      * }
      */
     public static function execute(SocialAccount $account, Range $range): array
@@ -49,7 +50,32 @@ class SummarizePageInsights
                 'current' => self::total($current, $metric),
                 'previous' => self::total($previous, $metric),
             ], PageMetric::cases()),
+            'days' => self::days($current, $from, $to),
         ];
+    }
+
+    /**
+     * Every day in the range, in order. A day Facebook reported nothing for
+     * has null values, so a chart shows a gap rather than a false zero.
+     *
+     * @param  Collection<int, PageInsightSnapshot>  $snapshots
+     * @return array<int, array<string, int|string|null>>
+     */
+    private static function days(Collection $snapshots, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $byDate = $snapshots->keyBy(fn (PageInsightSnapshot $snapshot): string => $snapshot->date->toDateString());
+        $days = [];
+
+        for ($day = $from; $day->lte($to); $day = $day->addDay()) {
+            $snapshot = $byDate->get($day->toDateString());
+
+            $days[] = [
+                'date' => $day->toDateString(),
+                ...collect(PageMetric::columns())->mapWithKeys(fn (string $column): array => [$column => $snapshot?->{$column}])->all(),
+            ];
+        }
+
+        return $days;
     }
 
     /**

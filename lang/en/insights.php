@@ -29,6 +29,7 @@ return [
         'none' => 'No data for the previous :days days',
     ],
     'no_value' => '—',
+    'chart_label' => ':metric per day',
     'read_at' => 'Read from Facebook :time',
     'never_read' => 'Not read from Facebook yet',
     'error' => [

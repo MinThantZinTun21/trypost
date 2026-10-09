@@ -54,8 +54,12 @@ test('the insights page shows Page insights without javascript errors', function
 
     waitForInsightsTestId($page, 'insights-metric-views');
 
+    waitForInsightsTestId($page, 'insights-chart');
+
     $page->assertVisible('@insights-metric-followers')
         ->assertVisible('@insights-metric-views')
+        ->assertVisible('@insights-chart')
+        ->click('@insights-chart-metric-reach')
         ->assertVisible('@insights-range-7')
         ->assertVisible('@insights-read-at')
         ->assertNoJavaScriptErrors();

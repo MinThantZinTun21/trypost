@@ -5,6 +5,7 @@ import { computed } from 'vue';
 
 import { index as insightsIndex } from '@/actions/App/Http/Controllers/App/InsightsController';
 import EmptyState from '@/components/EmptyState.vue';
+import PageInsightsChart from '@/components/insights/PageInsightsChart.vue';
 import PageMetricCard from '@/components/insights/PageMetricCard.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -189,6 +190,11 @@ const period = computed(() =>
                         :days="summary.range"
                     />
                 </div>
+
+                <PageInsightsChart
+                    v-if="account.has_snapshots && summary"
+                    :days="summary.days"
+                />
             </template>
         </div>
     </AppLayout>

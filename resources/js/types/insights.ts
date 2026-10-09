@@ -18,6 +18,7 @@ export interface PageInsightsSummary {
     from: string;
     to: string;
     metrics: PageMetricTotal[];
+    days: PageInsightsDay[];
 }
 
 export interface InsightsAccountOption {
@@ -33,3 +34,8 @@ export interface InsightsAccount {
     error: string | null;
     has_snapshots: boolean;
 }
+
+export type PageInsightsDay = { date: string } & Record<
+    PageMetricKey,
+    number | null
+>;

@@ -119,3 +119,28 @@ test('insights rejects a Social account that is not a Facebook Page in the works
     'another workspace' => [fn () => SocialAccount::factory()->facebook()->create()],
     'a TikTok account' => [fn (Workspace $workspace) => SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id])],
 ]);
+
+test('insights lists every day in the range for the chart, with gaps as nulls', function () {
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    insightsSnapshot($account, '2026-10-03', ['views' => 12, 'reach' => 9]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.insights.index', ['range' => 7]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('summary.days', 7)
+            ->where('summary.days.0.date', '2026-10-02')
+            ->where('summary.days.0.views', null)
+            ->where('summary.days.1', [
+                'date' => '2026-10-03',
+                'followers' => null,
+                'new_follows' => null,
+                'unfollows' => null,
+                'views' => 12,
+                'reach' => 9,
+                'engagements' => null,
+                'video_views' => null,
+            ])
+            ->where('summary.days.6.date', '2026-10-08')
+        );
+});
