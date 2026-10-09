@@ -38,6 +38,7 @@ return [
         'available_in' => 'Refresh available :time',
         'too_soon' => 'You can refresh again in :minutes minute.|You can refresh again in :minutes minutes.',
         'queued' => 'A read is already running for this Page.',
+        'disconnected' => 'Reconnect this Page on the Accounts page to read its Insights again.',
     ],
     'post' => [
         'title' => 'Insights',
@@ -62,6 +63,7 @@ return [
         'views' => ':count view|:count views',
     ],
     'http_error' => 'Facebook answered HTTP :status.',
+    'no_feed_post' => 'Facebook has no feed post for video :id yet.',
     'duration' => [
         'seconds' => ':seconds s',
         'minutes' => ':minutes m :seconds s',

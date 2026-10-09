@@ -24,11 +24,25 @@ class FacebookInsights
 {
     private const TIMEOUT_SECONDS = 30;
 
+    /** Facebook's Insights days run on Pacific time. */
+    private const DAY_TIMEZONE = 'America/Los_Angeles';
+
+    /**
+     * The newest day Facebook has finished counting: yesterday in Pacific
+     * time, which is two UTC days back until Pacific midnight (07:00 or 08:00
+     * UTC). Returned as that calendar date at midnight in the app's timezone.
+     */
+    public static function lastCompleteDay(): CarbonImmutable
+    {
+        return CarbonImmutable::parse(CarbonImmutable::now(self::DAY_TIMEZONE)->subDay()->toDateString());
+    }
+
     /**
      * Daily Page insights from $since to $until (both inclusive), keyed by date.
      *
      * Graph stamps each daily value with the end of that day (Pacific time),
-     * so the day a value belongs to is the day before its end_time.
+     * so the day a value belongs to is the day before its end_time. Days
+     * Graph returns outside the window asked for are dropped.
      *
      * @return array<string, array<string, int>>
      */
@@ -53,6 +67,10 @@ class FacebookInsights
             foreach (data_get($series, 'values', []) as $point) {
                 $date = CarbonImmutable::parse((string) data_get($point, 'end_time'))->subDay()->toDateString();
                 $value = data_get($point, 'value');
+
+                if ($date < $since->toDateString() || $date > $until->toDateString()) {
+                    continue;
+                }
 
                 if (is_numeric($value)) {
                     $days[$date][$metric->value] = (int) $value;
@@ -81,7 +99,7 @@ class FacebookInsights
         $postId = $this->get($account, $platformPostId, ['fields' => 'post_id'])->json('post_id');
 
         if (! is_string($postId) || $postId === '') {
-            throw new InsightsReadException("Facebook has no feed post for video {$platformPostId} yet.");
+            throw new InsightsReadException(__('insights.no_feed_post', ['id' => $platformPostId]));
         }
 
         return str_contains($postId, '_') ? $postId : "{$this->pageId($account)}_{$postId}";
@@ -124,10 +142,10 @@ class FacebookInsights
         $values = array_fill_keys(array_map(fn (PostMetric $metric): string => $metric->value, $metrics), null);
 
         foreach ($response->json('data') ?? [] as $series) {
-            $metric = collect($metrics)->first(fn (PostMetric $metric): bool => $metric->graphMetric() === data_get($series, 'name'));
+            $metric = PostMetric::fromGraphMetric((string) data_get($series, 'name'));
             $value = data_get($series, 'values.0.value');
 
-            if ($metric === null) {
+            if ($metric === null || ! in_array($metric, $metrics, true)) {
                 continue;
             }
 

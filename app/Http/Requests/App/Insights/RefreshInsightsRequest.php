@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Insights;
 
+use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -24,7 +25,8 @@ class RefreshInsightsRequest extends FormRequest
     }
 
     /**
-     * Refresh now runs at most once an hour and never while a read is queued,
+     * Refresh now needs a connected Page, runs at most once an hour and never
+     * while a read is queued,
      * so it cannot spend the Page's rate limit that publishing also needs.
      *
      * @return array<int, callable>
@@ -35,6 +37,12 @@ class RefreshInsightsRequest extends FormRequest
             function (Validator $validator): void {
                 /** @var SocialAccount $account */
                 $account = $this->route('socialAccount');
+
+                if ($account->status !== Status::Connected) {
+                    $validator->errors()->add('refresh', __('insights.refresh.disconnected'));
+
+                    return;
+                }
 
                 if ($account->insightsRefreshPending()) {
                     $validator->errors()->add('refresh', __('insights.refresh.queued'));

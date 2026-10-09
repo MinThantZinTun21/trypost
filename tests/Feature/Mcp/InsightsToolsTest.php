@@ -28,6 +28,7 @@ test('get_page_insights reports the stored totals for the first Facebook Page', 
     ]);
     PageInsightSnapshot::factory()->create(['social_account_id' => $account->id, 'date' => '2026-10-05', 'views' => 80, 'followers' => 410]);
     PageInsightSnapshot::factory()->create(['social_account_id' => $account->id, 'date' => '2026-09-30', 'views' => 20, 'followers' => 400]);
+    PageInsightSnapshot::factory()->create(['social_account_id' => $account->id, 'date' => '2026-10-08', 'views' => 0, 'followers' => 410]);
 
     SchedulerServer::actingAs($this->owner)
         ->tool(GetPageInsights::class, ['days' => 7])

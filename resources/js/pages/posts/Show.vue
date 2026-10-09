@@ -44,7 +44,6 @@ import {
 import { index as postsIndex } from '@/routes/app/posts';
 import type { PostInsights } from '@/types/insights';
 import type { MediaItem } from '@/types/media';
-import { Platform } from '@/types/platform';
 import { PostPlatformStatus, PostStatus } from '@/types/post';
 
 interface SocialAccount {
@@ -418,12 +417,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                 </div>
 
                                 <PostInsightsPanel
-                                    v-if="
-                                        pp.platform === Platform.Facebook &&
-                                        pp.status ===
-                                            PostPlatformStatus.Published &&
-                                        pp.insights !== undefined
-                                    "
+                                    v-if="pp.insights !== undefined"
                                     :insights="pp.insights"
                                 />
                             </CardContent>

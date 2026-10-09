@@ -119,7 +119,7 @@ class ReadFacebookInsights implements ShouldBeUnique, ShouldQueue
     private function storePageDays(FacebookInsights $insights): void
     {
         $days = $this->account->pageInsightSnapshots()->exists() ? self::RECENT_DAYS : self::BACKFILL_DAYS;
-        $until = now()->subDay()->startOfDay()->toImmutable();
+        $until = FacebookInsights::lastCompleteDay();
 
         foreach ($insights->pageDays($this->account, $until->subDays($days - 1), $until) as $date => $values) {
             $this->account->pageInsightSnapshots()->updateOrCreate(

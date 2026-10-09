@@ -8,6 +8,7 @@ use App\Enums\Insights\PageMetric;
 use App\Enums\Insights\Range;
 use App\Models\PageInsightSnapshot;
 use App\Models\SocialAccount;
+use App\Services\Social\Meta\FacebookInsights;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -17,6 +18,10 @@ class SummarizePageInsights
      * Page insights for the last $range complete days and the same number of
      * days before them, read from stored Insights snapshots only. The Insights
      * page and get_page_insights both report through here.
+     *
+     * The range ends at the newest stored snapshot, never past the last day
+     * Facebook finished counting, so a newest day not read yet never shows as
+     * an empty day against a full previous range.
      *
      * @return array{
      *     range: int,
@@ -28,7 +33,7 @@ class SummarizePageInsights
      */
     public static function execute(SocialAccount $account, Range $range): array
     {
-        $to = CarbonImmutable::today()->subDay();
+        $to = self::lastStoredDay($account);
         $from = $to->subDays($range->value - 1);
         $previousTo = $from->subDay();
         $previousFrom = $previousTo->subDays($range->value - 1);
@@ -52,6 +57,16 @@ class SummarizePageInsights
             ], PageMetric::cases()),
             'days' => self::days($current, $from, $to),
         ];
+    }
+
+    private static function lastStoredDay(SocialAccount $account): CarbonImmutable
+    {
+        $lastCompleteDay = FacebookInsights::lastCompleteDay();
+        $latest = $account->pageInsightSnapshots()
+            ->where('date', '<=', $lastCompleteDay->toDateString())
+            ->max('date');
+
+        return $latest === null ? $lastCompleteDay : CarbonImmutable::parse((string) $latest)->startOfDay();
     }
 
     /**

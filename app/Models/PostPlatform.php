@@ -96,7 +96,7 @@ class PostPlatform extends Model
     /**
      * Post platforms whose Post insights are still read: a Facebook Post or
      * Reel published in the last ReadFacebookInsights::POST_DAYS days to a
-     * Page that is still connected. Stories have no Post insights.
+     * Page whose Social account still exists. Stories have no Post insights.
      */
     public function scopeReadsInsights(Builder $query): Builder
     {

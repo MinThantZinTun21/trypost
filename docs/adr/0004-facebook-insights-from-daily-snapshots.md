@@ -12,7 +12,7 @@ The app does not ask Facebook each time the dashboard opens. A daily job (09:00 
 
 ## Consequences
 
-- Page insights end with yesterday. Refresh now brings Post insights up to the minute and re-reads the last 3 days, but today's partial day is never shown, so a range is never compared against an unfinished day.
+- Facebook counts Insights days in Pacific time. A range ends at the newest stored day that Facebook has finished counting, so it is never compared against an unfinished or not-yet-read day. Refresh now brings Post insights up to the minute and re-reads the last 3 days, but today's partial day is never shown.
 - Disconnecting a Page deletes its Page insights and the Post insights of its Posts.
 - Only the metrics Facebook still answers on Graph v25 are stored. Page follower demographics come back empty and are left out. Comment and share counts need `pages_read_user_content`, which this app does not request, so Post insights do not have them.
 - Reach over a range is the sum of daily reach, so a person reached on two days counts twice. The dashboard says so.

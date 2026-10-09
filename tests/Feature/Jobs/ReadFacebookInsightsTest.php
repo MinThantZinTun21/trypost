@@ -41,7 +41,8 @@ function pageInsightsGraphResponse(array $days): array
 beforeEach(function () {
     $this->travelTo(now()->parse('2026-10-09 10:00:00'));
     $this->account = SocialAccount::factory()->facebook()->create(['platform_user_id' => '1234']);
-    $this->insightsUrl = config('trypost.platforms.facebook.graph_api').'/1234/insights*';
+    $graph = config('trypost.platforms.facebook.graph_api');
+    $this->insightsUrl = "{$graph}/1234/insights*";
 });
 
 test('the first read backfills 90 days and stores each day', function () {
@@ -88,6 +89,20 @@ test('later reads re-read the last 3 days and overwrite them', function () {
 
     expect($this->account->pageInsightSnapshots()->count())->toBe(1)
         ->and($this->account->pageInsightSnapshots()->first()->views)->toBe(950);
+});
+
+test('a read before Pacific midnight stops at the last day Facebook finished, and drops days outside the window', function () {
+    $this->travelTo(now()->parse('2026-10-10 02:00:00'));
+    Http::fake([$this->insightsUrl => Http::response(pageInsightsGraphResponse([
+        '2026-10-08' => ['page_media_view' => 40],
+        '2026-10-09' => ['page_media_view' => 7],
+    ]))]);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    Http::assertSent(fn (Request $request): bool => $request['since'] === '2026-07-11' && $request['until'] === '2026-10-09');
+
+    expect($this->account->pageInsightSnapshots()->pluck('date')->map->toDateString()->all())->toBe(['2026-10-08']);
 });
 
 test('a refused read records the error, keeps history and leaves the connection alone', function () {

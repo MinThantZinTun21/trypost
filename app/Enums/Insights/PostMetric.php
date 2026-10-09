@@ -59,4 +59,15 @@ enum PostMetric: string
     {
         return array_map(fn (self $metric): string => $metric->value, self::cases());
     }
+
+    public static function fromGraphMetric(string $graphMetric): ?self
+    {
+        foreach (self::cases() as $metric) {
+            if ($metric->graphMetric() === $graphMetric) {
+                return $metric;
+            }
+        }
+
+        return null;
+    }
 }

@@ -89,6 +89,34 @@ test('insights selects the first Facebook Page and totals the range against the 
         );
 });
 
+test('the range ends at the newest stored day, never past the day Facebook finished counting', function (string $now, string $to) {
+    $this->travelTo(now()->parse($now));
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    insightsSnapshot($account, '2026-10-07', ['views' => 10]);
+    insightsSnapshot($account, '2026-10-08', ['views' => 20]);
+    insightsSnapshot($account, '2026-10-09', ['views' => 999]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.insights.index', ['range' => 7]))
+        ->assertInertia(fn ($page) => $page->where('summary.to', $to));
+})->with([
+    'before Pacific midnight, the day before yesterday in UTC' => ['2026-10-10 02:00:00', '2026-10-08'],
+    'after Pacific midnight, yesterday' => ['2026-10-10 10:00:00', '2026-10-09'],
+]);
+
+test('the range ends at the last stored day while the newest day is not read yet', function () {
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    insightsSnapshot($account, '2026-10-07', ['views' => 10]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.insights.index', ['range' => 7]))
+        ->assertInertia(fn ($page) => $page
+            ->where('summary.from', '2026-10-01')
+            ->where('summary.to', '2026-10-07')
+            ->where('summary.metrics.3.current', 10)
+        );
+});
+
 test('insights shows the chosen Facebook Page', function () {
     SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id, 'created_at' => now()->subWeek()]);
     $second = SocialAccount::factory()->facebook()->create([
@@ -128,6 +156,7 @@ test('insights rejects a Social account that is not a Facebook Page in the works
 test('insights lists every day in the range for the chart, with gaps as nulls', function () {
     $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
     insightsSnapshot($account, '2026-10-03', ['views' => 12, 'reach' => 9]);
+    insightsSnapshot($account, '2026-10-08', []);
 
     $this->actingAs($this->user)
         ->get(route('app.insights.index', ['range' => 7]))
@@ -221,6 +250,17 @@ test('refresh now is refused while a read is queued, until the mark goes stale',
 
     Queue::assertPushed(ReadFacebookInsights::class, 1);
 });
+
+test('refresh now is refused for a Page that is not connected', function (string $state) {
+    Queue::fake();
+    $account = SocialAccount::factory()->facebook()->{$state}()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.insights.refresh', $account))
+        ->assertSessionHasErrors(['refresh' => 'Reconnect this Page on the Accounts page to read its Insights again.']);
+
+    Queue::assertNothingPushed();
+})->with(['disconnected', 'tokenExpired']);
 
 test('refresh now is a 404 for another workspace or a non-Facebook account', function (Closure $makeAccount) {
     Queue::fake();

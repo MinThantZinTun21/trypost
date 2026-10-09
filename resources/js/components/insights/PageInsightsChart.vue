@@ -25,7 +25,6 @@ const CHARTED_METRICS: PageMetricKey[] = [
     'engagements',
     'video_views',
     'new_follows',
-    'followers',
 ];
 
 const metric = ref<PageMetricKey>('views');
