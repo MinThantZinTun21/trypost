@@ -325,7 +325,7 @@ test('the Post page shows Post insights only where a Facebook Post platform has 
     $tooOld = PostPlatform::factory()->facebook()->published()->create(['post_id' => $post->id, 'published_at' => now()->subDays(40)]);
     $disconnected = PostPlatform::factory()->facebook()->published()->create([
         'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->facebook()->tokenExpired(),
+        'social_account_id' => SocialAccount::factory()->facebook()->tokenExpired()->create(['workspace_id' => $this->workspace->id]),
     ]);
 
     $this->actingAs($this->user)

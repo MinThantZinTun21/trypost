@@ -325,3 +325,20 @@ test('the refresh mark stays until the Post reads are done', function () {
         ->and($markWhilePostsRead)->not->toBe('not read')
         ->and($this->account->refresh()->insights_refresh_queued_at)->toBeNull();
 });
+
+test('Post insights are not read for a Page that is no longer connected', function () {
+    $graph = config('trypost.platforms.facebook.graph_api');
+    $this->account->update(['status' => Status::TokenExpired]);
+    PostPlatform::factory()->facebook()->published()->create(['social_account_id' => $this->account->id, 'platform_post_id' => '1234_1']);
+
+    Http::fake([
+        $this->insightsUrl => Http::response(['data' => []]),
+        "{$graph}/1234_1/insights*" => Http::response(['data' => []]),
+    ]);
+
+    ReadFacebookInsights::dispatchSync($this->account);
+
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '1234_1'));
+
+    expect(PostInsight::query()->count())->toBe(0);
+});
