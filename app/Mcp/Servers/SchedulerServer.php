@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\CompleteMediaUpload;
+use App\Mcp\Tools\CreateContentIdea;
 use App\Mcp\Tools\CreatePost;
+use App\Mcp\Tools\GetContentIdea;
 use App\Mcp\Tools\GetPost;
 use App\Mcp\Tools\ListPosts;
 use App\Mcp\Tools\ListSocialAccounts;
@@ -21,7 +23,7 @@ use Laravel\Mcp\Server\Attributes\Version;
  */
 #[Name('TryPost')]
 #[Version('1.0.0')]
-#[Instructions('Schedules the Owner\'s posts to their Social accounts on Facebook Pages, TikTok and YouTube. Start with list_social_accounts to see where you can post.')]
+#[Instructions('Schedules the Owner\'s posts to their Social accounts on Facebook Pages, TikTok and YouTube. Start with list_social_accounts to see where you can post. It also keeps the Owner\'s Content ideas: Markdown notes for future Posts, each new, in_progress or done.')]
 class SchedulerServer extends Server
 {
     protected array $tools = [
@@ -31,6 +33,8 @@ class SchedulerServer extends Server
         ListPosts::class,
         GetPost::class,
         CreatePost::class,
+        CreateContentIdea::class,
+        GetContentIdea::class,
     ];
 
     protected array $resources = [];
