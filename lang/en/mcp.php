@@ -16,6 +16,10 @@ return [
     'content_idea' => [
         'not_found' => 'No Content idea with that id exists for the Owner. Use an id from list_content_ideas.',
     ],
+    'insights' => [
+        'no_facebook_page' => 'The Owner has no Facebook Page connected, and only Facebook Pages have Insights.',
+        'account_not_found' => 'No Facebook Page Social account with that id. Use a Facebook id from list_social_accounts; TikTok and YouTube have no Insights.',
+    ],
     'upload' => [
         'not_object_storage' => 'Uploads from an Assistant need object storage (for example Cloudflare R2 or S3) as the default disk. Upload the file in the composer instead.',
     ],

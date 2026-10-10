@@ -23,6 +23,7 @@ return [
         'drafts' => 'Drafts',
         'ideas' => 'Content ideas',
     ],
+    'insights' => 'Insights',
     'notifications' => 'Notifications',
     'mark_all_read' => 'Mark all as read',
     'mark_as_read' => 'Mark as read',

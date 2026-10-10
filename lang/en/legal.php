@@ -9,11 +9,11 @@ return [
         'sections' => [
             'collect' => [
                 'title' => 'What we store',
-                'body' => 'The owner\'s login email and password hash; the social accounts the owner connects (account name, ID, avatar and the access tokens the platform issues); and the posts the owner writes, with their media files.',
+                'body' => 'The owner\'s login email and password hash; the social accounts the owner connects (account name, ID, avatar and the access tokens the platform issues); the posts the owner writes, with their media files; and, for the owner\'s own Facebook Pages, the Insights Facebook reports (daily follower, view, reach and engagement counts for the Page, and view, reach, reaction, click and watch-time totals for the posts TryPost published). Insights are aggregate numbers; they identify no individual person.',
             ],
             'use' => [
                 'title' => 'How it is used',
-                'body' => 'Only to publish the owner\'s posts to the connected accounts at the time the owner chooses, and to show whether publishing succeeded. Nothing is sold, shared for advertising, or used for analytics or tracking.',
+                'body' => 'Only to publish the owner\'s posts to the connected accounts at the time the owner chooses, to show whether publishing succeeded, and to show the owner how their own Facebook Page and posts perform. Nothing is sold, shared for advertising, or used to track anyone.',
             ],
             'storage' => [
                 'title' => 'Where it is kept',
@@ -25,7 +25,7 @@ return [
             ],
             'deletion' => [
                 'title' => 'Deleting your data',
-                'body' => 'Disconnecting an account in TryPost deletes its stored tokens. You can also remove the app from your Facebook settings (Settings & privacy → Settings → Business integrations), TikTok or Google account permissions at any time. To have everything deleted, email the address below and it will be removed within 30 days.',
+                'body' => 'Disconnecting an account in TryPost deletes its stored tokens and every Insight stored for it, for the Page and for its posts. You can also remove the app from your Facebook settings (Settings & privacy → Settings → Business integrations), TikTok or Google account permissions at any time. To have everything deleted, email the address below and it will be removed within 30 days.',
             ],
             'contact' => [
                 'title' => 'Contact',

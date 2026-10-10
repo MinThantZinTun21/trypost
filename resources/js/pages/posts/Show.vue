@@ -11,6 +11,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
+import PostInsightsPanel from '@/components/insights/PostInsightsPanel.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ import {
     MediaType,
 } from '@/lib/mediaType';
 import { index as postsIndex } from '@/routes/app/posts';
+import type { PostInsights } from '@/types/insights';
 import type { MediaItem } from '@/types/media';
 import { PostPlatformStatus, PostStatus } from '@/types/post';
 
@@ -65,6 +67,7 @@ interface PostPlatform {
     published_at: string | null;
     enabled: boolean;
     social_account: SocialAccount | null;
+    insights?: PostInsights | null;
 }
 
 interface Post {
@@ -412,6 +415,11 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                 >
                                     {{ pp.error_message }}
                                 </div>
+
+                                <PostInsightsPanel
+                                    v-if="pp.insights !== undefined"
+                                    :insights="pp.insights"
+                                />
                             </CardContent>
                         </Card>
                     </div>

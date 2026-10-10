@@ -8,7 +8,9 @@ use App\Mcp\Tools\CompleteMediaUpload;
 use App\Mcp\Tools\CreateContentIdea;
 use App\Mcp\Tools\CreatePost;
 use App\Mcp\Tools\GetContentIdea;
+use App\Mcp\Tools\GetPageInsights;
 use App\Mcp\Tools\GetPost;
+use App\Mcp\Tools\GetPostInsights;
 use App\Mcp\Tools\ListContentIdeas;
 use App\Mcp\Tools\ListPosts;
 use App\Mcp\Tools\ListSocialAccounts;
@@ -25,7 +27,7 @@ use Laravel\Mcp\Server\Attributes\Version;
  */
 #[Name('TryPost')]
 #[Version('1.0.0')]
-#[Instructions('Schedules the Owner\'s posts to their Social accounts on Facebook Pages, TikTok and YouTube. Start with list_social_accounts to see where you can post. It also keeps the Owner\'s Content ideas: Markdown notes for future Posts, each new, in_progress or done.')]
+#[Instructions('Schedules the Owner\'s posts to their Social accounts on Facebook Pages, TikTok and YouTube. Start with list_social_accounts to see where you can post. It also keeps the Owner\'s Content ideas: Markdown notes for future Posts, each new, in_progress or done. For Facebook Pages it can read stored Insights with get_page_insights and get_post_insights.')]
 class SchedulerServer extends Server
 {
     protected array $tools = [
@@ -39,6 +41,8 @@ class SchedulerServer extends Server
         GetContentIdea::class,
         CreateContentIdea::class,
         UpdateContentIdeaStatus::class,
+        GetPageInsights::class,
+        GetPostInsights::class,
     ];
 
     protected array $resources = [];

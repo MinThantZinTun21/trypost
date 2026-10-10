@@ -33,6 +33,11 @@ class WorkspacePolicy
         return $this->canAccess($user, $workspace);
     }
 
+    public function viewInsights(User $user, Workspace $workspace): bool
+    {
+        return $this->canAccess($user, $workspace);
+    }
+
     private function canAccess(User $user, Workspace $workspace): bool
     {
         if ($workspace->account_id !== $user->account_id) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\ContentIdea\Status as ContentIdeaStatus;
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\ContentIdeaController;
+use App\Http\Controllers\App\InsightsController;
 use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
@@ -75,6 +76,10 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     Route::put('ideas/{contentIdea}', [ContentIdeaController::class, 'update'])->name('app.ideas.update')->whereUuid('contentIdea');
     Route::put('ideas/{contentIdea}/status', [ContentIdeaController::class, 'updateStatus'])->name('app.ideas.status')->whereUuid('contentIdea');
     Route::delete('ideas/{contentIdea}', [ContentIdeaController::class, 'destroy'])->name('app.ideas.destroy')->whereUuid('contentIdea');
+
+    // Insights (Facebook Pages only, ADR 0004)
+    Route::get('insights', [InsightsController::class, 'index'])->name('app.insights.index');
+    Route::post('insights/{socialAccount}/refresh', [InsightsController::class, 'refresh'])->name('app.insights.refresh')->whereUuid('socialAccount')->can('refreshInsights', 'socialAccount');
 
     // Media uploads (chunked, from the post composer)
     Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');

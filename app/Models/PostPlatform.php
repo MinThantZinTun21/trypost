@@ -7,18 +7,24 @@ namespace App\Models;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Enums\SocialAccount\Status as SocialAccountStatus;
+use App\Jobs\ReadFacebookInsights;
 use Database\Factories\PostPlatformFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 class PostPlatform extends Model
 {
     /** @use HasFactory<PostPlatformFactory> */
     use HasFactory, HasUuids;
+
+    /** Content types that have Post insights (ADR 0004). */
+    private const INSIGHTS_CONTENT_TYPES = [ContentType::FacebookPost, ContentType::FacebookReel];
 
     protected $fillable = [
         'post_id',
@@ -63,6 +69,11 @@ class PostPlatform extends Model
         return $this->belongsTo(SocialAccount::class);
     }
 
+    public function insight(): HasOne
+    {
+        return $this->hasOne(PostInsight::class);
+    }
+
     /**
      * Only platforms still enabled for publishing — disabled ones are
      * excluded from PublishPost, so anything else that mirrors publish
@@ -81,6 +92,45 @@ class PostPlatform extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('post_platforms.status', Status::Published);
+    }
+
+    /**
+     * Post platforms whose Post insights are still read: a Facebook Post or
+     * Reel published in the last ReadFacebookInsights::POST_DAYS days to a
+     * Page that is still connected. Stories have no Post insights.
+     */
+    public function scopeReadsInsights(Builder $query): Builder
+    {
+        return $query->published()
+            ->whereHas('socialAccount', fn (Builder $account) => $account->where('status', SocialAccountStatus::Connected))
+            ->whereNotNull('post_platforms.platform_post_id')
+            ->whereIn('post_platforms.content_type', self::INSIGHTS_CONTENT_TYPES)
+            ->where('post_platforms.published_at', '>=', now()->subDays(ReadFacebookInsights::POST_DAYS));
+    }
+
+    /**
+     * The same rule as scopeReadsInsights, for one loaded Post platform.
+     */
+    public function readsInsights(): bool
+    {
+        return $this->status === Status::Published
+            && $this->socialAccount?->status === SocialAccountStatus::Connected
+            && $this->platform_post_id !== null
+            && in_array($this->content_type, self::INSIGHTS_CONTENT_TYPES, true)
+            && $this->published_at?->isAfter(now()->subDays(ReadFacebookInsights::POST_DAYS)) === true;
+    }
+
+    /**
+     * Whether Facebook published this as a video: every Reel, and a Post
+     * whose first media item is a video (FacebookPublisher picks the same way).
+     */
+    public function publishesVideo(): bool
+    {
+        if ($this->content_type === ContentType::FacebookReel) {
+            return true;
+        }
+
+        return $this->post?->mediaItems->first()?->isVideo() === true;
     }
 
     /**

@@ -8,7 +8,9 @@ use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Jobs\ReadFacebookInsights;
 use App\Jobs\SendNotification;
+use Carbon\CarbonImmutable;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,6 +47,10 @@ class SocialAccount extends Model
         'disconnected_at',
         'last_used_at',
         'last_verified_at',
+        'insights_read_at',
+        'insights_attempted_at',
+        'insights_refresh_queued_at',
+        'insights_error',
     ];
 
     protected $hidden = [
@@ -70,6 +76,9 @@ class SocialAccount extends Model
             'disconnected_at' => 'datetime',
             'last_used_at' => 'datetime',
             'last_verified_at' => 'datetime',
+            'insights_read_at' => 'datetime',
+            'insights_attempted_at' => 'datetime',
+            'insights_refresh_queued_at' => 'datetime',
             'scopes' => 'array',
             'meta' => 'array',
         ];
@@ -160,6 +169,34 @@ class SocialAccount extends Model
     public function postPlatforms(): HasMany
     {
         return $this->hasMany(PostPlatform::class);
+    }
+
+    public function pageInsightSnapshots(): HasMany
+    {
+        return $this->hasMany(PageInsightSnapshot::class);
+    }
+
+    /**
+     * Whether an Insights refresh is queued and still has time to finish. A
+     * mark older than the job's unique lock belongs to a read that died, so it
+     * stops blocking (and polling) instead of hanging forever.
+     */
+    public function insightsRefreshPending(): bool
+    {
+        return $this->insights_refresh_queued_at !== null
+            && $this->insights_refresh_queued_at->isAfter(now()->subSeconds(ReadFacebookInsights::UNIQUE_FOR_SECONDS));
+    }
+
+    /**
+     * When the Owner may next ask for an Insights refresh, or null for now.
+     * Refresh now is allowed once an hour after the last read started (ADR
+     * 0004), whether it succeeded or not: a failed read spent the rate limit too.
+     */
+    public function insightsRefreshAvailableAt(): ?CarbonImmutable
+    {
+        $availableAt = $this->insights_attempted_at?->addHour();
+
+        return $availableAt !== null && $availableAt->isFuture() ? $availableAt : null;
     }
 
     protected function isTokenExpired(): Attribute
@@ -341,6 +378,14 @@ class SocialAccount extends Model
     public function isDisconnected(): bool
     {
         return $this->status === Status::Disconnected || $this->status === Status::TokenExpired;
+    }
+
+    /**
+     * Facebook Pages, oldest connected first: the accounts that have Insights.
+     */
+    public function scopeFacebookPages(Builder $query): Builder
+    {
+        return $query->where('platform', SocialPlatform::Facebook)->orderBy('created_at')->orderBy('id');
     }
 
     public function scopeActive(Builder $query): Builder
