@@ -286,9 +286,17 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
   Caddy of its own. The manual Deploy workflow (`.github/workflows/deploy.yml`)
   builds the image and streams it over SSH; the container migrates on boot.
   `VultrDeployTest` checks both files.
-- There is no Vercel deploy, `GET /cron/run` endpoint or `cron:token`
-  (`tests/Feature/Removed/VercelRemovedTest.php`). Do not bring back a
-  web-triggered scheduler; the server runs `schedule:work`.
+- There is no Vercel deploy (`tests/Feature/Removed/VercelRemovedTest.php`).
+- `GET /cron/run` (`routes/cron.php`) is the Owner's choice to also drive the
+  schedule from an external cron, with `Authorization: Bearer $CRON_SECRET`,
+  `?token=`, or an expiring token from `php artisan cron:token --days=30`
+  (signed with `CRON_SECRET`; rotating it revokes them). An empty
+  `CRON_SECRET` disables it (404). It runs `schedule:run` next to
+  `schedule:work`, never instead of it: every task is `onOneServer()`, so the
+  two never run one twice, and posts still publish if the cron stops. With
+  `CRON_MAX_SECONDS` above 0 it then works the queue that long, publishing
+  due posts in the call; keep it under PHP's `max_execution_time` (60 s in
+  production). It returns the next scheduled post.
 
 ## Publishing status updates (polling, no websockets)
 
