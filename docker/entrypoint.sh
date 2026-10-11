@@ -57,22 +57,27 @@ if [ -f .env ] && ! grep -qE '^APP_KEY=base64:' .env; then
     php artisan key:generate --force
 fi
 
-# 6) Wait for Postgres to be reachable.
-DB_HOST_VALUE="${DB_HOST:-pgsql}"
-DB_PORT_VALUE="${DB_PORT:-5432}"
-DB_USER_VALUE="${DB_USERNAME:-postgres}"
-DB_NAME_VALUE="${DB_DATABASE:-trypost}"
+# 6) Wait for the bundled Postgres to be reachable. A DB_URL points at a
+#    managed database (Supabase on the Vultr server), which is already up.
+if [ -n "${DB_URL:-}" ]; then
+    echo "[entrypoint] DB_URL set — skipping the wait for a local postgres"
+else
+    DB_HOST_VALUE="${DB_HOST:-pgsql}"
+    DB_PORT_VALUE="${DB_PORT:-5432}"
+    DB_USER_VALUE="${DB_USERNAME:-postgres}"
+    DB_NAME_VALUE="${DB_DATABASE:-trypost}"
 
-echo "[entrypoint] waiting for postgres at ${DB_HOST_VALUE}:${DB_PORT_VALUE}"
-WAIT_ATTEMPTS=0
-until pg_isready -h "${DB_HOST_VALUE}" -p "${DB_PORT_VALUE}" -U "${DB_USER_VALUE}" -d "${DB_NAME_VALUE}" >/dev/null 2>&1; do
-    WAIT_ATTEMPTS=$((WAIT_ATTEMPTS + 1))
-    if [ "${WAIT_ATTEMPTS}" -gt 60 ]; then
-        echo "[entrypoint] postgres not reachable after 60s — continuing anyway"
-        break
-    fi
-    sleep 1
-done
+    echo "[entrypoint] waiting for postgres at ${DB_HOST_VALUE}:${DB_PORT_VALUE}"
+    WAIT_ATTEMPTS=0
+    until pg_isready -h "${DB_HOST_VALUE}" -p "${DB_PORT_VALUE}" -U "${DB_USER_VALUE}" -d "${DB_NAME_VALUE}" >/dev/null 2>&1; do
+        WAIT_ATTEMPTS=$((WAIT_ATTEMPTS + 1))
+        if [ "${WAIT_ATTEMPTS}" -gt 60 ]; then
+            echo "[entrypoint] postgres not reachable after 60s — continuing anyway"
+            break
+        fi
+        sleep 1
+    done
+fi
 
 # 7) Run migrations (graceful: succeeds even when nothing to migrate).
 echo "[entrypoint] running migrations"

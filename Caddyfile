@@ -1,5 +1,6 @@
 # Caddy serves TryPost on your domain with automatic HTTPS (Let's Encrypt).
-# APP_DOMAIN is provided by the caddy service in compose.prod.yaml.
+# APP_DOMAIN comes from the caddy service in compose.vultr.yaml (read from
+# /opt/trypost/.env) or compose.prod.yaml.
 {$APP_DOMAIN} {
 	reverse_proxy app:80
 }
