@@ -118,7 +118,7 @@ jobs:
 
       - name: Check the domain answers over HTTPS
         run: |
-          domain=$(ssh vultr "grep -E '^APP_DOMAIN=' ${APP_DIR}/.env" | tail -1 | cut -d= -f2- | tr -d "\"'\r" | sed 's/[[:space:]]*#.*//; s/[[:space:]]*$//')
+          domain=$( (ssh vultr "grep -E '^APP_DOMAIN=' ${APP_DIR}/.env" || true) | tail -1 | cut -d= -f2- | tr -d "\"'\r" | sed 's/[[:space:]]*#.*//; s/[[:space:]]*$//')
           if [ -z "${domain}" ]; then
             echo "::error::APP_DOMAIN is not set in ${APP_DIR}/.env"
             exit 1
