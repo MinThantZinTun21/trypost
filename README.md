@@ -75,24 +75,82 @@ The first boot runs the migrations and creates the Owner. If `OWNER_PASSWORD` is
 
 For local development in Docker, use `compose.yaml` with `docker/.env.docker.example`.
 
-### Vercel (free) with Supabase and Cloudflare R2
+### Vultr server with Supabase and Cloudflare R2
 
-Vercel cannot run the queue worker or the scheduler, so an external cron (for example cron-job.org) calls `GET /cron/run` every minute with `Authorization: Bearer <CRON_SECRET>`, or with a token that expires, from `php artisan cron:token --days=30 --env=production`. Each call runs the due scheduled tasks, publishes for up to 4 minutes, and returns the next scheduled post. Postgres comes from Supabase (use the **session pooler** connection string) and media lives in an R2 bucket (`FILESYSTEM_DISK=r2`). Limits on the free plans: a publish that takes longer than about 5 minutes (a large video) is cut off, and posts go out within a minute of their time.
+The Owner's app runs on one Vultr server (Ubuntu 24.04 LTS, 2 GB) using the production image and `compose.vultr.yaml`: the app (nginx, PHP-FPM, the queue worker and the scheduler) behind Caddy, which serves your domain over HTTPS. Postgres comes from Supabase (use the **session pooler** connection string as `DB_URL`) and media lives in an R2 bucket (`FILESYSTEM_DISK=r2`). Deploys are manual: the **Deploy** GitHub Actions workflow builds the image, streams it to the server over SSH and starts it; the container runs the migrations on boot. See [ADR 0005](docs/adr/0005-self-host-on-a-vultr-vps.md).
 
-1. Put the production settings in `.env.production` (git-ignored): `APP_KEY`, `APP_URL`, `DB_URL`, the `R2_*` keys, `CRON_SECRET`, `OWNER_EMAIL` and the platform credentials, with `QUEUE_CONNECTION`, `CACHE_STORE` and `SESSION_DRIVER` set to `database` and `LOG_CHANNEL=stderr`.
-2. Create the schema and the Owner from your machine:
-
-   ```bash
-   php artisan migrate --force --env=production && php artisan db:seed --force --env=production
-   ```
-
-3. Paste `.env.production` into the Vercel project's environment variables (Vercel does not expand `${APP_URL}`, so write the `*_CLIENT_REDIRECT` URLs out in full), then build and deploy:
+1. Make a key pair that only the Deploy workflow uses:
 
    ```bash
-   npm run build && npx vercel deploy --prod
+   ssh-keygen -t ed25519 -N "" -C trypost-deploy -f ~/.ssh/trypost_deploy
    ```
 
-   The frontend is built locally because Vercel's build step has no PHP; the `vercel-php` runtime installs the Composer packages on Vercel.
+2. Create a Vultr Cloud Compute server with Ubuntu 24.04 LTS and 2 GB of memory, with your own SSH key, then set it up as root:
+
+   ```bash
+   scp docker/vultr-setup.sh root@<server-ip>:
+   ```
+
+   ```bash
+   ssh root@<server-ip> bash vultr-setup.sh "'$(cat ~/.ssh/trypost_deploy.pub)'"
+   ```
+
+   It installs Docker, adds swap, lets only SSH, HTTP and HTTPS through the firewall, turns on unattended security upgrades, and creates the `deploy` user that owns `/opt/trypost`.
+
+3. Point your domain at the server: an `A` record for, say, `post.example.com` to the server's IP.
+4. Put the production settings in `.env.production` (git-ignored): `APP_KEY`, `APP_URL=https://<domain>`, `APP_DOMAIN=<domain>`, `DB_URL`, the `R2_*` keys, `OWNER_EMAIL`, `MCP_TOKEN` and the platform credentials, with the `*_CLIENT_REDIRECT` URLs written out in full on the new domain, `QUEUE_CONNECTION`, `CACHE_STORE` and `SESSION_DRIVER` set to `database`, and `LOG_CHANNEL=stderr`. Drop `CRON_SECRET` and `CRON_MAX_SECONDS`; nothing reads them now. If Supabase restricts which addresses may connect, add the server's IP. Copy the file to the server:
+
+   ```bash
+   scp .env.production root@<server-ip>:/opt/trypost/.env
+   ```
+
+   ```bash
+   ssh root@<server-ip> "chown deploy:deploy /opt/trypost/.env && chmod 600 /opt/trypost/.env"
+   ```
+
+5. Give the Deploy workflow the server's address, user, key and host key:
+
+   ```bash
+   gh secret set VULTR_HOST --body "<server-ip>"
+   ```
+
+   ```bash
+   gh secret set VULTR_USER --body deploy
+   ```
+
+   ```bash
+   gh secret set VULTR_SSH_KEY < ~/.ssh/trypost_deploy
+   ```
+
+   ```bash
+   ssh-keyscan -H <server-ip> | gh secret set VULTR_KNOWN_HOSTS
+   ```
+
+   Optionally set the app name compiled into the frontend with `gh variable set VITE_APP_NAME --body "<name>"`.
+
+6. Deploy from the Actions tab (**Deploy** → **Run workflow**), or:
+
+   ```bash
+   gh workflow run deploy.yml
+   ```
+
+   The run finishes when the container answers `/up`. Open `https://<domain>/up` to check Caddy has its certificate. Follow the app's log with `ssh deploy@<server-ip> docker logs -f trypost`.
+
+#### Moving from Vercel
+
+Do these in order, so the old and new apps never publish side by side:
+
+1. Steps 1 to 5 above.
+2. Stop the external cron (the cron-job.org job that called `/cron/run`). From here until the deploy, scheduled posts wait; they go out as soon as the new scheduler starts.
+3. Run the Deploy workflow and check `https://<domain>/up`.
+4. Point each platform at the new domain:
+   - **Meta** (Facebook app): add `https://<domain>/accounts/facebook/callback` to **Valid OAuth Redirect URIs**, and add the domain to **App Domains**.
+   - **TikTok** (developer portal): set the Login Kit redirect URI to `https://<domain>/accounts/tiktok/callback`.
+   - **Google** (Cloud Console OAuth client for YouTube): add `https://<domain>/accounts/youtube/callback` to **Authorized redirect URIs**, and the domain to the consent screen's **Authorized domains**.
+   - Update the website, privacy policy and terms URLs each app registered for review if they pointed at the Vercel domain.
+5. Add `https://<domain>` to the **AllowedOrigins** of the R2 bucket's CORS policy, because uploads go straight from the browser to R2.
+6. Re-register the MCP server with Claude Code on the new URL (see below).
+7. Delete the Vercel project (**Settings** → **Advanced** → **Delete Project**), which also deletes its copy of the production settings.
 
 ## Connect Claude Code
 
