@@ -77,7 +77,7 @@ For local development in Docker, use `compose.yaml` with `docker/.env.docker.exa
 
 ### Vultr server with Supabase and Cloudflare R2
 
-The Owner's app runs on one Vultr server (Ubuntu 24.04 LTS, 2 GB) using the production image and `compose.vultr.yaml`: the app (nginx, PHP-FPM, the queue worker and the scheduler) behind Caddy, which serves your domain over HTTPS. Postgres comes from Supabase (use the **session pooler** connection string as `DB_URL`) and media lives in an R2 bucket (`FILESYSTEM_DISK=r2`). Deploys are manual: the **Deploy** GitHub Actions workflow builds the image, streams it to the server over SSH and starts it; the container runs the migrations on boot. See [ADR 0005](docs/adr/0005-self-host-on-a-vultr-vps.md).
+The Owner's app runs on the Vultr server it shares with Chord Book (Ubuntu 24.04 LTS, 1 GB, 2 GB of swap), using the production image and `compose.vultr.yaml`: the app (nginx, PHP-FPM, the queue worker and the scheduler), capped at 512 MB. Chord Book's Caddy owns ports 80 and 443 and serves TryPost's domain over HTTPS, forwarding to the app on the shared `edge` Docker network. Postgres comes from Supabase (use the **session pooler** connection string as `DB_URL`) and media lives in an R2 bucket (`FILESYSTEM_DISK=r2`). Deploys are manual: the **Deploy** GitHub Actions workflow builds the image, streams it to the server over SSH and starts it; the container runs the migrations on boot. See [ADR 0005](docs/adr/0005-self-host-on-a-vultr-vps.md) and [ADR 0006](docs/adr/0006-share-the-chord-book-server.md).
 
 1. Make a key pair that only the Deploy workflow uses:
 
@@ -85,7 +85,7 @@ The Owner's app runs on one Vultr server (Ubuntu 24.04 LTS, 2 GB) using the prod
    ssh-keygen -t ed25519 -N "" -C trypost-deploy -f ~/.ssh/trypost_deploy
    ```
 
-2. Create a Vultr Cloud Compute server with Ubuntu 24.04 LTS and 2 GB of memory, with your own SSH key, then set it up as root:
+2. Run the setup script on the server as root. Chord Book already set up Docker, the firewall, swap and the `deploy` user, so on this server it only adds the key above and `/opt/trypost`:
 
    ```bash
    scp docker/vultr-setup.sh root@<server-ip>:
@@ -95,9 +95,12 @@ The Owner's app runs on one Vultr server (Ubuntu 24.04 LTS, 2 GB) using the prod
    ssh root@<server-ip> bash vultr-setup.sh "'$(cat ~/.ssh/trypost_deploy.pub)'"
    ```
 
-   It installs Docker, adds swap, lets only SSH, HTTP and HTTPS through the firewall, turns on unattended security upgrades, and creates the `deploy` user that owns `/opt/trypost`.
+3. Pick TryPost's domain and point it at the server: an `A` record for, say, `post.example.com` to the server's IP. Without a domain of your own, `trypost.<ip-with-dashes>.sslip.io` already points at the server (the way Chord Book's names work), though Meta and Google may refuse it as an OAuth redirect. Then tell Chord Book's Caddy to serve it, and redeploy Chord Book (its Deploy workflow, or `just deploy` in the Chord Book repo), which also creates the `edge` network:
 
-3. Point your domain at the server: an `A` record for, say, `post.example.com` to the server's IP.
+   ```bash
+   ssh root@<server-ip> "echo 'TRYPOST_SITE=<domain>' >> /opt/chordbook/.env"
+   ```
+
 4. Put the production settings in `.env.production` (git-ignored): `APP_KEY` (keep the one production already uses: the Social accounts' tokens are encrypted with it), `APP_URL=https://<domain>`, `APP_DOMAIN=<domain>`, `DB_URL`, the `R2_*` keys, `OWNER_EMAIL`, `MCP_TOKEN` and the platform credentials, with the `*_CLIENT_REDIRECT` URLs written out in full on the new domain, `DB_CONNECTION=pgsql`, `QUEUE_CONNECTION`, `CACHE_STORE` and `SESSION_DRIVER` set to `database`, and `LOG_CHANNEL=stderr`. Docker Compose expands `$` in this file, so wrap any value containing `$` (a database password, say) in single quotes. Drop `CRON_SECRET` and `CRON_MAX_SECONDS`; nothing reads them now. If Supabase restricts which addresses may connect, add the server's IP. Copy the file to the server:
 
    ```bash
@@ -134,13 +137,13 @@ The Owner's app runs on one Vultr server (Ubuntu 24.04 LTS, 2 GB) using the prod
    gh workflow run deploy.yml
    ```
 
-   The run finishes once the container answers `/up` and `https://<domain>/up` answers through Caddy, so a green run means the certificate and DNS work too. Follow the app's log with `ssh deploy@<server-ip> docker logs -f trypost`.
+   The run stops early if Chord Book has not created the `edge` network yet. It finishes once the container answers `/up` and `https://<domain>/up` answers through Chord Book's Caddy, so a green run means the certificate, DNS and `TRYPOST_SITE` work too. Follow the app's log with `ssh deploy@<server-ip> docker logs -f trypost`.
 
 #### Moving from Vercel
 
 Do these in order, so the old and new apps never publish side by side:
 
-1. Steps 1 to 5 above.
+1. Steps 1 to 5 above (step 3 needs the Chord Book change that adds `TRYPOST_SITE` to be deployed).
 2. Stop the external cron (the cron-job.org job that called `/cron/run`). From here until the deploy, scheduled posts wait; they go out as soon as the new scheduler starts.
 3. Run the Deploy workflow and check `https://<domain>/up`.
 4. Point each platform at the new domain:

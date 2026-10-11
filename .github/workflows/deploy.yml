@@ -1,7 +1,8 @@
 name: Deploy
 
 # Builds the production image and ships it to the Owner's Vultr server over
-# SSH (ADR 0005). Run it from the Actions tab; nothing deploys on a push.
+# SSH (ADR 0005), where Chord Book's Caddy serves it (ADR 0006). Run it from
+# the Actions tab; nothing deploys on a push.
 #
 # Secrets:
 #   VULTR_HOST         the server's IP address or hostname
@@ -82,8 +83,15 @@ jobs:
             exit 1
           fi
 
-      - name: Copy the compose file and Caddyfile
-        run: scp compose.vultr.yaml Caddyfile "vultr:${APP_DIR}/"
+      - name: Check Chord Book's network is there
+        run: |
+          if ! ssh vultr "docker network inspect edge > /dev/null"; then
+            echo "::error::the edge network is missing: deploy Chord Book (which creates it) first"
+            exit 1
+          fi
+
+      - name: Copy the compose file
+        run: scp compose.vultr.yaml "vultr:${APP_DIR}/"
 
       - name: Ship the image
         run: docker save trypost-app:latest | gzip | ssh vultr 'gunzip | docker load'
@@ -91,15 +99,6 @@ jobs:
       - name: Start the new image
         run: |
           ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml up -d --remove-orphans"
-          for attempt in $(seq 1 10); do
-            if ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"; then
-              exit 0
-            fi
-            echo "attempt ${attempt}: caddy is not ready to reload yet"
-            sleep 3
-          done
-          echo "::error::caddy did not reload the Caddyfile"
-          exit 1
 
       - name: Wait for /up
         run: |
@@ -131,6 +130,5 @@ jobs:
             echo "attempt ${attempt}: https://${domain}/up not answering yet"
             sleep 5
           done
-          ssh vultr 'docker logs --tail 50 trypost-caddy' || true
-          echo "::error::https://${domain}/up did not answer within 2 minutes (check DNS and Caddy)"
+          echo "::error::https://${domain}/up did not answer within 2 minutes: check DNS, and that TRYPOST_SITE in /opt/chordbook/.env is ${domain}"
           exit 1

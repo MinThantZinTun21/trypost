@@ -211,7 +211,8 @@ posts to Facebook Pages, TikTok and YouTube Shorts at a chosen time. The domain
 glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0001-hard-fork-to-minimal-three-platform-scheduler.md` and
 `docs/adr/0002-postgres-only-no-redis.md`; where it runs is
-`docs/adr/0005-self-host-on-a-vultr-vps.md`. Read them before adding anything.
+`docs/adr/0005-self-host-on-a-vultr-vps.md` and
+`docs/adr/0006-share-the-chord-book-server.md`. Read them before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
   workspace UI, the REST API and MCP server, webhooks, signatures, labels,
@@ -277,12 +278,14 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
   process, so `ScheduleTest` runs the schedule end to end with faked
   publishers; `Schedule::command()` spawns `php artisan` subprocesses that never
   see the fakes (`ScheduleTest` fails with them).
-- Production is one Vultr server (ADR 0005). `compose.vultr.yaml` runs the
-  production image behind Caddy, with Postgres on Supabase (`DB_URL`) and media
-  on R2; it has no database service and publishes only Caddy's ports, because
-  the app trusts every proxy. The manual Deploy workflow
-  (`.github/workflows/deploy.yml`) builds the image and streams it over SSH; the
-  container migrates on boot. `VultrDeployTest` checks both files.
+- Production is the Owner's Vultr server, shared with Chord Book (ADR 0005,
+  ADR 0006). `compose.vultr.yaml` runs only the app, capped at 512 MB, with
+  Postgres on Supabase (`DB_URL`) and media on R2. Chord Book's Caddy owns 80
+  and 443 and forwards TryPost's domain to `trypost:80` on the shared `edge`
+  network, so the app publishes no port (it trusts every proxy) and has no
+  Caddy of its own. The manual Deploy workflow (`.github/workflows/deploy.yml`)
+  builds the image and streams it over SSH; the container migrates on boot.
+  `VultrDeployTest` checks both files.
 - There is no Vercel deploy, `GET /cron/run` endpoint or `cron:token`
   (`tests/Feature/Removed/VercelRemovedTest.php`). Do not bring back a
   web-triggered scheduler; the server runs `schedule:work`.

@@ -25,17 +25,20 @@ test('the vultr app service runs the shipped image with the server env file', fu
         ->and(data_get($app, 'logging.options.max-size'))->not->toBeNull();
 });
 
-test('only caddy is published, because the app trusts every proxy', function () {
-    $services = vultrComposeServices();
+test('the app publishes no port, because chord book\'s caddy reaches it on the edge network', function () {
+    $app = data_get(vultrComposeServices(), 'app');
 
-    expect(data_get($services, 'app.ports'))->toBeNull()
-        ->and(data_get($services, 'caddy.ports'))->toContain('80:80', '443:443')
-        ->and(data_get($services, 'caddy.environment.APP_DOMAIN'))->toContain('APP_DOMAIN')
-        ->and(data_get($services, 'caddy.volumes'))->toContain('./Caddyfile:/etc/caddy/Caddyfile:ro');
+    expect(data_get($app, 'ports'))->toBeNull()
+        ->and(data_get($app, 'networks.edge.aliases'))->toContain('trypost')
+        ->and(data_get(Yaml::parseFile(base_path('compose.vultr.yaml')), 'networks.edge.external'))->toBeTrue();
 });
 
-test('the vultr server has no database service, because postgres is supabase', function () {
-    expect(array_keys(vultrComposeServices()))->toEqualCanonicalizing(['app', 'caddy']);
+test('the app is capped to share the 1 GB server with chord book', function () {
+    expect(data_get(vultrComposeServices(), 'app.mem_limit'))->toBe('512m');
+});
+
+test('the vultr server runs only the app, because postgres is supabase and caddy is chord book\'s', function () {
+    expect(array_keys(vultrComposeServices()))->toBe(['app']);
 });
 
 test('the entrypoint skips waiting for a local postgres when DB_URL is set', function () {
@@ -79,9 +82,10 @@ test('the deploy workflow builds the production image for the amd64 server', fun
 test('the deploy workflow ships the image over ssh and starts it with the vultr compose file', function () {
     expect(vultrDeployScript())
         ->toContain('docker save trypost-app:latest | gzip | ssh vultr')
-        ->toContain('scp compose.vultr.yaml Caddyfile')
+        ->toContain('scp compose.vultr.yaml "vultr:')
+        ->toContain('docker network inspect edge')
         ->toContain('docker compose -f compose.vultr.yaml up -d')
-        ->toContain('caddy reload')
+        ->not->toContain('Caddyfile')
         ->toContain('.State.Health.Status')
         ->toContain('https://${domain}/up');
 });
