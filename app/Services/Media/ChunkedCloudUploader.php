@@ -72,8 +72,8 @@ class ChunkedCloudUploader
 
     /**
      * A presigned PUT lets the browser send the file straight to the bucket,
-     * so its bytes never pass through a request body limit (Vercel caps a
-     * request at 4.5 MB). The signature only covers the issued key.
+     * so its bytes never pass through the app server or its request body
+     * limit. The signature only covers the issued key.
      *
      * @return array{key: string, url: string, headers: array<string, string>}
      */

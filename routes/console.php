@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Schedule;
 
 /*
  * Callbacks, not Schedule::command(): they run inside the schedule:run
- * process, so GET /cron/run can drive the same schedule from a web request
- * on serverless hosts, where spawning `php artisan` subprocesses is fragile.
+ * process instead of booting a `php artisan` subprocess per task, which
+ * keeps memory down on the 2 GB server (ADR 0005).
  */
 Schedule::call(fn () => Artisan::call(ProcessScheduledPosts::class))
     ->name('posts:process-scheduled')->everyMinute()->withoutOverlapping()->onOneServer();
