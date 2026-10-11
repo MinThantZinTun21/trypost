@@ -1,0 +1,58 @@
+# TryPost — the Owner's Vultr server (ADR 0005).
+#
+# Lives in /opt/trypost next to the Caddyfile and a .env holding the
+# production settings (APP_KEY, DB_URL for Supabase, R2_*, the platform
+# OAuth keys) plus APP_DOMAIN, the domain Caddy serves over HTTPS.
+#
+# The Deploy workflow (.github/workflows/deploy.yml) loads the image and runs:
+#   docker compose -f compose.vultr.yaml up -d
+#
+# Postgres is Supabase and media is R2, so there is no database service here.
+# The app port is not published: only Caddy reaches it, which is what makes
+# trusting every proxy (bootstrap/app.php) safe.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  app:
+    # Loaded by the Deploy workflow; the server never builds or pulls it.
+    image: trypost-app:latest
+    pull_policy: never
+    container_name: trypost
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: production
+      TRYPOST_TARGET: production
+    expose:
+      - "80"
+    volumes:
+      - storage:/var/www/html/storage/app
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: trypost-caddy
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+    logging: *logging
+
+volumes:
+  storage:
+  caddy-data:
+  caddy-config:

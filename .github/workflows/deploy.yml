@@ -1,0 +1,136 @@
+name: Deploy
+
+# Builds the production image and ships it to the Owner's Vultr server over
+# SSH (ADR 0005). Run it from the Actions tab; nothing deploys on a push.
+#
+# Secrets:
+#   VULTR_HOST         the server's IP address or hostname
+#   VULTR_USER         the deploy user created by docker/vultr-setup.sh
+#   VULTR_SSH_KEY      the private key for that user
+#   VULTR_KNOWN_HOSTS  output of `ssh-keyscan -H <host>`, so the runner
+#                      only talks to the real server
+# Variable (optional):
+#   VITE_APP_NAME      the app name compiled into the frontend bundle
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      VULTR_HOST: ${{ secrets.VULTR_HOST }}
+      VULTR_USER: ${{ secrets.VULTR_USER }}
+      APP_DIR: /opt/trypost
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Build the production image
+        env:
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'TryPost' }}
+        run: |
+          docker build \
+            --file docker/Dockerfile \
+            --target production \
+            --platform linux/amd64 \
+            --build-arg VITE_APP_NAME="${VITE_APP_NAME}" \
+            --tag trypost-app:latest \
+            .
+
+      - name: Set up SSH
+        env:
+          VULTR_SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+          VULTR_KNOWN_HOSTS: ${{ secrets.VULTR_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VULTR_SSH_KEY" > ~/.ssh/id_deploy
+          printf '%s\n' "$VULTR_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<CONFIG
+          Host vultr
+            HostName ${VULTR_HOST}
+            User ${VULTR_USER}
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+            BatchMode yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          CONFIG
+
+      - name: Connect to the server
+        run: ssh vultr true
+
+      - name: Check the server has its settings
+        run: |
+          if ! ssh vultr "test -f ${APP_DIR}/.env"; then
+            echo "::error::${APP_DIR}/.env is missing on the server"
+            exit 1
+          fi
+
+      - name: Copy the compose file and Caddyfile
+        run: scp compose.vultr.yaml Caddyfile "vultr:${APP_DIR}/"
+
+      - name: Ship the image
+        run: docker save trypost-app:latest | gzip | ssh vultr 'gunzip | docker load'
+
+      - name: Start the new image
+        run: |
+          ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml up -d --remove-orphans"
+          for attempt in $(seq 1 10); do
+            if ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"; then
+              exit 0
+            fi
+            echo "attempt ${attempt}: caddy is not ready to reload yet"
+            sleep 3
+          done
+          echo "::error::caddy did not reload the Caddyfile"
+          exit 1
+
+      - name: Wait for /up
+        run: |
+          for attempt in $(seq 1 36); do
+            status=$(ssh vultr "docker inspect --format '{{.State.Health.Status}}' trypost" || true)
+            echo "attempt ${attempt}: ${status}"
+            if [ "${status}" = "healthy" ]; then
+              ssh vultr 'docker image prune -f'
+              exit 0
+            fi
+            sleep 5
+          done
+          ssh vultr 'docker logs --tail 100 trypost' || true
+          echo "::error::the app did not answer /up within 3 minutes"
+          exit 1
+
+      - name: Check the domain answers over HTTPS
+        run: |
+          domain=$( (ssh vultr "grep -E '^APP_DOMAIN=' ${APP_DIR}/.env" || true) | tail -1 | cut -d= -f2- | tr -d "\"'\r" | sed 's/[[:space:]]*#.*//; s/[[:space:]]*$//')
+          if [ -z "${domain}" ]; then
+            echo "::error::APP_DOMAIN is not set in ${APP_DIR}/.env"
+            exit 1
+          fi
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 10 "https://${domain}/up" > /dev/null; then
+              echo "https://${domain}/up answers"
+              exit 0
+            fi
+            echo "attempt ${attempt}: https://${domain}/up not answering yet"
+            sleep 5
+          done
+          ssh vultr 'docker logs --tail 50 trypost-caddy' || true
+          echo "::error::https://${domain}/up did not answer within 2 minutes (check DNS and Caddy)"
+          exit 1

@@ -210,7 +210,8 @@ A hard fork of TryPost cut down to a personal scheduler: one Owner publishes
 posts to Facebook Pages, TikTok and YouTube Shorts at a chosen time. The domain
 glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0001-hard-fork-to-minimal-three-platform-scheduler.md` and
-`docs/adr/0002-postgres-only-no-redis.md`. Read them before adding anything.
+`docs/adr/0002-postgres-only-no-redis.md`; where it runs is
+`docs/adr/0005-self-host-on-a-vultr-vps.md`. Read them before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
   workspace UI, the REST API and MCP server, webhooks, signatures, labels,
@@ -272,19 +273,19 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
   `PublishToSocialPlatform::$timeout` (900). Below it, a slow video upload is
   handed to a second worker while the first is still running.
 - The schedule in `routes/console.php` is `Schedule::call(fn () => Artisan::call(...))`,
-  never `Schedule::command()`. Callbacks run inside the `schedule:run` process,
-  which is what lets `GET /cron/run` drive the same schedule from a web request;
-  `Schedule::command()` spawns `php artisan` subprocesses that a serverless
-  request cannot rely on (`RunScheduleTest` fails with them).
-- On Vercel there are no long-lived processes. An external cron calls
-  `GET /cron/run` every minute with `Authorization: Bearer $CRON_SECRET` (or
-  `?token=`), or with an expiring token from `php artisan cron:token --days=30`
-  (signed with `CRON_SECRET`; rotating the secret revokes them); it runs
-  `schedule:run`, then works the queue for
-  `CRON_MAX_SECONDS` (240), and returns the next scheduled post. An empty
-  `CRON_SECRET` disables it (404). Keep `CRON_MAX_SECONDS` below `maxDuration`
-  in `vercel.json` (300) — `VercelConfigTest` enforces it. Uploads longer than
-  that budget are cut off on Vercel and settled by `RecoverStuckPosts`.
+  never `Schedule::command()`. Callbacks run inside the one `schedule:run`
+  process, so `ScheduleTest` runs the schedule end to end with faked
+  publishers; `Schedule::command()` spawns `php artisan` subprocesses that never
+  see the fakes (`ScheduleTest` fails with them).
+- Production is one Vultr server (ADR 0005). `compose.vultr.yaml` runs the
+  production image behind Caddy, with Postgres on Supabase (`DB_URL`) and media
+  on R2; it has no database service and publishes only Caddy's ports, because
+  the app trusts every proxy. The manual Deploy workflow
+  (`.github/workflows/deploy.yml`) builds the image and streams it over SSH; the
+  container migrates on boot. `VultrDeployTest` checks both files.
+- There is no Vercel deploy, `GET /cron/run` endpoint or `cron:token`
+  (`tests/Feature/Removed/VercelRemovedTest.php`). Do not bring back a
+  web-triggered scheduler; the server runs `schedule:work`.
 
 ## Publishing status updates (polling, no websockets)
 

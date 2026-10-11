@@ -12,9 +12,10 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 /*
- * Callbacks, not Schedule::command(): they run inside the schedule:run
- * process, so GET /cron/run can drive the same schedule from a web request
- * on serverless hosts, where spawning `php artisan` subprocesses is fragile.
+ * Callbacks, not Schedule::command(): every task runs inside the one
+ * schedule:run process, so a test can run the schedule end to end with
+ * faked publishers (ScheduleTest) instead of spawning `php artisan`
+ * subprocesses that never see them.
  */
 Schedule::call(fn () => Artisan::call(ProcessScheduledPosts::class))
     ->name('posts:process-scheduled')->everyMinute()->withoutOverlapping()->onOneServer();
