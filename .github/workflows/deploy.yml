@@ -1,0 +1,86 @@
+name: Deploy
+
+# Builds the production image and ships it to the Owner's Vultr server over
+# SSH (ADR 0005). Run it from the Actions tab; nothing deploys on a push.
+#
+# Secrets:
+#   VULTR_HOST         the server's IP address or hostname
+#   VULTR_USER         the deploy user created by docker/vultr-setup.sh
+#   VULTR_SSH_KEY      the private key for that user
+#   VULTR_KNOWN_HOSTS  output of `ssh-keyscan -H <host>`, so the runner
+#                      only talks to the real server
+# Variable (optional):
+#   VITE_APP_NAME      the app name compiled into the frontend bundle
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      VULTR_HOST: ${{ secrets.VULTR_HOST }}
+      VULTR_USER: ${{ secrets.VULTR_USER }}
+      APP_DIR: /opt/trypost
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Build the production image
+        run: |
+          docker build \
+            --file docker/Dockerfile \
+            --target production \
+            --platform linux/amd64 \
+            --build-arg VITE_APP_NAME="${{ vars.VITE_APP_NAME || 'TryPost' }}" \
+            --tag trypost-app:latest \
+            .
+
+      - name: Set up SSH
+        env:
+          VULTR_SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+          VULTR_KNOWN_HOSTS: ${{ secrets.VULTR_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VULTR_SSH_KEY" > ~/.ssh/id_deploy
+          printf '%s\n' "$VULTR_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          printf 'Host vultr\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n' \
+            "$VULTR_HOST" "$VULTR_USER" > ~/.ssh/config
+
+      - name: Check the server has its settings
+        run: ssh vultr "test -f ${APP_DIR}/.env" || { echo "::error::${APP_DIR}/.env is missing on the server"; exit 1; }
+
+      - name: Copy the compose file and Caddyfile
+        run: scp compose.vultr.yaml Caddyfile "vultr:${APP_DIR}/"
+
+      - name: Ship the image
+        run: docker save trypost-app:latest | gzip | ssh vultr 'gunzip | docker load'
+
+      - name: Start the new image
+        run: |
+          ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml up -d --no-build --remove-orphans && docker image prune -f"
+
+      - name: Wait for /up
+        run: |
+          for attempt in $(seq 1 36); do
+            status=$(ssh vultr "docker inspect --format '{{.State.Health.Status}}' trypost" || true)
+            echo "attempt ${attempt}: ${status}"
+            if [ "${status}" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          ssh vultr 'docker logs --tail 100 trypost' || true
+          echo "::error::the app did not answer /up within 3 minutes"
+          exit 1
