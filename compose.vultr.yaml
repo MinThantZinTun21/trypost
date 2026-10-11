@@ -1,21 +1,17 @@
-# TryPost — the Owner's Vultr server (ADR 0005).
+# TryPost — on the Owner's Vultr server, next to Chord Book (ADR 0005, ADR 0006).
 #
-# Lives in /opt/trypost next to the Caddyfile and a .env holding the
-# production settings (APP_KEY, DB_URL for Supabase, R2_*, the platform
-# OAuth keys) plus APP_DOMAIN, the domain Caddy serves over HTTPS.
+# Lives in /opt/trypost next to a .env holding the production settings
+# (APP_KEY, DB_URL for Supabase, R2_*, the platform OAuth keys) plus
+# APP_DOMAIN, the domain the Deploy workflow checks over HTTPS.
 #
 # The Deploy workflow (.github/workflows/deploy.yml) loads the image and runs:
 #   docker compose -f compose.vultr.yaml up -d
 #
-# Postgres is Supabase and media is R2, so there is no database service here.
-# The app port is not published: only Caddy reaches it, which is what makes
-# trusting every proxy (bootstrap/app.php) safe.
-
-x-logging: &logging
-  driver: json-file
-  options:
-    max-size: 10m
-    max-file: "5"
+# Chord Book's Caddy owns ports 80 and 443 and serves APP_DOMAIN (its
+# TRYPOST_SITE) by forwarding to `trypost:80` on the shared `edge` network,
+# which Chord Book's stack creates. The app publishes no port: only that
+# Caddy reaches it, which is what makes trusting every proxy
+# (bootstrap/app.php) safe. Postgres is Supabase and media is R2.
 
 services:
   app:
@@ -30,29 +26,23 @@ services:
       TRYPOST_TARGET: production
     expose:
       - "80"
+    networks:
+      edge:
+        aliases:
+          - trypost
     volumes:
       - storage:/var/www/html/storage/app
-    logging: *logging
+    # The server has 1 GB shared with Chord Book (and 2 GB of swap).
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: trypost-caddy
-    restart: unless-stopped
-    environment:
-      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in .env}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      - app
-    logging: *logging
+networks:
+  edge:
+    external: true
 
 volumes:
   storage:
-  caddy-data:
-  caddy-config:
