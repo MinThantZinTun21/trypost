@@ -35,6 +35,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cron Endpoint
+    |--------------------------------------------------------------------------
+    |
+    | GET /cron/run runs the due scheduled tasks for the Owner's external
+    | cron, next to schedule:work rather than instead of it: every task is
+    | onOneServer, so the two never run one twice. With max_seconds above 0
+    | it then works the queue that long, publishing due posts in the call;
+    | keep it under PHP's max_execution_time (60 s in production). The queue
+    | worker publishes whatever is left. Empty secret = endpoint disabled.
+    |
+    */
+
+    'cron' => [
+        'secret' => env('CRON_SECRET'),
+        'max_seconds' => (int) env('CRON_MAX_SECONDS', 0),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | MCP Server
     |--------------------------------------------------------------------------
     |

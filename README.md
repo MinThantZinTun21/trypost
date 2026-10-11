@@ -101,7 +101,7 @@ The Owner's app runs on the Vultr server it shares with Chord Book (Ubuntu 24.04
    ssh root@<server-ip> "echo 'TRYPOST_SITE=<domain>' >> /opt/chordbook/.env"
    ```
 
-4. Put the production settings in `.env.production` (git-ignored): `APP_KEY` (keep the one production already uses: the Social accounts' tokens are encrypted with it), `APP_URL=https://<domain>`, `APP_DOMAIN=<domain>`, `DB_URL`, the `R2_*` keys, `OWNER_EMAIL`, `MCP_TOKEN` and the platform credentials, with the `*_CLIENT_REDIRECT` URLs written out in full on the new domain, `DB_CONNECTION=pgsql`, `QUEUE_CONNECTION`, `CACHE_STORE` and `SESSION_DRIVER` set to `database`, and `LOG_CHANNEL=stderr`. Docker Compose expands `$` in this file, so wrap any value containing `$` (a database password, say) in single quotes. Drop `CRON_SECRET` and `CRON_MAX_SECONDS`; nothing reads them now. If Supabase restricts which addresses may connect, add the server's IP. Copy the file to the server:
+4. Put the production settings in `.env.production` (git-ignored): `APP_KEY` (keep the one production already uses: the Social accounts' tokens are encrypted with it), `APP_URL=https://<domain>`, `APP_DOMAIN=<domain>`, `DB_URL`, the `R2_*` keys, `OWNER_EMAIL`, `MCP_TOKEN` and the platform credentials, with the `*_CLIENT_REDIRECT` URLs written out in full on the new domain, `DB_CONNECTION=pgsql`, `QUEUE_CONNECTION`, `CACHE_STORE` and `SESSION_DRIVER` set to `database`, and `LOG_CHANNEL=stderr`. Docker Compose expands `$` in this file, so wrap any value containing `$` (a database password, say) in single quotes. `CRON_SECRET` and `CRON_MAX_SECONDS` are only for the optional external cron (below). If Supabase restricts which addresses may connect, add the server's IP. Copy the file to the server:
 
    ```bash
    scp .env.production root@<server-ip>:/opt/trypost/.env
@@ -138,6 +138,16 @@ The Owner's app runs on the Vultr server it shares with Chord Book (Ubuntu 24.04
    ```
 
    The run stops early if Chord Book has not created the `edge` network yet. It finishes once the container answers `/up` and `https://<domain>/up` answers through Chord Book's Caddy, so a green run means the certificate, DNS and `TRYPOST_SITE` work too. Follow the app's log with `ssh deploy@<server-ip> docker logs -f trypost`.
+
+#### Optional: an external cron
+
+The server's own `schedule:work` publishes scheduled posts on its own. If you also want an external cron service (cron-job.org) to drive the schedule, and to see the next scheduled post in its responses, turn on `GET /cron/run`:
+
+1. Add `CRON_SECRET` (a long random string, `openssl rand -hex 32`) and `CRON_MAX_SECONDS=50` to `/opt/trypost/.env`, then run the Deploy workflow (or `docker compose -f compose.vultr.yaml up -d` in `/opt/trypost`).
+2. Optionally issue an expiring token instead of handing out the secret: `ssh deploy@<server-ip> docker exec trypost php artisan cron:token --days=30`.
+3. Point the cron at `https://<domain>/cron/run` every minute, with the header `Authorization: Bearer <secret or token>` (or `?token=<…>` on the URL).
+
+Each call runs what is due, publishes due posts for up to `CRON_MAX_SECONDS` (keep it under PHP's 60 s limit), and answers with `next_scheduled_post`. It runs next to `schedule:work`, which still publishes if the cron stops; every task is `onOneServer()`, so the two never run one twice.
 
 #### Moving from Vercel
 
