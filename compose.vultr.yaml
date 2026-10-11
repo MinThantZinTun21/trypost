@@ -19,11 +19,9 @@ x-logging: &logging
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-      target: production
+    # Loaded by the Deploy workflow; the server never builds or pulls it.
     image: trypost-app:latest
+    pull_policy: never
     container_name: trypost
     restart: unless-stopped
     env_file: .env

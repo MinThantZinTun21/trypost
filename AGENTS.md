@@ -210,7 +210,8 @@ A hard fork of TryPost cut down to a personal scheduler: one Owner publishes
 posts to Facebook Pages, TikTok and YouTube Shorts at a chosen time. The domain
 glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0001-hard-fork-to-minimal-three-platform-scheduler.md` and
-`docs/adr/0002-postgres-only-no-redis.md`. Read them before adding anything.
+`docs/adr/0002-postgres-only-no-redis.md`; where it runs is
+`docs/adr/0005-self-host-on-a-vultr-vps.md`. Read them before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
   workspace UI, the REST API and MCP server, webhooks, signatures, labels,
@@ -272,9 +273,10 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
   `PublishToSocialPlatform::$timeout` (900). Below it, a slow video upload is
   handed to a second worker while the first is still running.
 - The schedule in `routes/console.php` is `Schedule::call(fn () => Artisan::call(...))`,
-  never `Schedule::command()`. Callbacks run inside the `schedule:run` process
-  instead of booting a `php artisan` subprocess per task, which keeps memory
-  down on the 2 GB server (`ScheduleTest` fails with `Schedule::command()`).
+  never `Schedule::command()`. Callbacks run inside the one `schedule:run`
+  process, so `ScheduleTest` runs the schedule end to end with faked
+  publishers; `Schedule::command()` spawns `php artisan` subprocesses that never
+  see the fakes (`ScheduleTest` fails with them).
 - Production is one Vultr server (ADR 0005). `compose.vultr.yaml` runs the
   production image behind Caddy, with Postgres on Supabase (`DB_URL`) and media
   on R2; it has no database service and publishes only Caddy's ports, because

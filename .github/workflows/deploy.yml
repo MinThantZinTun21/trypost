@@ -37,12 +37,14 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Build the production image
+        env:
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'TryPost' }}
         run: |
           docker build \
             --file docker/Dockerfile \
             --target production \
             --platform linux/amd64 \
-            --build-arg VITE_APP_NAME="${{ vars.VITE_APP_NAME || 'TryPost' }}" \
+            --build-arg VITE_APP_NAME="${VITE_APP_NAME}" \
             --tag trypost-app:latest \
             .
 
@@ -55,11 +57,26 @@ jobs:
           printf '%s\n' "$VULTR_SSH_KEY" > ~/.ssh/id_deploy
           printf '%s\n' "$VULTR_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
-          printf 'Host vultr\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n' \
-            "$VULTR_HOST" "$VULTR_USER" > ~/.ssh/config
+          cat > ~/.ssh/config <<CONFIG
+          Host vultr
+            HostName ${VULTR_HOST}
+            User ${VULTR_USER}
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+            BatchMode yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          CONFIG
+
+      - name: Connect to the server
+        run: ssh vultr true
 
       - name: Check the server has its settings
-        run: ssh vultr "test -f ${APP_DIR}/.env" || { echo "::error::${APP_DIR}/.env is missing on the server"; exit 1; }
+        run: |
+          if ! ssh vultr "test -f ${APP_DIR}/.env"; then
+            echo "::error::${APP_DIR}/.env is missing on the server"
+            exit 1
+          fi
 
       - name: Copy the compose file and Caddyfile
         run: scp compose.vultr.yaml Caddyfile "vultr:${APP_DIR}/"
@@ -69,7 +86,8 @@ jobs:
 
       - name: Start the new image
         run: |
-          ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml up -d --no-build --remove-orphans && docker image prune -f"
+          ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml up -d --remove-orphans"
+          ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"
 
       - name: Wait for /up
         run: |
@@ -77,10 +95,30 @@ jobs:
             status=$(ssh vultr "docker inspect --format '{{.State.Health.Status}}' trypost" || true)
             echo "attempt ${attempt}: ${status}"
             if [ "${status}" = "healthy" ]; then
+              ssh vultr 'docker image prune -f'
               exit 0
             fi
             sleep 5
           done
           ssh vultr 'docker logs --tail 100 trypost' || true
           echo "::error::the app did not answer /up within 3 minutes"
+          exit 1
+
+      - name: Check the domain answers over HTTPS
+        run: |
+          domain=$(ssh vultr "grep -E '^APP_DOMAIN=' ${APP_DIR}/.env" | tail -1 | cut -d= -f2- | tr -d "\"'")
+          if [ -z "${domain}" ]; then
+            echo "::error::APP_DOMAIN is not set in ${APP_DIR}/.env"
+            exit 1
+          fi
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 10 "https://${domain}/up" > /dev/null; then
+              echo "https://${domain}/up answers"
+              exit 0
+            fi
+            echo "attempt ${attempt}: https://${domain}/up not answering yet"
+            sleep 5
+          done
+          ssh vultr 'docker logs --tail 50 trypost-caddy' || true
+          echo "::error::https://${domain}/up did not answer within 2 minutes (check DNS and Caddy)"
           exit 1

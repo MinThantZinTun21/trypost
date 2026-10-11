@@ -7,7 +7,8 @@
 #
 # Installs Docker Engine with the compose plugin, adds a 2 GB swap file, lets
 # only SSH, HTTP and HTTPS through ufw, turns on unattended security upgrades,
-# and creates the `deploy` user that owns /opt/trypost.
+# turns off SSH password logins (when root has a key), and creates the
+# `deploy` user that owns /opt/trypost.
 
 set -euo pipefail
 
@@ -43,13 +44,11 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 systemctl enable --now docker
 
-if ! swapon --show=NAME --noheadings | grep -qx /swapfile; then
+if ! grep -q '^/swapfile ' /proc/swaps; then
     echo "[setup] adding a 2 GB swap file"
-    if [ ! -f /swapfile ]; then
-        fallocate -l 2G /swapfile
-        chmod 600 /swapfile
-        mkswap /swapfile
-    fi
+    [ -f /swapfile ] || fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
     swapon /swapfile
 fi
 grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
@@ -70,6 +69,22 @@ APT::Periodic::Unattended-Upgrade "1";
 CONF
 systemctl enable --now unattended-upgrades
 
+# Key-only SSH. Ubuntu reads sshd_config.d in name order and the first value
+# wins, so 10- beats the 50-cloud-init.conf that Vultr may write. Skipped when
+# root has no key yet, so a password-only server is not locked out.
+if [ -s /root/.ssh/authorized_keys ]; then
+    echo "[setup] turning off SSH password logins"
+    cat > /etc/ssh/sshd_config.d/10-trypost.conf <<'CONF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+CONF
+    sshd -t
+    systemctl reload ssh
+fi
+
+# The docker group can do anything root can, so the deploy key is as
+# powerful as root's; keep it only in the Deploy workflow's secrets.
 echo "[setup] creating the ${DEPLOY_USER} user"
 id -u "${DEPLOY_USER}" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "${DEPLOY_USER}"
 usermod -aG docker "${DEPLOY_USER}"

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\FacebookPublisher;
 use Illuminate\Console\Scheduling\CallbackEvent;
+use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\DB;
 
 test('every scheduled task is a callback, not an artisan subprocess', function () {
     $events = app(Schedule::class)->events();
@@ -23,13 +26,14 @@ test('every scheduled task is a callback, not an artisan subprocess', function (
 
 test('due posts are processed every minute', function () {
     $event = collect(app(Schedule::class)->events())
-        ->first(fn ($event): bool => $event->description === 'posts:process-scheduled');
+        ->first(fn (Event $event): bool => $event->description === 'posts:process-scheduled');
 
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('* * * * *');
 });
 
-test('a schedule run publishes a due post', function () {
+test('a schedule run queues a due post that the worker publishes', function () {
+    config()->set('queue.default', 'database');
     $account = SocialAccount::factory()->facebook()->create();
     $post = Post::factory()->create([
         'workspace_id' => $account->workspace_id,
@@ -50,7 +54,13 @@ test('a schedule run publishes a due post', function () {
     app()->instance(FacebookPublisher::class, $publisher);
 
     $this->artisan('schedule:run')->assertSuccessful();
+    $this->artisan('queue:work', [
+        '--queue' => implode(',', ['default', ...Platform::allQueues()]),
+        '--stop-when-empty' => true,
+    ])->assertSuccessful();
 
     expect($platform->fresh()->status)->toBe(PlatformStatus::Published)
-        ->and($post->fresh()->status)->toBe(PostStatus::Published);
+        ->and($post->fresh()->status)->toBe(PostStatus::Published)
+        ->and(DB::table('jobs')->count())->toBe(0)
+        ->and(DB::table('failed_jobs')->count())->toBe(0);
 });
