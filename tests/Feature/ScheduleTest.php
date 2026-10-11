@@ -34,6 +34,8 @@ test('due posts are processed every minute', function () {
 
 test('a schedule run queues a due post that the worker publishes', function () {
     config()->set('queue.default', 'database');
+    // A minute when only posts:process-scheduled is due.
+    $this->travelTo(now()->setTime(10, 7));
     $account = SocialAccount::factory()->facebook()->create();
     $post = Post::factory()->create([
         'workspace_id' => $account->workspace_id,

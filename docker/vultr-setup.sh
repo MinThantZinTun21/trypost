@@ -80,7 +80,7 @@ KbdInteractiveAuthentication no
 PermitRootLogin prohibit-password
 CONF
     sshd -t
-    systemctl reload ssh
+    systemctl try-reload-or-restart ssh
 fi
 
 # The docker group can do anything root can, so the deploy key is as

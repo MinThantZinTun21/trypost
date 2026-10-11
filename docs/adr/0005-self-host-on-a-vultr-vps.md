@@ -15,6 +15,7 @@ Everything that existed only for Vercel is removed: `vercel.json`, `.vercelignor
 
 ## Consequences
 
-- The server is the Owner's to keep patched; the setup script turns on unattended security upgrades and a firewall that allows only SSH, HTTP and HTTPS.
+- The server is the Owner's to keep patched; the setup script turns on unattended security upgrades, a firewall that allows only SSH, HTTP and HTTPS, and key-only SSH logins (once root has a key).
+- `compose.vultr.yaml` names the shipped image and never builds or pulls it: the server holds no source, only the image the workflow loads.
 - Changing the app's domain means updating the OAuth redirect URIs in the Meta, TikTok and Google consoles, and the URLs registered for app review.
 - `RecoverStuckPosts` stays: a worker can still die mid-upload.

@@ -98,7 +98,7 @@ The Owner's app runs on one Vultr server (Ubuntu 24.04 LTS, 2 GB) using the prod
    It installs Docker, adds swap, lets only SSH, HTTP and HTTPS through the firewall, turns on unattended security upgrades, and creates the `deploy` user that owns `/opt/trypost`.
 
 3. Point your domain at the server: an `A` record for, say, `post.example.com` to the server's IP.
-4. Put the production settings in `.env.production` (git-ignored): `APP_KEY`, `APP_URL=https://<domain>`, `APP_DOMAIN=<domain>`, `DB_URL`, the `R2_*` keys, `OWNER_EMAIL`, `MCP_TOKEN` and the platform credentials, with the `*_CLIENT_REDIRECT` URLs written out in full on the new domain, `DB_CONNECTION=pgsql`, `QUEUE_CONNECTION`, `CACHE_STORE` and `SESSION_DRIVER` set to `database`, and `LOG_CHANNEL=stderr`. Docker Compose expands `$` in this file, so wrap any value containing `$` (a database password, say) in single quotes. Drop `CRON_SECRET` and `CRON_MAX_SECONDS`; nothing reads them now. If Supabase restricts which addresses may connect, add the server's IP. Copy the file to the server:
+4. Put the production settings in `.env.production` (git-ignored): `APP_KEY` (keep the one production already uses: the Social accounts' tokens are encrypted with it), `APP_URL=https://<domain>`, `APP_DOMAIN=<domain>`, `DB_URL`, the `R2_*` keys, `OWNER_EMAIL`, `MCP_TOKEN` and the platform credentials, with the `*_CLIENT_REDIRECT` URLs written out in full on the new domain, `DB_CONNECTION=pgsql`, `QUEUE_CONNECTION`, `CACHE_STORE` and `SESSION_DRIVER` set to `database`, and `LOG_CHANNEL=stderr`. Docker Compose expands `$` in this file, so wrap any value containing `$` (a database password, say) in single quotes. Drop `CRON_SECRET` and `CRON_MAX_SECONDS`; nothing reads them now. If Supabase restricts which addresses may connect, add the server's IP. Copy the file to the server:
 
    ```bash
    scp .env.production root@<server-ip>:/opt/trypost/.env
@@ -134,7 +134,7 @@ The Owner's app runs on one Vultr server (Ubuntu 24.04 LTS, 2 GB) using the prod
    gh workflow run deploy.yml
    ```
 
-   The run finishes when the container answers `/up`. Open `https://<domain>/up` to check Caddy has its certificate. Follow the app's log with `ssh deploy@<server-ip> docker logs -f trypost`.
+   The run finishes once the container answers `/up` and `https://<domain>/up` answers through Caddy, so a green run means the certificate and DNS work too. Follow the app's log with `ssh deploy@<server-ip> docker logs -f trypost`.
 
 #### Moving from Vercel
 

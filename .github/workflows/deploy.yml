@@ -22,6 +22,10 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -87,7 +91,15 @@ jobs:
       - name: Start the new image
         run: |
           ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml up -d --remove-orphans"
-          ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"
+          for attempt in $(seq 1 10); do
+            if ssh vultr "cd ${APP_DIR} && docker compose -f compose.vultr.yaml exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"; then
+              exit 0
+            fi
+            echo "attempt ${attempt}: caddy is not ready to reload yet"
+            sleep 3
+          done
+          echo "::error::caddy did not reload the Caddyfile"
+          exit 1
 
       - name: Wait for /up
         run: |
@@ -106,7 +118,7 @@ jobs:
 
       - name: Check the domain answers over HTTPS
         run: |
-          domain=$(ssh vultr "grep -E '^APP_DOMAIN=' ${APP_DIR}/.env" | tail -1 | cut -d= -f2- | tr -d "\"'")
+          domain=$(ssh vultr "grep -E '^APP_DOMAIN=' ${APP_DIR}/.env" | tail -1 | cut -d= -f2- | tr -d "\"'\r" | sed 's/[[:space:]]*#.*//; s/[[:space:]]*$//')
           if [ -z "${domain}" ]; then
             echo "::error::APP_DOMAIN is not set in ${APP_DIR}/.env"
             exit 1
