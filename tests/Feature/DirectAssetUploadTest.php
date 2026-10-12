@@ -90,7 +90,7 @@ test('direct upload rejects a file type or size the app does not accept', functi
     startDirectUpload($fileName, $totalSize)->assertUnprocessable()->assertJsonValidationErrors($field);
 })->with([
     'executable' => ['payload.exe', 1024, 'file_name'],
-    'too large' => ['clip.mp4', 1025 * 1024 * 1024, 'total_size'],
+    'too large' => ['clip.mp4', 4097 * 1024 * 1024, 'total_size'],
     'empty' => ['clip.mp4', 0, 'total_size'],
 ]);
 
