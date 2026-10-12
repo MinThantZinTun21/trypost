@@ -6,6 +6,7 @@ use App\Enums\ContentIdea\Status as ContentIdeaStatus;
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\ContentIdeaController;
 use App\Http\Controllers\App\InsightsController;
+use App\Http\Controllers\App\LibraryItemController;
 use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
@@ -76,6 +77,12 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     Route::put('ideas/{contentIdea}', [ContentIdeaController::class, 'update'])->name('app.ideas.update')->whereUuid('contentIdea');
     Route::put('ideas/{contentIdea}/status', [ContentIdeaController::class, 'updateStatus'])->name('app.ideas.status')->whereUuid('contentIdea');
     Route::delete('ideas/{contentIdea}', [ContentIdeaController::class, 'destroy'])->name('app.ideas.destroy')->whereUuid('contentIdea');
+
+    // Content library
+    Route::get('library', [LibraryItemController::class, 'index'])->name('app.library.index');
+    Route::post('library', [LibraryItemController::class, 'store'])->name('app.library.store');
+    Route::put('library/{libraryItem}', [LibraryItemController::class, 'update'])->name('app.library.update')->whereUuid('libraryItem');
+    Route::delete('library/{libraryItem}', [LibraryItemController::class, 'destroy'])->name('app.library.destroy')->whereUuid('libraryItem');
 
     // Insights (Facebook Pages only, ADR 0004)
     Route::get('insights', [InsightsController::class, 'index'])->name('app.insights.index');

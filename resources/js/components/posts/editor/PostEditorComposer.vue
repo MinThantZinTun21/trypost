@@ -13,7 +13,6 @@ import {
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref } from 'vue';
-import { toast } from 'vue-sonner';
 
 import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
 import AltTextDialog from '@/components/posts/editor/AltTextDialog.vue';
@@ -29,6 +28,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useMediaUpload } from '@/composables/useMediaUpload';
 import {
     getPlatformLabel,
     getPlatformLogo,
@@ -43,10 +43,7 @@ import {
     isVideo,
     MediaType,
 } from '@/lib/mediaType';
-import { completeDirect, storeChunked, storeDirect } from '@/routes/app/assets';
 import type { MediaItem } from '@/types/media';
-import { uploadChunked } from '@/utils/chunkedUpload';
-import { uploadDirect } from '@/utils/directUpload';
 
 interface PlatformLimit {
     platform: string;
@@ -74,8 +71,7 @@ const media = defineModel<MediaItem[]>('media', { required: true });
 
 const emojiOpen = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
-const uploading = ref(false);
-const uploadProgress = ref(0);
+const { uploading, uploadProgress, uploadFiles } = useMediaUpload(media);
 
 const dragMediaIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
@@ -130,54 +126,6 @@ const overflowParts = computed(() => {
 
 const removeMedia = (mediaId: string) => {
     media.value = media.value.filter((m) => m.id !== mediaId);
-};
-
-/**
- * Uploads go straight to object storage when the server offers it (no request
- * body limit), otherwise through the chunked endpoint.
- */
-const uploadFiles = async (files: File[]) => {
-    if (uploading.value || files.length === 0) return;
-    uploading.value = true;
-
-    for (const file of files) {
-        uploadProgress.value = 0;
-        try {
-            const onProgress = (progress: number) => {
-                uploadProgress.value = progress;
-            };
-            const uploaded =
-                (await uploadDirect({
-                    file,
-                    startUrl: storeDirect.url(),
-                    completeUrl: completeDirect.url(),
-                    onProgress,
-                })) ??
-                (await uploadChunked({
-                    file,
-                    url: storeChunked.url(),
-                    collection: 'assets',
-                    onProgress,
-                }));
-            media.value = [
-                ...media.value,
-                {
-                    id: uploaded.id,
-                    path: uploaded.path,
-                    url: uploaded.url,
-                    type: uploaded.type,
-                    mime_type: uploaded.mime_type,
-                    original_filename: uploaded.original_filename,
-                    size: uploaded.size,
-                    meta: uploaded.meta ?? undefined,
-                },
-            ];
-        } catch {
-            toast.error(trans('assets.upload.failed', { file: file.name }));
-        }
-    }
-
-    uploading.value = false;
 };
 
 const onFileSelect = (event: Event) => {

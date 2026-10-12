@@ -33,6 +33,11 @@ class WorkspacePolicy
         return $this->canAccess($user, $workspace);
     }
 
+    public function manageLibrary(User $user, Workspace $workspace): bool
+    {
+        return $this->canAccess($user, $workspace);
+    }
+
     public function viewInsights(User $user, Workspace $workspace): bool
     {
         return $this->canAccess($user, $workspace);
