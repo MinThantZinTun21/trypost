@@ -87,20 +87,20 @@ const settingsProps = (channel: Channel) => ({
                                 <Avatar
                                     :src="channel.avatarUrl"
                                     :name="channel.displayName"
-                                    class="size-10 shrink-0 rounded-full border-2"
+                                    class="size-10 shrink-0 rounded-full border"
                                     :class="
                                         isSelected(channel.id)
                                             ? [
                                                   'shadow-2xs',
                                                   channel.issue
                                                       ? 'border-rose-500'
-                                                      : 'border-foreground',
+                                                      : 'border-border',
                                               ]
                                             : 'border-foreground/20'
                                     "
                                 />
                                 <span
-                                    class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                                    class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                                 >
                                     <img
                                         :src="getPlatformLogo(channel.platform)"

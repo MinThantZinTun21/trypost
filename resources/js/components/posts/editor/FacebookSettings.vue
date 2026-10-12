@@ -108,7 +108,7 @@ const pickAspectRatio = (value: string) => {
 </script>
 
 <template>
-    <div class="rounded-xl border-2 border-foreground bg-card shadow-2xs">
+    <div class="rounded-xl border border-border bg-card shadow-2xs">
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
@@ -117,7 +117,7 @@ const pickAspectRatio = (value: string) => {
         >
             <span class="flex min-w-0 items-center gap-2">
                 <span
-                    class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                    class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                 >
                     <img
                         :src="getPlatformLogo('facebook')"
@@ -155,7 +155,7 @@ const pickAspectRatio = (value: string) => {
                 <Avatar
                     :src="socialAccount.avatar_url"
                     :name="socialAccount.display_label"
-                    class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
+                    class="size-9 shrink-0 rounded-full border border-border shadow-2xs"
                 />
                 <div class="min-w-0 flex-1">
                     <p
@@ -187,11 +187,11 @@ const pickAspectRatio = (value: string) => {
                         v-for="variant in variants"
                         :key="variant.value"
                         type="button"
-                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        class="cursor-pointer rounded-full border px-3 py-1 text-xs font-bold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         :class="
                             contentType === variant.value
-                                ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
-                                : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'
+                                ? 'border-border bg-violet-100 text-foreground shadow-2xs'
+                                : 'border-foreground/30 text-foreground/70 hover:border-primary/40 hover:text-foreground'
                         "
                         :disabled="disabled"
                         @click="pickVariant(variant.value)"
@@ -212,11 +212,11 @@ const pickAspectRatio = (value: string) => {
                         v-for="ratio in aspectRatios"
                         :key="ratio.value"
                         type="button"
-                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        class="cursor-pointer rounded-full border px-3 py-1 text-xs font-bold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         :class="
                             selectedAspectRatio === ratio.value
-                                ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
-                                : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'
+                                ? 'border-border bg-violet-100 text-foreground shadow-2xs'
+                                : 'border-foreground/30 text-foreground/70 hover:border-primary/40 hover:text-foreground'
                         "
                         :disabled="disabled"
                         @click="pickAspectRatio(ratio.value)"

@@ -181,12 +181,12 @@ const channels = computed<Channel[]>(() =>
                         <div
                             v-for="pp in postPlatforms.filter((p) => p.enabled)"
                             :key="pp.id"
-                            class="rounded-xl border-2 border-foreground bg-card p-3 shadow-2xs"
+                            class="rounded-xl border border-border bg-card p-3 shadow-2xs"
                         >
                             <div class="flex items-center justify-between">
                                 <div class="flex min-w-0 items-center gap-2">
                                     <span
-                                        class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card"
+                                        class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card"
                                     >
                                         <img
                                             :src="getPlatformLogo(pp.platform)"
@@ -237,7 +237,7 @@ const channels = computed<Channel[]>(() =>
                                         :href="pp.platform_url"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        class="inline-flex size-7 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground shadow-2xs transition-transform hover:rotate-3 hover:bg-violet-100"
+                                        class="inline-flex size-7 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-transform hover:rotate-3 hover:bg-violet-100"
                                     >
                                         <IconExternalLink
                                             class="size-3.5"

@@ -13,11 +13,14 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Http\Requests\App\Post\UpdatePostRequest;
+use App\Models\LibraryItem;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Support\TikTokText;
 use App\Support\YouTubeDescription;
+use App\Support\YouTubeTags;
 use App\Support\YouTubeTitle;
 use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -40,36 +43,50 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Creates a Post for one or more Social accounts from list_social_accounts. mode "draft" saves it, "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. Content types default to Reel, TikTok Video and YouTube Short for a video, and Facebook Post and TikTok Photo for images. Every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
 class CreatePost extends Tool
 {
-    private const MODE_STATUSES = [
+    public const MODE_STATUSES = [
         'draft' => PostStatus::Draft,
         'scheduled' => PostStatus::Scheduled,
         'now' => PostStatus::Publishing,
     ];
 
     /**
-     * The per-account text an Assistant may set; ContentType::textFields() says
-     * which of them a Content type publishes.
+     * The per-account text and YouTube Tags an Assistant may set;
+     * ContentType::textFields() says which of them a Content type publishes.
      */
-    private const TEXT_FIELDS = ['title', 'description', 'caption'];
+    private const TEXT_FIELDS = ['title', 'description', 'caption', 'tags'];
 
     /**
      * The TikTok settings an Assistant may set, copied onto the Social account's meta.
      */
-    private const TIKTOK_SETTINGS = ['privacy_level', 'allow_comments', 'allow_duet', 'allow_stitch', 'is_aigc'];
+    public const TIKTOK_SETTINGS = ['privacy_level', 'allow_comments', 'allow_duet', 'allow_stitch', 'is_aigc'];
+
+    public function handle(Request $request): Response|ResponseFactory
+    {
+        $post = $this->createPost($request->user(), $request->all());
+
+        return Response::structured([
+            'post' => self::postPayload($post),
+        ]);
+    }
 
     /**
      * Creates the Post through the composer's create and update actions, and
      * checks it with the composer's update rules, so an Assistant gets the
      * same errors the composer would show. A rejected Post is rolled back.
+     * schedule_library_item comes through here too, linking the Post to its
+     * Library item.
+     *
+     * @param  array<string, mixed>  $input
+     *
+     * @throws ValidationException
      */
-    public function handle(Request $request): Response|ResponseFactory
+    public function createPost(User $user, array $input, ?LibraryItem $libraryItem = null): Post
     {
-        $user = $request->user();
         $workspace = $user->resolveCurrentWorkspace();
         $accounts = $workspace->socialAccounts()->active()->get()->keyBy('id');
         $assets = $workspace->getMedia('assets')->get()->keyBy('id');
 
-        $validated = $this->validateInput($request->all(), $accounts, $assets);
+        $validated = $this->validateInput($input, $accounts, $assets);
 
         $mediaItems = collect(data_get($validated, 'media_ids', []))
             ->map(fn (string $id): MediaItem => MediaItem::fromMedia($assets->get($id)));
@@ -78,11 +95,15 @@ class CreatePost extends Tool
         $status = self::MODE_STATUSES[data_get($validated, 'mode')];
         $scheduledAt = data_get($validated, 'scheduled_at');
 
-        $post = DB::transaction(function () use ($workspace, $user, $validated, $accounts, $mediaItems, $status, $scheduledAt): Post {
+        $post = DB::transaction(function () use ($workspace, $user, $validated, $accounts, $mediaItems, $status, $scheduledAt, $libraryItem): Post {
             $post = CreatePostAction::execute($workspace, $user, [
                 'content' => data_get($validated, 'content') ?? '',
                 'created_via' => CreatedVia::Mcp,
             ]);
+
+            if ($libraryItem !== null) {
+                $post->update(['library_item_id' => $libraryItem->id]);
+            }
 
             $postPlatformIds = $post->postPlatforms()->pluck('id', 'social_account_id');
 
@@ -106,20 +127,26 @@ class CreatePost extends Tool
             return data_get(UpdatePost::execute($workspace, $post, $payload), 'post');
         });
 
-        $post->refresh();
+        return $post->refresh();
+    }
 
-        return Response::structured([
-            'post' => [
-                'id' => $post->id,
-                'status' => $post->status->value,
-                'scheduled_at' => $post->scheduled_at?->toIso8601String(),
-                'goes_out' => match ($post->status) {
-                    PostStatus::Publishing => __('mcp.post.goes_out_now'),
-                    PostStatus::Scheduled => __('mcp.post.goes_out_at', ['time' => $post->scheduled_at->toIso8601String()]),
-                    default => __('mcp.post.goes_out_never'),
-                },
-            ],
-        ]);
+    /**
+     * The `post` object create_post and schedule_library_item return.
+     *
+     * @return array{id: string, status: string, scheduled_at: ?string, goes_out: string}
+     */
+    public static function postPayload(Post $post): array
+    {
+        return [
+            'id' => $post->id,
+            'status' => $post->status->value,
+            'scheduled_at' => $post->scheduled_at?->toIso8601String(),
+            'goes_out' => match ($post->status) {
+                PostStatus::Publishing => __('mcp.post.goes_out_now'),
+                PostStatus::Scheduled => __('mcp.post.goes_out_at', ['time' => $post->scheduled_at->toIso8601String()]),
+                default => __('mcp.post.goes_out_never'),
+            },
+        ];
     }
 
     /**
@@ -132,6 +159,7 @@ class CreatePost extends Tool
         $photoTitleMax = TikTokText::PHOTO_TITLE_MAX;
         $photoDescriptionMax = TikTokText::PHOTO_DESCRIPTION_MAX;
         $captionMax = TikTokText::CAPTION_MAX;
+        $tagsMax = YouTubeTags::MAX_CHARACTERS;
 
         return [
             'content' => $schema->string()->description('The Post\'s text. It is the Facebook Post text, and the TikTok caption, Reel description and YouTube title when those are not given.'),
@@ -144,6 +172,7 @@ class CreatePost extends Tool
                 'title' => $schema->string()->description("YouTube Short title (max {$youtubeTitleMax}), Facebook Reel title, or TikTok Photo title (max {$photoTitleMax}). Not used by other Content types."),
                 'description' => $schema->string()->description("YouTube Short description (max {$youtubeDescriptionMax} bytes, defaults to the content), Facebook Reel description, or TikTok Photo description (max {$photoDescriptionMax}). Not used by other Content types."),
                 'caption' => $schema->string()->description("TikTok Video caption (max {$captionMax}). Defaults to the content. Not used by other Content types."),
+                'tags' => $schema->array()->items($schema->string())->description("YouTube Short tags, without #. At most {$tagsMax} characters in total, counting the commas between tags and the quotes YouTube adds around a tag with a space. Not used by other Content types."),
                 'privacy_level' => $schema->string()->enum(PrivacyLevel::values())->description('TikTok only, required. Only SELF_ONLY works until the TikTok app is audited.'),
                 'allow_comments' => $schema->boolean()->description('TikTok only.'),
                 'allow_duet' => $schema->boolean()->description('TikTok Video only.'),

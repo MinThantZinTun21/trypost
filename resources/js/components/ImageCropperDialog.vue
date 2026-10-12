@@ -349,7 +349,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
 
             <div
                 ref="viewportEl"
-                class="relative aspect-square w-full touch-none overflow-hidden rounded-xl border-2 border-foreground bg-muted select-none"
+                class="relative aspect-square w-full touch-none overflow-hidden rounded-xl border border-border bg-muted select-none"
                 @pointermove="onPointerMove"
                 @pointerup="onPointerUp"
                 @pointercancel="onPointerUp"
@@ -379,22 +379,22 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                     @pointerdown="onSelectionPointerDown"
                 >
                     <div
-                        class="pointer-events-none absolute inset-0 border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]"
+                        class="pointer-events-none absolute inset-0 border border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]"
                     />
                     <span
-                        class="absolute top-0 left-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        class="absolute top-0 left-0 size-3 cursor-nwse-resize rounded-sm border border-border bg-white"
                         @pointerdown.stop="onHandlePointerDown('nw', $event)"
                     />
                     <span
-                        class="absolute top-0 right-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        class="absolute top-0 right-0 size-3 cursor-nesw-resize rounded-sm border border-border bg-white"
                         @pointerdown.stop="onHandlePointerDown('ne', $event)"
                     />
                     <span
-                        class="absolute bottom-0 left-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        class="absolute bottom-0 left-0 size-3 cursor-nesw-resize rounded-sm border border-border bg-white"
                         @pointerdown.stop="onHandlePointerDown('sw', $event)"
                     />
                     <span
-                        class="absolute right-0 bottom-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        class="absolute right-0 bottom-0 size-3 cursor-nwse-resize rounded-sm border border-border bg-white"
                         @pointerdown.stop="onHandlePointerDown('se', $event)"
                     />
                 </div>

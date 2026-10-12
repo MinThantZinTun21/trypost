@@ -62,7 +62,7 @@ const selectMetric = (value: string | number) => {
 
 <template>
     <div
-        class="flex flex-col gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
+        class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-2xs"
         data-testid="insights-chart"
     >
         <Tabs :model-value="metric" @update:model-value="selectMetric">

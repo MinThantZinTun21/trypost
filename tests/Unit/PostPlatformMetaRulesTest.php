@@ -17,6 +17,8 @@ test('custom meta attributes use translated field names', function () {
         'platforms.*.meta.title' => __('posts.form.youtube.title'),
         'platforms.*.meta.caption' => __('posts.form.tiktok.caption'),
         'platforms.*.meta.description' => __('posts.form.youtube.description'),
+        'platforms.*.meta.tags' => __('posts.form.youtube.tags'),
+        'platforms.*.meta.tags.*' => __('posts.form.youtube.tags'),
     ]);
 });
 
@@ -81,7 +83,19 @@ test('shared meta rules cover the facebook, tiktok and youtube fields only', fun
         'platforms.*.meta.title',
         'platforms.*.meta.description',
         'platforms.*.meta.caption',
+        'platforms.*.meta.tags',
+        'platforms.*.meta.tags.*',
     ]);
+});
+
+test('youtube tags are limited for a youtube short and ignored elsewhere', function () {
+    $tooLong = ['tags' => [str_repeat('a', 250), str_repeat('b', 250)]];
+
+    expect(PostPlatformMetaRules::textLimitViolations(Platform::YouTube, $tooLong, null, ContentType::YouTubeShort))
+        ->toBe(['tags' => __('posts.form.youtube.tags_max')])
+        ->and(PostPlatformMetaRules::textLimitViolations(Platform::YouTube, ['tags' => ['cooking']], null, ContentType::YouTubeShort))->toBe([])
+        ->and(PostPlatformMetaRules::textLimitViolations(Platform::TikTok, $tooLong))->toBe([])
+        ->and(PostPlatformMetaRules::textLimitViolations(Platform::Facebook, $tooLong))->toBe([]);
 });
 
 test('tiktok required meta treats missing and unknown privacy as unpublished', function (?array $meta) {

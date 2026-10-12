@@ -33,7 +33,7 @@ const emit = defineEmits<{
     <div
         v-if="canEdit && !isReadOnly"
         data-testid="editor-action-bar"
-        class="sticky bottom-0 z-30 flex items-center justify-end gap-2 border-t-2 border-foreground bg-card px-4 py-3 lg:hidden"
+        class="sticky bottom-0 z-30 flex items-center justify-end gap-2 border-t-2 border-border bg-card px-4 py-3 lg:hidden"
     >
         <PostEditorActions
             :is-read-only="isReadOnly"

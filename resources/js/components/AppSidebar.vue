@@ -2,6 +2,7 @@
 import { usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
+    IconBooks,
     IconBulb,
     IconCalendar,
     IconChartLine,
@@ -17,6 +18,7 @@ import { computed } from 'vue';
 
 import { index as ideasIndex } from '@/actions/App/Http/Controllers/App/ContentIdeaController';
 import { index as insightsIndex } from '@/actions/App/Http/Controllers/App/InsightsController';
+import { index as libraryIndex } from '@/actions/App/Http/Controllers/App/LibraryItemController';
 import { index as postsIndex } from '@/actions/App/Http/Controllers/App/PostController';
 import NavMain from '@/components/NavMain.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
@@ -92,6 +94,11 @@ const postsNavItems = computed<NavItem[]>(() => [
         href: ideasIndex.url(),
         icon: IconBulb,
     },
+    {
+        title: trans('sidebar.posts.library'),
+        href: libraryIndex.url(),
+        icon: IconBooks,
+    },
 ]);
 
 const workspaceNavItems = computed<NavItem[]>(() => [
@@ -120,7 +127,7 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                                     <Avatar
                                         :src="user.photo_url"
                                         :name="user.name"
-                                        class="h-8 w-8 shrink-0 rounded-md border-2 border-foreground"
+                                        class="h-8 w-8 shrink-0 rounded-md border border-border"
                                         fallback-class="bg-violet-100 text-violet-700 font-bold"
                                     />
                                     <div

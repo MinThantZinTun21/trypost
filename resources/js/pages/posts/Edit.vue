@@ -393,10 +393,10 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                     class="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm"
                 >
                     <div
-                        class="inline-flex size-14 -rotate-3 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs"
+                        class="inline-flex size-14 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
                     >
                         <IconLoader2
-                            class="size-7 animate-spin text-foreground"
+                            class="size-7 animate-spin text-white"
                             stroke-width="2"
                         />
                     </div>
@@ -420,7 +420,7 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                     }"
                 >
                     <div
-                        class="w-full overflow-y-auto lg:w-2/3 lg:border-r-2 lg:border-foreground"
+                        class="w-full overflow-y-auto lg:w-2/3 lg:border-r-2 lg:border-border"
                         :class="{ 'hidden lg:block': mobileView !== 'compose' }"
                     >
                         <PostEditorComposer

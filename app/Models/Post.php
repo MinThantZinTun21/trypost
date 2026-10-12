@@ -27,6 +27,7 @@ class Post extends Model
 
     protected $fillable = [
         'workspace_id',
+        'library_item_id',
         'user_id',
         'content',
         'media',
@@ -57,6 +58,14 @@ class Post extends Model
         return Attribute::make(
             get: fn () => collect($this->media ?? [])->map(fn (array $item) => MediaItem::fromArray($item)),
         );
+    }
+
+    /**
+     * The Library item this Post was scheduled from, if any.
+     */
+    public function libraryItem(): BelongsTo
+    {
+        return $this->belongsTo(LibraryItem::class);
     }
 
     public function workspace(): BelongsTo

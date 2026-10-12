@@ -57,6 +57,10 @@ class PostPlatformMetaRules
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
             'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
             'platforms.*.meta.caption' => ['sometimes', 'nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
+
+            // YouTube Tags. Their 500-character total lives in textLimitViolations().
+            'platforms.*.meta.tags' => ['sometimes', 'nullable', 'array'],
+            'platforms.*.meta.tags.*' => ['string'],
         ];
     }
 
@@ -81,6 +85,8 @@ class PostPlatformMetaRules
             'platforms.*.meta.title' => __('posts.form.youtube.title'),
             'platforms.*.meta.caption' => __('posts.form.tiktok.caption'),
             'platforms.*.meta.description' => __('posts.form.youtube.description'),
+            'platforms.*.meta.tags' => __('posts.form.youtube.tags'),
+            'platforms.*.meta.tags.*' => __('posts.form.youtube.tags'),
         ];
     }
 
@@ -142,7 +148,7 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Per-Platform text limits, taken from each Platform's API docs. Meta
+     * Per-Platform text and Tags limits, taken from each Platform's API docs. Meta
      * documents no limit for a Facebook Reel's Title or Description, so only
      * the shared cap in rules() applies there.
      *
@@ -163,6 +169,7 @@ class PostPlatformMetaRules
                 'title' => YouTubeTitle::violation(data_get($meta, 'title')),
                 'description' => YouTubeDescription::violation(data_get($meta, 'description'))
                     ?? YouTubeDescription::contentViolation($meta, $content),
+                'tags' => YouTubeTags::violation(data_get($meta, 'tags')),
             ],
             Platform::TikTok => [
                 'caption' => TikTokText::violation(data_get($meta, 'caption'), TikTokText::CAPTION_MAX, 'posts.form.tiktok.caption_max'),

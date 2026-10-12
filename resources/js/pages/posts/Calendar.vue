@@ -299,7 +299,7 @@ const formatTime = (scheduledAt: string): string => {
         <div class="flex h-full flex-col">
             <!-- Mobile header: nav + date jump on top, full-width New post below -->
             <header
-                class="flex shrink-0 flex-col gap-2 border-b-2 border-foreground bg-card px-4 py-3 lg:hidden"
+                class="flex shrink-0 flex-col gap-2 border-b-2 border-border bg-card px-4 py-3 lg:hidden"
             >
                 <div class="flex items-center justify-between gap-2 pl-12">
                     <div class="flex items-center gap-2">
@@ -341,7 +341,7 @@ const formatTime = (scheduledAt: string): string => {
 
             <!-- Desktop header: nav · title · view switcher + new post -->
             <header
-                class="hidden shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b-2 border-foreground bg-card px-6 py-3 lg:grid"
+                class="hidden shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b-2 border-border bg-card px-6 py-3 lg:grid"
             >
                 <div class="flex items-center gap-2">
                     <Button variant="outline" size="icon" @click="navigate(-1)">
@@ -408,7 +408,7 @@ const formatTime = (scheduledAt: string): string => {
                             class="block"
                         >
                             <div
-                                class="rounded-xl border-2 border-foreground p-4 shadow-2xs transition-all hover:shadow-md"
+                                class="rounded-xl border border-border p-4 shadow-2xs transition-all hover:shadow-md"
                                 :class="getStatusColor(post.status)"
                             >
                                 <div
@@ -433,7 +433,7 @@ const formatTime = (scheduledAt: string): string => {
                                                 <Tooltip>
                                                     <TooltipTrigger as-child>
                                                         <span
-                                                            class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                                                            class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                                                         >
                                                             <img
                                                                 :src="
@@ -492,7 +492,7 @@ const formatTime = (scheduledAt: string): string => {
                                                     post.post_platforms.length >
                                                     5
                                                 "
-                                                class="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-card text-xs font-bold shadow-2xs"
+                                                class="inline-flex size-6 items-center justify-center rounded-full border border-border bg-card text-xs font-bold shadow-2xs"
                                             >
                                                 +{{
                                                     post.post_platforms.length -
@@ -563,7 +563,7 @@ const formatTime = (scheduledAt: string): string => {
                         <button
                             type="button"
                             :disabled="creatingPost"
-                            class="flex w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground"
+                            class="flex w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-primary/40 hover:bg-foreground/5 hover:text-foreground"
                             @click="createPost(day.format('YYYY-MM-DD'))"
                         >
                             <IconPlus class="size-4" />
@@ -577,7 +577,7 @@ const formatTime = (scheduledAt: string): string => {
                             class="block"
                         >
                             <div
-                                class="rounded-lg border-2 border-foreground p-2 text-sm shadow-2xs transition-all hover:shadow-sm"
+                                class="rounded-lg border border-border p-2 text-sm shadow-2xs transition-all hover:shadow-sm"
                                 :class="getStatusColor(post.status)"
                             >
                                 <!-- Time -->
@@ -598,7 +598,7 @@ const formatTime = (scheduledAt: string): string => {
                                         <Tooltip>
                                             <TooltipTrigger as-child>
                                                 <span
-                                                    class="inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card"
+                                                    class="inline-flex size-5 items-center justify-center overflow-hidden rounded-full border border-border bg-card"
                                                 >
                                                     <img
                                                         :src="
@@ -647,7 +647,7 @@ const formatTime = (scheduledAt: string): string => {
                                     </TooltipProvider>
                                     <span
                                         v-if="post.post_platforms.length > 4"
-                                        class="inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-card text-[10px] font-bold"
+                                        class="inline-flex size-5 items-center justify-center rounded-full border border-border bg-card text-[10px] font-bold"
                                     >
                                         +{{ post.post_platforms.length - 4 }}
                                     </span>
@@ -709,7 +709,7 @@ const formatTime = (scheduledAt: string): string => {
                                 <span
                                     class="inline-flex size-7 items-center justify-center rounded-full text-sm font-bold"
                                     :class="{
-                                        'border-2 border-foreground bg-foreground text-background shadow-2xs':
+                                        'border border-border bg-foreground text-background shadow-2xs':
                                             isToday(day),
                                         'text-foreground/40':
                                             !isCurrentMonth(day),
@@ -723,7 +723,7 @@ const formatTime = (scheduledAt: string): string => {
                                 <button
                                     type="button"
                                     :disabled="creatingPost"
-                                    class="inline-flex size-6 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all group-hover:opacity-100 hover:rotate-90 hover:bg-violet-100 focus:opacity-100"
+                                    class="inline-flex size-6 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground opacity-0 shadow-2xs transition-all group-hover:opacity-100 hover:rotate-90 hover:bg-violet-100 focus:opacity-100"
                                     @click="
                                         createPost(day.format('YYYY-MM-DD'))
                                     "
@@ -749,7 +749,7 @@ const formatTime = (scheduledAt: string): string => {
                                     class="block"
                                 >
                                     <div
-                                        class="flex flex-col gap-1 rounded-md border-2 border-foreground px-2 py-1 text-xs shadow-2xs transition-all hover:shadow-sm"
+                                        class="flex flex-col gap-1 rounded-md border border-border px-2 py-1 text-xs shadow-2xs transition-all hover:shadow-sm"
                                         :class="getStatusColor(post.status)"
                                     >
                                         <div
@@ -777,7 +777,7 @@ const formatTime = (scheduledAt: string): string => {
                                                             as-child
                                                         >
                                                             <span
-                                                                class="inline-flex size-4 items-center justify-center overflow-hidden rounded-full border border-foreground bg-card"
+                                                                class="inline-flex size-4 items-center justify-center overflow-hidden rounded-full border border-border bg-card"
                                                             >
                                                                 <img
                                                                     :src="
@@ -836,7 +836,7 @@ const formatTime = (scheduledAt: string): string => {
                                                         post.post_platforms
                                                             .length > 4
                                                     "
-                                                    class="inline-flex size-4 items-center justify-center rounded-full border border-foreground bg-card text-[9px] font-bold"
+                                                    class="inline-flex size-4 items-center justify-center rounded-full border border-border bg-card text-[9px] font-bold"
                                                 >
                                                     +{{
                                                         post.post_platforms

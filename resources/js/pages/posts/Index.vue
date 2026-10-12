@@ -295,7 +295,7 @@ usePollWhile(
                                                             as-child
                                                         >
                                                             <span
-                                                                class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                                                                class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                                                             >
                                                                 <img
                                                                     :src="

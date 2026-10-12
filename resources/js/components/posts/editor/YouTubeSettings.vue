@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
@@ -16,6 +16,12 @@ import {
     YOUTUBE_DESCRIPTION_MAX_BYTES,
     youtubeDescriptionBytes,
 } from '@/lib/youtubeDescription';
+import {
+    parseYouTubeTags,
+    toYouTubeTags,
+    YOUTUBE_TAGS_MAX_CHARACTERS,
+    youtubeTagsCharacters,
+} from '@/lib/youtubeTags';
 import {
     YOUTUBE_TITLE_MAX_CHARACTERS,
     youtubeTitleCharacters,
@@ -43,6 +49,7 @@ const descriptionId = computed(
     () => `youtube-description-${props.platformIndex}`,
 );
 const titleId = computed(() => `youtube-title-${props.platformIndex}`);
+const tagsId = computed(() => `youtube-tags-${props.platformIndex}`);
 
 const title = computed({
     get: () => toNullableText(props.meta.title) ?? '',
@@ -65,6 +72,41 @@ const description = computed({
             description: toNullableText(value),
         }),
 });
+/**
+ * The tags as typed, so a trailing comma or space survives until the next
+ * tag; the meta gets the parsed list.
+ */
+const tagsText = ref(toYouTubeTags(props.meta.tags).join(', '));
+watch(
+    () => props.meta.tags,
+    (tags) => {
+        const parsed = toYouTubeTags(tags);
+
+        if (parseYouTubeTags(tagsText.value).join(',') !== parsed.join(',')) {
+            tagsText.value = parsed.join(', ');
+        }
+    },
+);
+const updateTags = (value: string | number) => {
+    tagsText.value = String(value);
+    const tags = parseYouTubeTags(tagsText.value);
+
+    emit('update:meta', {
+        ...props.meta,
+        tags: tags.length > 0 ? tags : null,
+    });
+};
+const tagsCharacters = computed(() =>
+    youtubeTagsCharacters(parseYouTubeTags(tagsText.value)),
+);
+const tagsError = computed(
+    () =>
+        errors.value[`platforms.${props.platformIndex}.meta.tags`] ??
+        Object.entries(errors.value).find(([key]) =>
+            key.startsWith(`platforms.${props.platformIndex}.meta.tags.`),
+        )?.[1],
+);
+
 const usedBytes = computed(() => youtubeDescriptionBytes(description.value));
 const descriptionError = computed(() => {
     const issue = getYouTubeDescriptionIssue(props.meta.description);
@@ -76,7 +118,7 @@ const descriptionError = computed(() => {
 </script>
 
 <template>
-    <div class="rounded-xl border-2 border-foreground bg-card shadow-2xs">
+    <div class="rounded-xl border border-border bg-card shadow-2xs">
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
@@ -86,7 +128,7 @@ const descriptionError = computed(() => {
         >
             <span class="flex min-w-0 items-center gap-2">
                 <span
-                    class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                    class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                 >
                     <img
                         :src="getPlatformLogo(Platform.YouTube)"
@@ -123,7 +165,7 @@ const descriptionError = computed(() => {
                 <Avatar
                     :src="socialAccount.avatar_url"
                     :name="socialAccount.display_label"
-                    class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
+                    class="size-9 shrink-0 rounded-full border border-border shadow-2xs"
                 />
                 <div class="min-w-0 flex-1">
                     <p
@@ -210,6 +252,41 @@ const descriptionError = computed(() => {
                     }}
                 </p>
                 <InputError :message="descriptionError" />
+            </div>
+            <div class="space-y-2">
+                <Label
+                    :for="tagsId"
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.youtube.tags') }}
+                </Label>
+                <Input
+                    :id="tagsId"
+                    :model-value="tagsText"
+                    :data-testid="tagsId"
+                    :disabled="disabled"
+                    :aria-invalid="tagsError ? true : undefined"
+                    :placeholder="$t('posts.form.youtube.tags_placeholder')"
+                    @update:model-value="updateTags"
+                />
+                <p
+                    class="text-xs tabular-nums"
+                    :class="
+                        tagsError ||
+                        tagsCharacters > YOUTUBE_TAGS_MAX_CHARACTERS
+                            ? 'text-rose-600'
+                            : 'text-foreground/60'
+                    "
+                >
+                    {{ $t('posts.form.youtube.tags_hint') }}
+                    {{
+                        $t('posts.form.youtube.tags_characters', {
+                            used: tagsCharacters.toString(),
+                            limit: YOUTUBE_TAGS_MAX_CHARACTERS.toString(),
+                        })
+                    }}
+                </p>
+                <InputError :message="tagsError" />
             </div>
         </div>
     </div>

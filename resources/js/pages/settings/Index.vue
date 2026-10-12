@@ -20,14 +20,14 @@ import { edit as profileEdit } from '@/routes/app/profile';
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Link
                     :href="profileEdit().url"
-                    class="group flex flex-col gap-4 rounded-2xl border-2 border-foreground bg-card p-5 shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md"
+                    class="group flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md"
                 >
                     <div class="flex items-start justify-between">
                         <div
-                            class="inline-flex size-12 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs transition-transform group-hover:rotate-0"
+                            class="inline-flex size-12 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25 transition-transform group-hover:scale-105"
                         >
                             <IconUser
-                                class="size-6 text-foreground"
+                                class="size-6 text-white"
                                 stroke-width="2"
                             />
                         </div>

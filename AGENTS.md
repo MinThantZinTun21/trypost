@@ -212,7 +212,8 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0001-hard-fork-to-minimal-three-platform-scheduler.md` and
 `docs/adr/0002-postgres-only-no-redis.md`; where it runs is
 `docs/adr/0005-self-host-on-a-vultr-vps.md` and
-`docs/adr/0006-share-the-chord-book-server.md`. Read them before adding anything.
+`docs/adr/0006-share-the-chord-book-server.md`; the Content library is
+`docs/adr/0007-content-library-of-ready-posts.md`. Read them before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
   workspace UI, the REST API and MCP server, webhooks, signatures, labels,
@@ -236,6 +237,24 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 - Tools say "Social account", never "channel". Tool names are snake_case.
   Tools reuse the same actions and validation as the composer; they never
   publish through a separate path.
+
+## Content library (ADR 0007)
+
+- A Library item is ready-made content: a name, media (one video or up to 10
+  images), the Facebook text, the TikTok caption and the YouTube title,
+  description and tags. It is not TryPost's removed asset library and not a
+  Content idea; keep the three apart.
+- All Library item validation lives in `App\Support\LibraryItemRules`, shared
+  by the web requests and the `create_library_item` MCP tool. Never add a rule
+  to one of them alone.
+- Scheduling never publishes from the library. On the web it creates a Draft
+  through `CreatePostFromLibraryItem` and opens the composer; the MCP tool
+  `schedule_library_item` goes through `create_post`. `LibraryItem::textsFor()`
+  is the one map from an item's texts to each content type's meta.
+- The Post keeps `library_item_id` (null on delete), which is how an item
+  counts the Posts made from it. Deleting an item keeps its Posts and media.
+- MCP tools: `list_library_items`, `get_library_item`, `create_library_item`,
+  `schedule_library_item`.
 
 ## Single Owner
 

@@ -56,6 +56,11 @@ class Workspace extends Model
         return $this->hasMany(ContentIdea::class);
     }
 
+    public function libraryItems(): HasMany
+    {
+        return $this->hasMany(LibraryItem::class);
+    }
+
     public function hasMember(User $user): bool
     {
         return $this->account?->owner_id === $user->id || $this->members()->where('user_id', $user->id)->exists();

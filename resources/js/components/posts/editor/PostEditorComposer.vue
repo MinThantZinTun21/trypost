@@ -13,7 +13,6 @@ import {
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref } from 'vue';
-import { toast } from 'vue-sonner';
 
 import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
 import AltTextDialog from '@/components/posts/editor/AltTextDialog.vue';
@@ -29,6 +28,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useMediaUpload } from '@/composables/useMediaUpload';
 import {
     getPlatformLabel,
     getPlatformLogo,
@@ -43,10 +43,7 @@ import {
     isVideo,
     MediaType,
 } from '@/lib/mediaType';
-import { completeDirect, storeChunked, storeDirect } from '@/routes/app/assets';
 import type { MediaItem } from '@/types/media';
-import { uploadChunked } from '@/utils/chunkedUpload';
-import { uploadDirect } from '@/utils/directUpload';
 
 interface PlatformLimit {
     platform: string;
@@ -74,8 +71,7 @@ const media = defineModel<MediaItem[]>('media', { required: true });
 
 const emojiOpen = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
-const uploading = ref(false);
-const uploadProgress = ref(0);
+const { uploading, uploadProgress, uploadFiles } = useMediaUpload(media);
 
 const dragMediaIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
@@ -105,10 +101,9 @@ const limitsWithUsage = computed(() =>
 );
 
 const limitClass = (state: string): string => {
-    if (state === 'over') return 'border-foreground bg-rose-100 text-rose-700';
-    if (state === 'warn')
-        return 'border-foreground bg-amber-100 text-amber-800';
-    return 'border-foreground bg-card text-foreground';
+    if (state === 'over') return 'border-border bg-rose-100 text-rose-700';
+    if (state === 'warn') return 'border-border bg-amber-100 text-amber-800';
+    return 'border-border bg-card text-foreground';
 };
 
 const smallestLimit = computed(() => {
@@ -130,54 +125,6 @@ const overflowParts = computed(() => {
 
 const removeMedia = (mediaId: string) => {
     media.value = media.value.filter((m) => m.id !== mediaId);
-};
-
-/**
- * Uploads go straight to object storage when the server offers it (no request
- * body limit), otherwise through the chunked endpoint.
- */
-const uploadFiles = async (files: File[]) => {
-    if (uploading.value || files.length === 0) return;
-    uploading.value = true;
-
-    for (const file of files) {
-        uploadProgress.value = 0;
-        try {
-            const onProgress = (progress: number) => {
-                uploadProgress.value = progress;
-            };
-            const uploaded =
-                (await uploadDirect({
-                    file,
-                    startUrl: storeDirect.url(),
-                    completeUrl: completeDirect.url(),
-                    onProgress,
-                })) ??
-                (await uploadChunked({
-                    file,
-                    url: storeChunked.url(),
-                    collection: 'assets',
-                    onProgress,
-                }));
-            media.value = [
-                ...media.value,
-                {
-                    id: uploaded.id,
-                    path: uploaded.path,
-                    url: uploaded.url,
-                    type: uploaded.type,
-                    mime_type: uploaded.mime_type,
-                    original_filename: uploaded.original_filename,
-                    size: uploaded.size,
-                    meta: uploaded.meta ?? undefined,
-                },
-            ];
-        } catch {
-            toast.error(trans('assets.upload.failed', { file: file.name }));
-        }
-    }
-
-    uploading.value = false;
 };
 
 const onFileSelect = (event: Event) => {
@@ -305,7 +252,7 @@ const onAltTextSave = (alt: string): void => {
                             }
                         "
                         data-testid="media-thumbnail"
-                        class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border-2 border-foreground bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
+                        class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border border-border bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
                         :class="[
                             dragMediaIndex === index ? 'opacity-40' : '',
                             dragOverIndex === index && dragMediaIndex !== index
@@ -376,7 +323,7 @@ const onAltTextSave = (alt: string): void => {
                             <Tooltip>
                                 <TooltipTrigger as-child>
                                     <span
-                                        class="absolute right-1.5 bottom-1.5 inline-flex h-5 items-center gap-0.5 rounded-full border-2 border-foreground bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700 shadow-2xs"
+                                        class="absolute right-1.5 bottom-1.5 inline-flex h-5 items-center gap-0.5 rounded-full border border-border bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700 shadow-2xs"
                                     >
                                         <IconAlertTriangle class="size-2.5" />
                                         {{ mediaIssues[item.id].length }}
@@ -440,7 +387,7 @@ const onAltTextSave = (alt: string): void => {
 
                         <span
                             v-if="media.length > 1 && !readOnly"
-                            class="absolute top-1.5 left-1.5 inline-flex size-6 cursor-grab items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            class="absolute top-1.5 left-1.5 inline-flex size-6 cursor-grab items-center justify-center rounded-md border border-border bg-card text-foreground opacity-100 shadow-2xs transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                         >
                             <IconGripVertical class="size-3.5" />
                         </span>
@@ -450,7 +397,7 @@ const onAltTextSave = (alt: string): void => {
                             type="button"
                             :title="$t('posts.edit.alt_text.edit')"
                             :aria-label="$t('posts.edit.alt_text.edit')"
-                            class="absolute top-1.5 right-9 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-violet-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            class="absolute top-1.5 right-9 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-violet-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                             data-testid="alt-text-button"
                             @click.stop="openAltText(index)"
                         >
@@ -460,7 +407,7 @@ const onAltTextSave = (alt: string): void => {
                         <button
                             v-if="!readOnly"
                             type="button"
-                            class="absolute top-1.5 right-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-rose-100 hover:text-rose-700 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            class="absolute top-1.5 right-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-rose-100 hover:text-rose-700 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                             data-testid="media-remove"
                             @click.stop="removeMedia(item.id)"
                         >
@@ -473,7 +420,7 @@ const onAltTextSave = (alt: string): void => {
                         type="button"
                         data-testid="media-upload"
                         :disabled="uploading"
-                        class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-foreground/25 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground disabled:cursor-wait"
+                        class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-foreground/25 text-foreground/60 transition-colors hover:border-primary/40 hover:bg-foreground/5 hover:text-foreground disabled:cursor-wait"
                         @click="fileInput?.click()"
                     >
                         <template v-if="uploading">
@@ -513,7 +460,7 @@ const onAltTextSave = (alt: string): void => {
                                 <TooltipTrigger as-child>
                                     <button
                                         type="button"
-                                        class="inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:-translate-y-0.5 hover:bg-violet-100 hover:shadow-sm"
+                                        class="inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-2xs transition-all hover:-translate-y-0.5 hover:bg-violet-100 hover:shadow-sm"
                                         @click="emojiOpen = !emojiOpen"
                                     >
                                         <IconMoodSmile class="size-4" />
@@ -545,7 +492,7 @@ const onAltTextSave = (alt: string): void => {
                         <TooltipTrigger as-child>
                             <span
                                 :data-testid="`content-counter-${limit.platform}`"
-                                class="inline-flex items-center gap-1.5 rounded-full border-2 px-2 py-1 text-[11px] leading-none font-bold tabular-nums shadow-2xs transition-colors"
+                                class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] leading-none font-bold tabular-nums shadow-2xs transition-colors"
                                 :class="limitClass(limit.state)"
                             >
                                 <span
