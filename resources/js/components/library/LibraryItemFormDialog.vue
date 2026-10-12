@@ -31,6 +31,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useMediaUpload } from '@/composables/useMediaUpload';
+import { errorForField } from '@/lib/formErrors';
+import { LIBRARY_ITEM_MEDIA_MAX } from '@/lib/libraryItem';
 import { ALLOWED_MIME_TYPES, MediaType } from '@/lib/mediaType';
 import {
     parseYouTubeTags,
@@ -39,8 +41,6 @@ import {
 } from '@/lib/youtubeTags';
 import type { LibraryItem } from '@/types/library';
 import type { MediaItem } from '@/types/media';
-
-const MEDIA_MAX = 10;
 
 const props = defineProps<{
     item?: LibraryItem | null;
@@ -69,10 +69,8 @@ const accept = [
 const tags = computed(() => parseYouTubeTags(tagsText.value));
 const tagsCharacters = computed(() => youtubeTagsCharacters(tags.value));
 
-const errorFor = (prefix: string): string | undefined =>
-    Object.entries(form.errors as Record<string, string>).find(
-        ([key]) => key === prefix || key.startsWith(`${prefix}.`),
-    )?.[1];
+const errorFor = (field: string): string | undefined =>
+    errorForField(form.errors as Record<string, string>, field);
 
 watch(open, (isOpen) => {
     if (!isOpen) return;
@@ -183,7 +181,7 @@ const submit = () => {
                             </button>
                         </div>
                         <button
-                            v-if="media.length < MEDIA_MAX"
+                            v-if="media.length < LIBRARY_ITEM_MEDIA_MAX"
                             type="button"
                             data-testid="library-media-upload"
                             :disabled="uploading"
@@ -216,7 +214,7 @@ const submit = () => {
                     <p class="text-xs text-muted-foreground">
                         {{
                             $t('library.form.media_hint', {
-                                max: String(MEDIA_MAX),
+                                max: String(LIBRARY_ITEM_MEDIA_MAX),
                             })
                         }}
                     </p>

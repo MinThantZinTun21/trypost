@@ -1,4 +1,5 @@
 import type { MediaItem } from '@/types/media';
+import type { PlatformValue } from '@/types/platform';
 
 export interface LibraryItem {
     id: string;
@@ -17,7 +18,7 @@ export interface LibraryItem {
 
 export interface LibrarySocialAccount {
     id: string;
-    platform: 'facebook' | 'tiktok' | 'youtube';
+    platform: PlatformValue;
     display_name: string | null;
     username: string | null;
 }

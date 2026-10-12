@@ -16,6 +16,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { errorForField } from '@/lib/formErrors';
 import type { LibraryItem, LibrarySocialAccount } from '@/types/library';
 
 const props = defineProps<{
@@ -43,10 +44,8 @@ const toggle = (accountId: string, checked: boolean | 'indeterminate') => {
             : form.social_account_ids.filter((id) => id !== accountId);
 };
 
-const errorFor = (prefix: string): string | undefined =>
-    Object.entries(form.errors as Record<string, string>).find(
-        ([key]) => key === prefix || key.startsWith(`${prefix}.`),
-    )?.[1];
+const errorFor = (field: string): string | undefined =>
+    errorForField(form.errors as Record<string, string>, field);
 
 const submit = () => {
     if (!props.item) return;
