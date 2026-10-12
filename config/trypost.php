@@ -76,12 +76,15 @@ return [
     | uploads (AssetController::storeChunked), URL
     | fetches (MediaAttacher), and the MediaType enum all read from here.
     |
+    | Videos go to object storage in one presigned PUT, which S3 and R2 cap at
+    | 5 GB, so keep the video limit below 5120. 4 GB is TikTok's own maximum.
+    |
     */
 
     'media' => [
         'max_size_mb' => [
             'image' => (int) env('MEDIA_IMAGE_MAX_SIZE_MB', 10),
-            'video' => (int) env('MEDIA_VIDEO_MAX_SIZE_MB', 1024),
+            'video' => (int) env('MEDIA_VIDEO_MAX_SIZE_MB', 4096),
             'document' => (int) env('MEDIA_DOCUMENT_MAX_SIZE_MB', 100),
         ],
     ],

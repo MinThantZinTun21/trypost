@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Media\Type;
+use App\Enums\PostPlatform\ContentType;
 
 test('media type has correct values', function () {
     expect(Type::Image->value)->toBe('image');
@@ -26,6 +27,15 @@ test('media type max size in mb is read from config', function () {
 
     expect(Type::Image->maxSizeInMb())->toBe(10);
     expect(Type::Video->maxSizeInMb())->toBe(1024);
+});
+
+test('videos default to 4 GB, under the 5 GB a single presigned PUT to object storage allows', function () {
+    expect(Type::Video->maxSizeInMb())->toBe(4096)
+        ->and(Type::Video->maxSizeInMb())->toBeLessThan(5120)
+        ->and(ContentType::FacebookPost->maxVideoBytes())->toBe(4 * 1024 ** 3)
+        ->and(ContentType::TikTokVideo->maxVideoBytes())->toBe(4 * 1024 ** 3)
+        ->and(ContentType::YouTubeShort->maxVideoBytes())->toBe(4 * 1024 ** 3)
+        ->and(ContentType::FacebookReel->maxVideoBytes())->toBe(1024 ** 3);
 });
 
 test('media type exposes derived size units', function () {
