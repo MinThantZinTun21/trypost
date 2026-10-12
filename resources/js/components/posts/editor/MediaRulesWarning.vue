@@ -20,7 +20,7 @@ const warning = computed(() =>
 <template>
     <p
         v-if="warning"
-        class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700"
+        class="flex items-start gap-2 rounded-lg border border-border bg-rose-50 p-2 text-xs font-semibold text-rose-700"
         data-testid="media-rules-warning"
     >
         <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />

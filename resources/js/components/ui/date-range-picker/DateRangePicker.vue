@@ -145,7 +145,7 @@ watch(
     </PopoverTrigger>
     <PopoverContent class="w-auto p-0" align="end">
       <div class="flex flex-col sm:flex-row">
-        <div class="hidden flex-col border-b-2 border-foreground py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-b-0 sm:border-r-2">
+        <div class="hidden flex-col border-b-2 border-border py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-b-0 sm:border-r-2">
           <template v-for="(group, groupIndex) in presetGroups" :key="groupIndex">
             <div v-if="groupIndex > 0" class="my-1 border-t-2 border-dashed border-foreground/20" />
             <div class="space-y-0.5 px-2">

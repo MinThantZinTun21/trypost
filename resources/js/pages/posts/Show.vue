@@ -152,10 +152,10 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
             class="flex flex-1 flex-col items-center justify-center gap-4 p-6"
         >
             <div
-                class="inline-flex size-14 -rotate-3 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs"
+                class="inline-flex size-14 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
             >
                 <IconLoader2
-                    class="size-7 animate-spin text-foreground"
+                    class="size-7 animate-spin text-white"
                     stroke-width="2"
                 />
             </div>
@@ -172,7 +172,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
 
         <div v-else class="flex min-h-0 flex-1 flex-col">
             <header
-                class="flex shrink-0 flex-col gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6"
+                class="flex shrink-0 flex-col gap-3 border-b-2 border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6"
             >
                 <div class="pl-12 md:pl-0">
                     <Link :href="postsIndex.url()">
@@ -219,7 +219,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
             >
                 <!-- LEFT: post preview (mirrors PostEditorComposer layout) -->
                 <div
-                    class="border-b-2 border-foreground/10 lg:overflow-y-auto lg:border-r-2 lg:border-b-0 lg:border-foreground"
+                    class="border-b-2 border-foreground/10 lg:overflow-y-auto lg:border-r-2 lg:border-b-0 lg:border-border"
                 >
                     <div class="mx-auto max-w-2xl px-6 py-10">
                         <!-- Media grid (top) — separate rounded tiles, 4-col -->
@@ -229,7 +229,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                     v-for="(item, i) in post.media"
                                     :key="item.id"
                                     type="button"
-                                    class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border-2 border-foreground bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
+                                    class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border border-border bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
                                     @click="openLightbox(i)"
                                 >
                                     <video
@@ -304,10 +304,10 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                         <Avatar
                                             :src="getDisplayAvatar(pp)"
                                             :name="getDisplayName(pp)"
-                                            class="size-11 rounded-full border-2 border-foreground shadow-2xs"
+                                            class="size-11 rounded-full border border-border shadow-2xs"
                                         />
                                         <span
-                                            class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                                            class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                                         >
                                             <img
                                                 :src="
@@ -387,7 +387,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                                         :href="pp.platform_url"
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground shadow-2xs transition-transform hover:rotate-3 hover:bg-violet-100"
+                                                        class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-transform hover:rotate-3 hover:bg-violet-100"
                                                     >
                                                         <IconExternalLink
                                                             class="size-4"

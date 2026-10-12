@@ -590,11 +590,11 @@ const truncatedContent = computed(() => {
                             <img
                                 v-if="socialAccount.avatar_url"
                                 :src="socialAccount.avatar_url"
-                                class="h-8 w-8 rounded-full border-2 border-black object-cover"
+                                class="h-8 w-8 rounded-full border border-black object-cover"
                             />
                             <div
                                 v-else
-                                class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-black bg-[#1877f2] text-[11px] font-bold text-white"
+                                class="flex h-8 w-8 items-center justify-center rounded-full border border-black bg-[#1877f2] text-[11px] font-bold text-white"
                             >
                                 {{ getInitials(socialAccount.display_label) }}
                             </div>

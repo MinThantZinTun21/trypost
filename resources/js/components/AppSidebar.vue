@@ -127,7 +127,7 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                                     <Avatar
                                         :src="user.photo_url"
                                         :name="user.name"
-                                        class="h-8 w-8 shrink-0 rounded-md border-2 border-foreground"
+                                        class="h-8 w-8 shrink-0 rounded-md border border-border"
                                         fallback-class="bg-violet-100 text-violet-700 font-bold"
                                     />
                                     <div

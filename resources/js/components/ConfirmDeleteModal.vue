@@ -123,7 +123,7 @@ defineExpose({
             <DialogHeader class="items-start text-left">
                 <div class="flex items-start gap-3">
                     <div
-                        class="inline-flex size-12 shrink-0 -rotate-3 items-center justify-center rounded-2xl border-2 border-foreground bg-rose-200 shadow-2xs"
+                        class="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600"
                     >
                         <IconAlertTriangle
                             class="size-6 text-rose-700"
@@ -152,7 +152,7 @@ defineExpose({
                 >
                     <span>{{ trans('common.confirm_modal.type') }}</span>
                     <code
-                        class="inline-flex items-center gap-1.5 rounded-md border-2 border-foreground bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-bold break-all text-foreground shadow-2xs"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-border bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-bold break-all text-foreground shadow-2xs"
                     >
                         {{ confirmText }}
                         <TooltipProvider>

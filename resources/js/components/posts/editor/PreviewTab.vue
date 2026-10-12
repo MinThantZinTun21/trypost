@@ -102,15 +102,15 @@ const activeContentType = computed((): string | undefined => {
                                 <Avatar
                                     :src="getPlatformAvatar(pp)"
                                     :name="getPlatformDisplayName(pp)"
-                                    class="size-9 shrink-0 rounded-full border-2"
+                                    class="size-9 shrink-0 rounded-full border"
                                     :class="
                                         activeId === pp.id
-                                            ? 'border-foreground shadow-2xs'
+                                            ? 'border-border shadow-2xs'
                                             : 'border-foreground/20'
                                     "
                                 />
                                 <span
-                                    class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs lg:size-4"
+                                    class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs lg:size-4"
                                 >
                                     <img
                                         :src="getPlatformLogo(pp.platform)"
@@ -158,10 +158,10 @@ const activeContentType = computed((): string | undefined => {
             </PhoneMockup>
             <div v-else class="flex flex-col items-center gap-3 text-center">
                 <div
-                    class="inline-flex size-12 -rotate-3 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs"
+                    class="inline-flex size-12 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
                 >
                     <IconDeviceMobile
-                        class="size-6 text-foreground"
+                        class="size-6 text-white"
                         stroke-width="2"
                     />
                 </div>

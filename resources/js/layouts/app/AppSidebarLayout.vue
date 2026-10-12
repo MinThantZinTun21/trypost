@@ -37,7 +37,7 @@ withDefaults(defineProps<Props>(), {
             </AppHeader>
             <SidebarTrigger
                 v-else
-                class="absolute top-3 left-4 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
+                class="absolute top-3 left-4 z-30 size-10 rounded-md border border-border bg-card text-foreground shadow-2xs md:hidden"
             />
             <div
                 :class="

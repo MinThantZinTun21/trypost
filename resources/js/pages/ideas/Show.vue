@@ -91,7 +91,7 @@ const handleDelete = () => {
 
             <article
                 v-if="idea.details"
-                class="prose max-w-none rounded-xl border-2 border-foreground bg-card p-6 shadow-2xs prose-neutral dark:prose-invert"
+                class="prose max-w-none rounded-xl border border-border bg-card p-6 shadow-2xs prose-neutral dark:prose-invert"
                 data-testid="idea-details"
                 v-html="idea.details_html"
             />

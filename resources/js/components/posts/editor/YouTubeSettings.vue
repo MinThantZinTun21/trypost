@@ -118,7 +118,7 @@ const descriptionError = computed(() => {
 </script>
 
 <template>
-    <div class="rounded-xl border-2 border-foreground bg-card shadow-2xs">
+    <div class="rounded-xl border border-border bg-card shadow-2xs">
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
@@ -128,7 +128,7 @@ const descriptionError = computed(() => {
         >
             <span class="flex min-w-0 items-center gap-2">
                 <span
-                    class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                    class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                 >
                     <img
                         :src="getPlatformLogo(Platform.YouTube)"
@@ -165,7 +165,7 @@ const descriptionError = computed(() => {
                 <Avatar
                     :src="socialAccount.avatar_url"
                     :name="socialAccount.display_label"
-                    class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
+                    class="size-9 shrink-0 rounded-full border border-border shadow-2xs"
                 />
                 <div class="min-w-0 flex-1">
                     <p

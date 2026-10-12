@@ -202,7 +202,7 @@ onBeforeUnmount(() => {
         <IconBell class="size-4" />
         <span
             v-if="unreadCount > 0"
-            class="absolute -top-1 -right-1 inline-flex size-4 items-center justify-center rounded-full border-2 border-foreground bg-rose-100 text-[9px] font-bold text-rose-700 shadow-2xs"
+            class="absolute -top-1 -right-1 inline-flex size-4 items-center justify-center rounded-full border border-border bg-rose-100 text-[9px] font-bold text-rose-700 shadow-2xs"
         >
             {{ unreadCount > 9 ? '9+' : unreadCount }}
         </span>
@@ -220,7 +220,7 @@ onBeforeUnmount(() => {
             <div
                 v-if="show"
                 ref="panel"
-                class="fixed inset-x-2 top-2 z-50 flex h-[32rem] max-h-[calc(100svh-1rem)] flex-col overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-md sm:inset-x-auto sm:top-4 sm:left-[17rem] sm:w-[22rem]"
+                class="fixed inset-x-2 top-2 z-50 flex h-[32rem] max-h-[calc(100svh-1rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-md sm:inset-x-auto sm:top-4 sm:left-[17rem] sm:w-[22rem]"
             >
                 <!-- Header -->
                 <div
@@ -236,7 +236,7 @@ onBeforeUnmount(() => {
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100 max-sm:size-9"
+                                    class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100 max-sm:size-9"
                                     @click="handleMarkAllAsRead"
                                 >
                                     <IconChecks
@@ -253,7 +253,7 @@ onBeforeUnmount(() => {
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100 max-sm:size-9"
+                                    class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100 max-sm:size-9"
                                     @click="handleArchiveAll"
                                 >
                                     <IconArchive
@@ -268,7 +268,7 @@ onBeforeUnmount(() => {
                         </Tooltip>
                         <button
                             type="button"
-                            class="inline-flex size-7 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:-rotate-90 hover:bg-rose-100 max-sm:size-9"
+                            class="inline-flex size-7 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-all hover:-rotate-90 hover:bg-rose-100 max-sm:size-9"
                             @click="close"
                         >
                             <IconX class="size-3.5" stroke-width="2.5" />
@@ -345,10 +345,10 @@ onBeforeUnmount(() => {
                         class="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center"
                     >
                         <div
-                            class="inline-flex size-12 -rotate-3 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs"
+                            class="inline-flex size-12 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
                         >
                             <IconInbox
-                                class="size-6 text-foreground"
+                                class="size-6 text-white"
                                 stroke-width="2"
                             />
                         </div>
