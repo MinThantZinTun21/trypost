@@ -16,6 +16,9 @@ return [
     'content_idea' => [
         'not_found' => 'No Content idea with that id exists for the Owner. Use an id from list_content_ideas.',
     ],
+    'library_item' => [
+        'not_found' => 'No Library item with that id exists for the Owner. Use an id from list_library_items.',
+    ],
     'insights' => [
         'no_facebook_page' => 'The Owner has no Facebook Page connected, and only Facebook Pages have Insights.',
         'account_not_found' => 'No Facebook Page Social account with that id. Use a Facebook id from list_social_accounts; TikTok and YouTube have no Insights.',
