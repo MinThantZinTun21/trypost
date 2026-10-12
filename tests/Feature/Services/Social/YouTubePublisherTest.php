@@ -188,6 +188,46 @@ test('youtube publisher rejects a stored invalid title before network work', fun
     Http::assertNothingSent();
 });
 
+test('youtube tags from meta reach the upload request', function (mixed $tags, ?array $expected) {
+    $this->post->update([
+        'content' => 'Short title. More text.',
+        'media' => [[
+            'id' => 'video-1',
+            'type' => 'video',
+            'path' => 'medias/video.mp4',
+            'url' => 'https://example.com/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $this->postPlatform->update(['meta' => ['tags' => $tags]]);
+
+    fakeYouTubeUpload()->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function (Request $request) use ($expected): bool {
+        if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
+            return false;
+        }
+
+        $snippet = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR)['snippet'];
+
+        return data_get($snippet, 'tags') === $expected;
+    });
+})->with([
+    'tags set' => [['cooking', '#quick dinner', 'Cooking'], ['cooking', 'quick dinner']],
+    'no tags' => [null, null],
+    'only blank tags' => [['  ', '#'], null],
+]);
+
+test('youtube publisher rejects stored tags over the limit before network work', function () {
+    Http::fake();
+    $this->postPlatform->update(['meta' => ['tags' => [str_repeat('a', 250), str_repeat('b', 250)]]]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(YouTubePublishException::class, __('posts.form.youtube.tags_max'));
+    Http::assertNothingSent();
+});
+
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);

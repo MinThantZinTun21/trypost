@@ -11,6 +11,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\YouTubeDescription;
+use App\Support\YouTubeTags;
 use App\Support\YouTubeTitle;
 use Google\Client as GoogleClient;
 use Google\Service\Exception;
@@ -37,6 +38,7 @@ class YouTubePublisher
             : null;
         $description = $this->resolveDescription($postPlatform, $content);
         $title = $this->resolveTitle($postPlatform, $content);
+        $tags = $this->resolveTags($postPlatform);
 
         $account = $postPlatform->socialAccount;
 
@@ -62,7 +64,7 @@ class YouTubePublisher
             );
         }
 
-        return $this->publishShort($firstMedia, $account, $title, $description);
+        return $this->publishShort($firstMedia, $account, $title, $description, $tags);
     }
 
     private function createGoogleClient(SocialAccount $account): GoogleClient
@@ -90,7 +92,10 @@ class YouTubePublisher
         return $client;
     }
 
-    private function publishShort(MediaItem $media, SocialAccount $account, ?string $title, string $description): array
+    /**
+     * @param  list<string>  $tags
+     */
+    private function publishShort(MediaItem $media, SocialAccount $account, ?string $title, string $description, array $tags): array
     {
         if (blank($title)) {
             throw new YouTubePublishException(
@@ -110,7 +115,7 @@ class YouTubePublisher
 
         try {
             $this->downloadVideo($media, $tempFile);
-            $video = $this->uploadVideo($media, $account, $tempFile, $this->buildVideo($title, $description));
+            $video = $this->uploadVideo($media, $account, $tempFile, $this->buildVideo($title, $description, $tags));
             $videoId = $video->getId();
 
             return [
@@ -231,12 +236,36 @@ class YouTubePublisher
         return YouTubeTitle::resolve($postPlatform->meta, $content);
     }
 
-    private function buildVideo(string $title, string $description): Video
+    /**
+     * @return list<string>
+     */
+    private function resolveTags(PostPlatform $postPlatform): array
+    {
+        $violation = YouTubeTags::violation(data_get($postPlatform->meta, 'tags'));
+
+        if ($violation !== null) {
+            throw new YouTubePublishException(
+                userMessage: __($violation),
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
+        return YouTubeTags::resolve($postPlatform->meta);
+    }
+
+    /**
+     * @param  list<string>  $tags
+     */
+    private function buildVideo(string $title, string $description, array $tags): Video
     {
         $snippet = new VideoSnippet;
         $snippet->setTitle($title);
         $snippet->setDescription($description);
         $snippet->setCategoryId('22');
+
+        if ($tags !== []) {
+            $snippet->setTags($tags);
+        }
 
         $status = new VideoStatus;
         $status->setPrivacyStatus('public');

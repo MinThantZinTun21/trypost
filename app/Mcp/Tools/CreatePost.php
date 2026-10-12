@@ -18,6 +18,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Support\TikTokText;
 use App\Support\YouTubeDescription;
+use App\Support\YouTubeTags;
 use App\Support\YouTubeTitle;
 use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -47,10 +48,10 @@ class CreatePost extends Tool
     ];
 
     /**
-     * The per-account text an Assistant may set; ContentType::textFields() says
-     * which of them a Content type publishes.
+     * The per-account text and YouTube Tags an Assistant may set;
+     * ContentType::textFields() says which of them a Content type publishes.
      */
-    private const TEXT_FIELDS = ['title', 'description', 'caption'];
+    private const TEXT_FIELDS = ['title', 'description', 'caption', 'tags'];
 
     /**
      * The TikTok settings an Assistant may set, copied onto the Social account's meta.
@@ -132,6 +133,7 @@ class CreatePost extends Tool
         $photoTitleMax = TikTokText::PHOTO_TITLE_MAX;
         $photoDescriptionMax = TikTokText::PHOTO_DESCRIPTION_MAX;
         $captionMax = TikTokText::CAPTION_MAX;
+        $tagsMax = YouTubeTags::MAX_CHARACTERS;
 
         return [
             'content' => $schema->string()->description('The Post\'s text. It is the Facebook Post text, and the TikTok caption, Reel description and YouTube title when those are not given.'),
@@ -144,6 +146,7 @@ class CreatePost extends Tool
                 'title' => $schema->string()->description("YouTube Short title (max {$youtubeTitleMax}), Facebook Reel title, or TikTok Photo title (max {$photoTitleMax}). Not used by other Content types."),
                 'description' => $schema->string()->description("YouTube Short description (max {$youtubeDescriptionMax} bytes, defaults to the content), Facebook Reel description, or TikTok Photo description (max {$photoDescriptionMax}). Not used by other Content types."),
                 'caption' => $schema->string()->description("TikTok Video caption (max {$captionMax}). Defaults to the content. Not used by other Content types."),
+                'tags' => $schema->array()->items($schema->string())->description("YouTube Short tags, without #. At most {$tagsMax} characters in total, counting the commas between tags and the quotes YouTube adds around a tag with a space. Not used by other Content types."),
                 'privacy_level' => $schema->string()->enum(PrivacyLevel::values())->description('TikTok only, required. Only SELF_ONLY works until the TikTok app is audited.'),
                 'allow_comments' => $schema->boolean()->description('TikTok only.'),
                 'allow_duet' => $schema->boolean()->description('TikTok Video only.'),

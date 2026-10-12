@@ -139,6 +139,12 @@ return [
             'description_invalid' => 'The YouTube description must be valid text.',
             'description_from_content_max' => 'The post text becomes the YouTube description and must not exceed 5,000 bytes. Add a shorter YouTube description.',
             'description_bytes' => ':used / :limit bytes',
+            'tags' => 'Tags',
+            'tags_placeholder' => 'cooking, quick dinner, recipes',
+            'tags_hint' => 'Separate tags with commas.',
+            'tags_max' => 'YouTube tags must not exceed 500 characters in total, counting the commas between them.',
+            'tags_invalid' => 'YouTube tags must be a list of text.',
+            'tags_characters' => ':used / :limit characters',
         ],
         'warnings' => [
             'no_variant' => 'Pick a post type to continue.',

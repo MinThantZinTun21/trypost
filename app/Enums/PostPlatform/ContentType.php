@@ -37,14 +37,16 @@ enum ContentType: string
 
     /**
      * The per-account text (PostPlatform meta keys) this content type
-     * publishes; the content stands in for any of them left blank.
+     * publishes, YouTube Tags included; the content stands in for any Title,
+     * Description or caption left blank.
      *
      * @return list<string>
      */
     public function textFields(): array
     {
         return match ($this) {
-            self::FacebookReel, self::TikTokPhoto, self::YouTubeShort => ['title', 'description'],
+            self::FacebookReel, self::TikTokPhoto => ['title', 'description'],
+            self::YouTubeShort => ['title', 'description', 'tags'],
             self::TikTokVideo => ['caption'],
             self::FacebookPost, self::FacebookStory => [],
         };

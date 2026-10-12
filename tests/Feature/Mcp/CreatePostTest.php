@@ -114,7 +114,7 @@ test('titles, descriptions, captions and TikTok settings are stored on each acco
         'social_accounts' => [
             ['id' => $this->facebook->id, 'title' => 'Reel title', 'description' => 'Reel description', 'privacy_level' => 'SELF_ONLY'],
             ['id' => $this->tiktok->id, 'caption' => 'TikTok caption', 'privacy_level' => 'SELF_ONLY', 'allow_comments' => true, 'allow_duet' => false, 'allow_stitch' => false, 'is_aigc' => true],
-            ['id' => $this->youtube->id, 'title' => 'Short title', 'description' => 'Short description'],
+            ['id' => $this->youtube->id, 'title' => 'Short title', 'description' => 'Short description', 'tags' => ['cooking', 'quick dinner']],
         ],
     ])->assertOk();
 
@@ -129,7 +129,7 @@ test('titles, descriptions, captions and TikTok settings are stored on each acco
             'allow_stitch' => false,
             'is_aigc' => true,
         ])
-        ->and($enabled[$this->youtube->id]->meta)->toEqual(['title' => 'Short title', 'description' => 'Short description']);
+        ->and($enabled[$this->youtube->id]->meta)->toEqual(['title' => 'Short title', 'description' => 'Short description', 'tags' => ['cooking', 'quick dinner']]);
 });
 
 test('a scheduled post is stored in UTC and says when it goes out', function () {
@@ -207,6 +207,10 @@ test('create_post rejects input before saving anything', function (Closure $argu
         fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset('video')->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'title' => 'Ignored']]],
         fn () => __('mcp.post.text_field_unused', ['field' => 'title', 'type' => 'tiktok_video']),
     ],
+    'tags on a TikTok Video' => [
+        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset('video')->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'tags' => ['cooking']]]],
+        fn () => __('mcp.post.text_field_unused', ['field' => 'tags', 'type' => 'tiktok_video']),
+    ],
     'content type from another platform' => [
         fn () => ['mode' => 'draft', 'social_accounts' => [['id' => test()->facebook->id, 'content_type' => 'youtube_short']]],
         fn () => __('mcp.post.content_type_platform', ['type' => 'youtube_short', 'account' => test()->facebook->accountDisplayName()]),
@@ -230,6 +234,10 @@ test('create_post returns the composer\'s errors and rolls the post back', funct
     'TikTok photo title over its limit' => [
         fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'title' => str_repeat('a', 91)]]],
         fn () => __('posts.form.tiktok.photo_title_max'),
+    ],
+    'YouTube tags over their limit' => [
+        fn () => ['mode' => 'draft', 'social_accounts' => [['id' => test()->youtube->id, 'tags' => [str_repeat('a', 250), str_repeat('b', 250)]]]],
+        fn () => __('posts.form.youtube.tags_max'),
     ],
     'YouTube description over its limit' => [
         fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [ownerAsset('video')->id], 'social_accounts' => [['id' => test()->youtube->id, 'description' => str_repeat('a', 5001)]]],
