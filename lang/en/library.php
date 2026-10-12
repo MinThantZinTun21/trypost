@@ -61,6 +61,17 @@ return [
         'save' => 'Save item',
         'cancel' => 'Cancel',
     ],
+    'used' => '{0} Not used yet|{1} Used once|[2,*] Used :count times',
+    'schedule' => [
+        'action' => 'Schedule',
+        'title' => 'Schedule from the library',
+        'description' => 'Pick where to post. A draft opens in the editor with each platform\'s text filled in, ready to schedule.',
+        'no_accounts' => 'Connect a Social account first.',
+        'submit' => 'Open in editor',
+        'cancel' => 'Cancel',
+        'accounts_required' => 'Pick at least one Social account.',
+        'account_not_found' => 'That Social account is not connected.',
+    ],
     'validation' => [
         'media_not_found' => 'That file is not in your uploads.',
         'media_max' => 'A library item holds at most :max files.',

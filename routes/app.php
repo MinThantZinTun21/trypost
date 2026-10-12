@@ -83,6 +83,7 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
     Route::post('library', [LibraryItemController::class, 'store'])->name('app.library.store');
     Route::put('library/{libraryItem}', [LibraryItemController::class, 'update'])->name('app.library.update')->whereUuid('libraryItem');
     Route::delete('library/{libraryItem}', [LibraryItemController::class, 'destroy'])->name('app.library.destroy')->whereUuid('libraryItem');
+    Route::post('library/{libraryItem}/schedule', [LibraryItemController::class, 'schedule'])->name('app.library.schedule')->whereUuid('libraryItem');
 
     // Insights (Facebook Pages only, ADR 0004)
     Route::get('insights', [InsightsController::class, 'index'])->name('app.insights.index');

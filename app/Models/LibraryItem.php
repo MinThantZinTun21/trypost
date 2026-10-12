@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Dto\MediaItem;
 use App\Enums\Post\CreatedVia;
+use App\Enums\PostPlatform\ContentType;
 use Database\Factories\LibraryItemFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
 /**
@@ -55,6 +57,38 @@ class LibraryItem extends Model
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    /**
+     * The Posts scheduled from this item.
+     */
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
+    }
+
+    /**
+     * The item's text for each field a Content type publishes: the TikTok
+     * caption is a TikTok Video's caption and a TikTok Photo's description, and
+     * a YouTube Short takes the YouTube Title, Description and Tags. Facebook
+     * reads the Post's content instead.
+     *
+     * @return array<string, string|list<string>>
+     */
+    public function textsFor(ContentType $contentType): array
+    {
+        $texts = match ($contentType) {
+            ContentType::TikTokVideo => ['caption' => $this->tiktok_caption],
+            ContentType::TikTokPhoto => ['description' => $this->tiktok_caption],
+            ContentType::YouTubeShort => [
+                'title' => $this->youtube_title,
+                'description' => $this->youtube_description,
+                'tags' => $this->youtube_tags,
+            ],
+            default => [],
+        };
+
+        return array_filter($texts, fn (mixed $text): bool => filled($text));
     }
 
     /**

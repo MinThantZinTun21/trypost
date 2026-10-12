@@ -5,6 +5,7 @@ import {
     IconBrandFacebook,
     IconBrandTiktok,
     IconBrandYoutube,
+    IconCalendarPlus,
     IconDots,
     IconPencil,
     IconPhoto,
@@ -19,6 +20,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import LibraryItemFormDialog from '@/components/library/LibraryItemFormDialog.vue';
 import LibraryMediaThumbnail from '@/components/library/LibraryMediaThumbnail.vue';
+import ScheduleLibraryItemDialog from '@/components/library/ScheduleLibraryItemDialog.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,7 +33,7 @@ import {
 import { TableLoadMore } from '@/components/ui/table';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
-import type { LibraryItem } from '@/types/library';
+import type { LibraryItem, LibrarySocialAccount } from '@/types/library';
 
 interface ScrollItems {
     data: LibraryItem[];
@@ -42,6 +44,7 @@ interface ScrollItems {
 
 defineProps<{
     items: ScrollItems;
+    socialAccounts: LibrarySocialAccount[];
 }>();
 
 const formOpen = ref(false);
@@ -56,6 +59,14 @@ const openCreate = () => {
 const openEdit = (item: LibraryItem) => {
     editing.value = item;
     formOpen.value = true;
+};
+
+const scheduleOpen = ref(false);
+const scheduling = ref<LibraryItem | null>(null);
+
+const openSchedule = (item: LibraryItem) => {
+    scheduling.value = item;
+    scheduleOpen.value = true;
 };
 
 const handleDelete = (item: LibraryItem) => {
@@ -206,14 +217,40 @@ const handleDelete = (item: LibraryItem) => {
                                 </span>
                             </div>
 
-                            <p class="mt-auto text-xs text-muted-foreground">
-                                {{ date.formatDate(item.created_at) }} ·
-                                {{
-                                    $t(
-                                        `library.created_via.${item.created_via}`,
-                                    )
-                                }}
-                            </p>
+                            <div
+                                class="mt-auto flex items-end justify-between gap-2 pt-1"
+                            >
+                                <div
+                                    class="space-y-0.5 text-xs text-muted-foreground"
+                                >
+                                    <p>
+                                        {{ date.formatDate(item.created_at) }} ·
+                                        {{
+                                            $t(
+                                                `library.created_via.${item.created_via}`,
+                                            )
+                                        }}
+                                    </p>
+                                    <p
+                                        :data-testid="`library-item-used-${item.id}`"
+                                    >
+                                        {{
+                                            transChoice(
+                                                'library.used',
+                                                item.posts_count ?? 0,
+                                            )
+                                        }}
+                                    </p>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    :data-testid="`library-item-schedule-${item.id}`"
+                                    @click="openSchedule(item)"
+                                >
+                                    <IconCalendarPlus class="size-4" />
+                                    {{ $t('library.schedule.action') }}
+                                </Button>
+                            </div>
                         </div>
                     </article>
                 </div>
@@ -226,6 +263,12 @@ const handleDelete = (item: LibraryItem) => {
     </AppLayout>
 
     <LibraryItemFormDialog v-model:open="formOpen" :item="editing" />
+
+    <ScheduleLibraryItemDialog
+        v-model:open="scheduleOpen"
+        :item="scheduling"
+        :social-accounts="socialAccounts"
+    />
 
     <ConfirmDeleteModal
         ref="deleteModal"

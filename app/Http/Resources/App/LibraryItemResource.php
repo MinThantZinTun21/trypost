@@ -23,6 +23,7 @@ class LibraryItemResource extends JsonResource
             'youtube_title' => $this->youtube_title,
             'youtube_description' => $this->youtube_description,
             'youtube_tags' => $this->youtube_tags ?? [],
+            'posts_count' => $this->whenCounted('posts'),
             'created_via' => $this->created_via->value,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

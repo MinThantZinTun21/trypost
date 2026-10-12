@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\LibraryItem\CreateLibraryItem;
+use App\Actions\LibraryItem\CreatePostFromLibraryItem;
 use App\Actions\LibraryItem\DeleteLibraryItem;
 use App\Actions\LibraryItem\UpdateLibraryItem;
 use App\Enums\Post\CreatedVia;
+use App\Http\Requests\App\LibraryItem\ScheduleLibraryItemRequest;
 use App\Http\Requests\App\LibraryItem\StoreLibraryItemRequest;
 use App\Http\Requests\App\LibraryItem\UpdateLibraryItemRequest;
 use App\Http\Resources\App\LibraryItemResource;
+use App\Http\Resources\App\SocialAccountSummaryResource;
 use App\Models\LibraryItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,8 +30,9 @@ class LibraryItemController extends Controller
 
         return Inertia::render('library/Index', [
             'items' => Inertia::scroll(fn () => LibraryItemResource::collection(
-                $workspace->libraryItems()->newestFirst()->paginate((int) config('app.pagination.default'))
+                $workspace->libraryItems()->withCount('posts')->newestFirst()->paginate((int) config('app.pagination.default'))
             )),
+            'socialAccounts' => fn () => SocialAccountSummaryResource::collection($workspace->socialAccounts()->active()->get())->resolve(),
         ]);
     }
 
@@ -50,6 +54,20 @@ class LibraryItemController extends Controller
         UpdateLibraryItem::execute($libraryItem, $request->validated());
 
         return back();
+    }
+
+    public function schedule(ScheduleLibraryItemRequest $request, LibraryItem $libraryItem): RedirectResponse
+    {
+        $this->authorize('schedule', $libraryItem);
+
+        $post = CreatePostFromLibraryItem::execute(
+            $libraryItem,
+            $request->user(),
+            $request->validated('social_account_ids'),
+            CreatedVia::Web,
+        );
+
+        return redirect()->route('app.posts.edit', $post);
     }
 
     public function destroy(LibraryItem $libraryItem): RedirectResponse
