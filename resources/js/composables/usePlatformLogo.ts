@@ -21,19 +21,14 @@ export interface ContentTypeOption {
     labelKey: string;
 }
 
-const PLATFORM_THEMES: Record<string, { bg: string; rotate: string }> = {
-    facebook: { bg: 'bg-muted', rotate: '' },
-    tiktok: { bg: 'bg-muted', rotate: '' },
-    youtube: { bg: 'bg-muted', rotate: '' },
-};
-
 export const getPlatformLogo = (platform: string): string =>
     PLATFORM_LOGOS[platform] ?? PLATFORM_LOGOS.facebook;
 
 export const getPlatformTheme = (
     platform: string,
 ): { bg: string; rotate: string; image: string } => ({
-    ...(PLATFORM_THEMES[platform] ?? { bg: 'bg-muted', rotate: '' }),
+    bg: 'bg-muted',
+    rotate: '',
     image: getPlatformLogo(platform),
 });
 

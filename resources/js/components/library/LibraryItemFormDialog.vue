@@ -171,7 +171,7 @@ const submit = () => {
                             <LibraryMediaThumbnail :media="file" />
                             <button
                                 type="button"
-                                class="absolute top-1 right-1 inline-flex size-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+                                class="absolute top-1 right-1 inline-flex size-6 cursor-pointer items-center justify-center bg-black/60 text-white transition-colors hover:bg-black/80"
                                 :aria-label="trans('library.form.remove_media')"
                                 :data-testid="`library-media-remove-${file.id}`"
                                 @click="removeMedia(file.id)"

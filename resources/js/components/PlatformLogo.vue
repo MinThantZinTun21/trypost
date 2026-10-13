@@ -28,7 +28,7 @@ const theme = computed(() => getPlatformTheme(props.platform));
 const boxClass = computed(
     () =>
         ({
-            xs: 'size-6 rounded-md',
+            xs: 'size-6 rounded-none',
             sm: 'size-10 rounded-none',
             md: 'size-12 rounded-none',
             lg: 'size-16 rounded-none',

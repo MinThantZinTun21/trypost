@@ -51,11 +51,17 @@ function assertNoHorizontalOverflow(mixed $page, string $label): void
         ->and($worst)->toBeNull("{$label} has an element past the right edge.{$detail}");
 }
 
-test('key pages do not overflow horizontally', function (int $width, int $height) {
+/**
+ * An Owner with a long workspace name, which previously stretched the
+ * AuthSplitLayout grid column past the viewport, and one draft Post.
+ *
+ * @return array{0: User, 1: Workspace, 2: Post}
+ */
+function createMobileOverflowOwner(int $platforms = 1): array
+{
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'user_id' => $user->id,
-        // A long name previously stretched the AuthSplitLayout grid column past the viewport.
         'name' => 'A Really Very Extremely Long Workspace Name That Should Truncate Instead Of Overflowing',
     ]);
     $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
@@ -66,7 +72,13 @@ test('key pages do not overflow horizontally', function (int $width, int $height
         'user_id' => $user->id,
         'content' => 'Launching our new mobile editor today!',
     ]);
-    PostPlatform::factory()->count(2)->create(['post_id' => $post->id]);
+    PostPlatform::factory()->count($platforms)->create(['post_id' => $post->id]);
+
+    return [$user, $workspace, $post];
+}
+
+test('key pages do not overflow horizontally', function (int $width, int $height) {
+    [$user, $workspace, $post] = createMobileOverflowOwner(platforms: 2);
     SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
     LibraryItem::factory()->count(2)->create(['workspace_id' => $workspace->id]);
     ContentIdea::factory()->create(['workspace_id' => $workspace->id]);
@@ -92,6 +104,8 @@ test('key pages do not overflow horizontally', function (int $width, int $height
         assertNoHorizontalOverflow($page, "{$label} at {$width}px");
 
         $page->screenshot(filename: "page-{$label}-{$width}");
+
+        $page->assertNoJavaScriptErrors();
     }
 })->with([
     'phone' => [375, 812],
@@ -99,16 +113,7 @@ test('key pages do not overflow horizontally', function (int $width, int $height
 ]);
 
 test('the help button does not cover the editor action bar on a phone', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-    ]);
-    PostPlatform::factory()->create(['post_id' => $post->id]);
+    [$user, , $post] = createMobileOverflowOwner();
 
     $this->actingAs($user);
 

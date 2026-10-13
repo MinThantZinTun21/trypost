@@ -705,7 +705,7 @@ const formatTime = (scheduledAt: string): string => {
                             <!-- Day Header -->
                             <div class="mb-2 flex items-center justify-between">
                                 <span
-                                    class="inline-flex size-7 items-center justify-center rounded-full text-sm font-bold"
+                                    class="inline-flex size-7 items-center justify-center text-sm font-bold"
                                     :class="{
                                         'border border-border bg-foreground text-background shadow-2xs':
                                             isToday(day),
