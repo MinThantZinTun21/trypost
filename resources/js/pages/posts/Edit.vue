@@ -360,7 +360,7 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
 <template>
     <Head :title="$t('posts.edit.title')" />
 
-    <AppLayout :full-width="true">
+    <AppLayout :full-width="true" :mobile-action-bar="!isReadOnly">
         <div class="flex min-h-0 flex-1 flex-col">
             <!-- On mobile the status moves into the switcher and the actions into the
                  bottom bar, so the header is desktop-only — except the scheduled banner,

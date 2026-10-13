@@ -297,46 +297,46 @@ const formatTime = (scheduledAt: string): string => {
 
     <AppLayout :fullWidth="true">
         <div class="flex h-full flex-col">
-            <!-- Mobile header: nav + date jump on top, full-width New post below -->
+            <!-- Mobile header: nav on top, date jump and New post below -->
             <header
                 class="flex shrink-0 flex-col gap-2 border-b border-border bg-card px-4 py-3 lg:hidden"
             >
-                <div class="flex items-center justify-between gap-2 pl-12">
-                    <div class="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            class="shrink-0"
-                            @click="navigate(-1)"
-                        >
-                            <IconChevronLeft class="size-4" />
-                        </Button>
-                        <Button variant="outline" @click="goToToday">
-                            {{ $t('calendar.today') }}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            class="shrink-0"
-                            @click="navigate(1)"
-                        >
-                            <IconChevronRight class="size-4" />
-                        </Button>
-                    </div>
-                    <div class="w-36 shrink-0">
+                <div class="flex items-center gap-2 pl-12">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="shrink-0"
+                        @click="navigate(-1)"
+                    >
+                        <IconChevronLeft class="size-4" />
+                    </Button>
+                    <Button variant="outline" @click="goToToday">
+                        {{ $t('calendar.today') }}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="shrink-0"
+                        @click="navigate(1)"
+                    >
+                        <IconChevronRight class="size-4" />
+                    </Button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="min-w-0 flex-1">
                         <DatePicker
                             v-model="selectedDate"
                             :show-time="false"
                             @update:model-value="(v: any) => goToDate(v)"
                         />
                     </div>
+                    <Button
+                        class="shrink-0"
+                        :disabled="creatingPost"
+                        @click="createPost()"
+                        >{{ $t('calendar.new_post') }}</Button
+                    >
                 </div>
-                <Button
-                    class="w-full"
-                    :disabled="creatingPost"
-                    @click="createPost()"
-                    >{{ $t('calendar.new_post') }}</Button
-                >
             </header>
 
             <!-- Desktop header: nav · title · view switcher + new post -->

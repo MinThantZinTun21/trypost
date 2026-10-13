@@ -188,7 +188,7 @@ const displayText = computed(() => {
                 :class="[{ 'text-foreground/60': !displayText }, $attrs.class]"
                 :disabled="disabled"
             >
-                <span>{{
+                <span class="truncate">{{
                     displayText ||
                     placeholder ||
                     $t('common.date_picker.select')

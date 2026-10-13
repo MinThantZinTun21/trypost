@@ -9,7 +9,7 @@
              first paint doesn't flash white before CSS loads. --}}
         <style>
             html {
-                background-color: #faf8f5;
+                background-color: #ffffff;
             }
         </style>
 

@@ -3,15 +3,17 @@ import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 
 type Props = {
     fullWidth?: boolean;
+    mobileActionBar?: boolean;
 };
 
 withDefaults(defineProps<Props>(), {
     fullWidth: false,
+    mobileActionBar: false,
 });
 </script>
 
 <template>
-    <AppLayout :full-width="fullWidth">
+    <AppLayout :full-width="fullWidth" :mobile-action-bar="mobileActionBar">
         <template v-if="$slots['header']" #header>
             <slot name="header" />
         </template>
