@@ -20,7 +20,7 @@ const forwardedProps = useForwardProps(delegatedProps)
   <CalendarHeading
     v-slot="{ headingValue }"
     data-slot="calendar-heading"
-    :class="cn('text-sm font-bold text-foreground', props.class)"
+    :class="cn('text-xs font-semibold tracking-wide text-foreground uppercase', props.class)"
     v-bind="forwardedProps"
   >
     <slot :heading-value>

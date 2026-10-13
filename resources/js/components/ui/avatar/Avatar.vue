@@ -25,11 +25,11 @@ const hasProps = computed(() => props.src !== undefined || props.name !== undefi
         v-if="src"
         :src="src"
         :alt="name"
-        class="aspect-square size-full object-cover"
+        class="aspect-square size-full rounded-full object-cover"
       />
       <div
         v-else
-        :class="cn('flex size-full items-center justify-center bg-muted font-medium', props.fallbackClass)"
+        :class="cn('flex size-full items-center justify-center rounded-full bg-muted text-muted-foreground font-medium', props.fallbackClass)"
       >
         {{ name ? getInitials(name) : '' }}
       </div>

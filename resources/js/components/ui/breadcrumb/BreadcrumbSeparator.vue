@@ -13,7 +13,7 @@ const props = defineProps<{
     data-slot="breadcrumb-separator"
     role="presentation"
     aria-hidden="true"
-    :class="cn('inline-flex items-center text-foreground/30 [&>svg]:size-3.5', props.class)"
+    :class="cn('inline-flex items-center [&>svg]:size-3.5', props.class)"
   >
     <slot>
       <IconChevronRight stroke-width="2.5" />

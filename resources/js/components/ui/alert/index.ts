@@ -5,16 +5,17 @@ export { default as Alert } from "./Alert.vue"
 export { default as AlertDescription } from "./AlertDescription.vue"
 export { default as AlertTitle } from "./AlertTitle.vue"
 
+// Sera alert: square card with a 2px accent bar on the left edge (::after).
 export const alertVariants = cva(
-  "relative w-full rounded-xl border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
+  "group/alert relative grid w-full gap-1 border bg-background px-4 py-3 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2.5 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4 after:absolute after:-inset-y-px after:-left-px after:w-0.5",
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground shadow-xs",
+        default: "bg-card text-card-foreground after:bg-foreground",
         destructive:
-          "border-rose-200 bg-rose-50 text-rose-900 [&>svg]:text-rose-600 *:data-[slot=alert-description]:text-rose-800",
+          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current after:bg-destructive",
         warning:
-          "border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-600 *:data-[slot=alert-description]:text-amber-800",
+          "bg-card text-(color:--warning) *:data-[slot=alert-description]:text-(color:--warning)/90 *:[svg]:text-current after:bg-(color:--warning)",
       },
     },
     defaultVariants: {

@@ -34,7 +34,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       v-bind="{ ...$attrs, ...forwarded }"
       :class="
         cn(
-          'bg-card data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 max-h-[85dvh] overflow-y-auto rounded-3xl border border-border p-6 shadow-2xl duration-200 sm:max-w-lg',
+          'bg-popover text-popover-foreground ring-foreground/10 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-6 max-h-[85dvh] overflow-y-auto rounded-none p-6 text-sm shadow-md ring-1 duration-100 outline-none sm:max-w-md',
           props.class,
         )"
     >
@@ -44,9 +44,9 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         v-if="showCloseButton"
         data-slot="dialog-close"
         :aria-label="$t('common.close')"
-        class="absolute top-3 right-3 inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+        class="absolute top-5 right-5 inline-flex size-9 cursor-pointer items-center justify-center rounded-none border border-transparent bg-secondary text-foreground transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
       >
-        <IconX class="size-4" stroke-width="2.5" />
+        <IconX class="size-3.5" stroke-width="2.5" />
         <span class="sr-only">{{ $t('common.close') }}</span>
       </DialogClose>
     </DialogContent>
