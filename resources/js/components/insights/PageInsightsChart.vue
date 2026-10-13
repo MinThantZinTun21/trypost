@@ -10,6 +10,7 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import date from '@/date';
 import { formatCount } from '@/lib/utils';
@@ -61,53 +62,56 @@ const selectMetric = (value: string | number) => {
 </script>
 
 <template>
-    <div
-        class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-2xs"
-        data-testid="insights-chart"
-    >
-        <Tabs :model-value="metric" @update:model-value="selectMetric">
-            <TabsList class="flex-wrap">
-                <TabsTrigger
-                    v-for="option in CHARTED_METRICS"
-                    :key="option"
-                    :value="option"
-                    :data-testid="`insights-chart-metric-${option}`"
-                >
-                    {{ $t(`insights.metrics.${option}`) }}
-                </TabsTrigger>
-            </TabsList>
-        </Tabs>
+    <Card class="gap-0 py-0" data-testid="insights-chart">
+        <CardContent class="flex flex-col gap-4 p-4">
+            <Tabs :model-value="metric" @update:model-value="selectMetric">
+                <TabsList class="flex-wrap">
+                    <TabsTrigger
+                        v-for="option in CHARTED_METRICS"
+                        :key="option"
+                        :value="option"
+                        :data-testid="`insights-chart-metric-${option}`"
+                    >
+                        {{ $t(`insights.metrics.${option}`) }}
+                    </TabsTrigger>
+                </TabsList>
+            </Tabs>
 
-        <div
-            role="img"
-            :aria-label="
-                $t('insights.chart_label', {
-                    metric: $t(`insights.metrics.${metric}`),
-                })
-            "
-            class="text-primary"
-        >
-            <VisXYContainer
-                :data="points"
-                :height="260"
-                :margin="{ top: 8, right: 8 }"
+            <div
+                role="img"
+                :aria-label="
+                    $t('insights.chart_label', {
+                        metric: $t(`insights.metrics.${metric}`),
+                    })
+                "
+                class="text-primary"
             >
-                <VisLine
-                    :x="x"
-                    :y="y"
-                    :curve-type="CurveType.Linear"
-                    color="var(--chart-1)"
-                />
-                <VisAxis
-                    type="x"
-                    :tick-format="dayLabel"
-                    :num-ticks="6"
-                    :grid-line="false"
-                />
-                <VisAxis type="y" :tick-format="formatCount" :num-ticks="4" />
-                <VisCrosshair :template="tooltip" color="var(--chart-1)" />
-                <VisTooltip />
-            </VisXYContainer>
-        </div>
-    </div>
+                <VisXYContainer
+                    :data="points"
+                    :height="260"
+                    :margin="{ top: 8, right: 8 }"
+                >
+                    <VisLine
+                        :x="x"
+                        :y="y"
+                        :curve-type="CurveType.Linear"
+                        color="var(--chart-1)"
+                    />
+                    <VisAxis
+                        type="x"
+                        :tick-format="dayLabel"
+                        :num-ticks="6"
+                        :grid-line="false"
+                    />
+                    <VisAxis
+                        type="y"
+                        :tick-format="formatCount"
+                        :num-ticks="4"
+                    />
+                    <VisCrosshair :template="tooltip" color="var(--chart-1)" />
+                    <VisTooltip />
+                </VisXYContainer>
+            </div>
+        </CardContent>
+    </Card>
 </template>

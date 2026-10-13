@@ -23,6 +23,7 @@ import LibraryMediaThumbnail from '@/components/library/LibraryMediaThumbnail.vu
 import ScheduleLibraryItemDialog from '@/components/library/ScheduleLibraryItemDialog.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -115,11 +116,11 @@ const handleDelete = (item: LibraryItem) => {
                     id="library-grid"
                     class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
                 >
-                    <article
+                    <Card
                         v-for="item in items.data"
                         :key="item.id"
                         :data-testid="`library-item-${item.id}`"
-                        class="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                        class="group gap-0 overflow-hidden py-0 transition-all hover:-translate-y-0.5 hover:shadow-md"
                     >
                         <button
                             type="button"
@@ -150,7 +151,7 @@ const handleDelete = (item: LibraryItem) => {
                             </span>
                         </button>
 
-                        <div class="flex flex-1 flex-col gap-3 p-4">
+                        <CardContent class="flex flex-1 flex-col gap-3 p-4">
                             <div class="flex items-start justify-between gap-2">
                                 <h3
                                     class="line-clamp-2 font-semibold text-foreground"
@@ -251,8 +252,8 @@ const handleDelete = (item: LibraryItem) => {
                                     {{ $t('library.schedule.action') }}
                                 </Button>
                             </div>
-                        </div>
-                    </article>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <template #next="{ loading }">
