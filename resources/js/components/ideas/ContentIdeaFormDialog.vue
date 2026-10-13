@@ -2,7 +2,6 @@
 import { Form } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 
-import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -13,8 +12,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { RouteFormDefinition } from '@/wayfinder';
 
@@ -47,8 +46,10 @@ const open = defineModel<boolean>('open', { required: true });
                     <DialogDescription>{{ description }}</DialogDescription>
                 </DialogHeader>
 
-                <div class="grid gap-2">
-                    <Label for="idea_title">{{ $t('ideas.form.title') }}</Label>
+                <Field class="gap-2">
+                    <FieldLabel for="idea_title">{{
+                        $t('ideas.form.title')
+                    }}</FieldLabel>
                     <Input
                         id="idea_title"
                         name="title"
@@ -56,13 +57,13 @@ const open = defineModel<boolean>('open', { required: true });
                         :placeholder="trans('ideas.form.title_placeholder')"
                         data-testid="idea-title-input"
                     />
-                    <InputError :message="errors.title" />
-                </div>
+                    <FieldError :errors="[errors.title]" />
+                </Field>
 
-                <div class="grid gap-2">
-                    <Label for="idea_details">{{
+                <Field class="gap-2">
+                    <FieldLabel for="idea_details">{{
                         $t('ideas.form.details')
-                    }}</Label>
+                    }}</FieldLabel>
                     <Textarea
                         id="idea_details"
                         name="details"
@@ -71,8 +72,8 @@ const open = defineModel<boolean>('open', { required: true });
                         :placeholder="trans('ideas.form.details_placeholder')"
                         data-testid="idea-details-input"
                     />
-                    <InputError :message="errors.details" />
-                </div>
+                    <FieldError :errors="[errors.details]" />
+                </Field>
 
                 <DialogFooter class="gap-2">
                     <Button

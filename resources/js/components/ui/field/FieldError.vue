@@ -23,6 +23,9 @@ const content = computed(() => {
     ).values(),
   ]
 
+  if (uniqueErrors.length === 0)
+    return null
+
   if (uniqueErrors.length === 1 && uniqueErrors[0]) {
     return typeof uniqueErrors[0] === "string" ? uniqueErrors[0] : uniqueErrors[0].message
   }

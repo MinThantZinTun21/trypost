@@ -5,13 +5,12 @@ import { computed } from 'vue';
 
 import ProfileController from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
 import HeadingSmall from '@/components/HeadingSmall.vue';
-import InputError from '@/components/InputError.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import PhotoUpload from '@/components/PhotoUpload.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import { Button } from '@/components/ui/button';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { edit as editAuthentication } from '@/routes/app/authentication';
@@ -79,10 +78,10 @@ const tabs = computed(() => [
                         class="space-y-6"
                         v-slot="{ errors, processing }"
                     >
-                        <div class="grid gap-2">
-                            <Label for="name">{{
+                        <Field class="gap-2">
+                            <FieldLabel for="name">{{
                                 $t('settings.profile.name')
-                            }}</Label>
+                            }}</FieldLabel>
                             <Input
                                 id="name"
                                 name="name"
@@ -92,13 +91,13 @@ const tabs = computed(() => [
                                     trans('settings.profile.name_placeholder')
                                 "
                             />
-                            <InputError :message="errors.name" />
-                        </div>
+                            <FieldError :errors="[errors.name]" />
+                        </Field>
 
-                        <div class="grid gap-2">
-                            <Label for="email">{{
+                        <Field class="gap-2">
+                            <FieldLabel for="email">{{
                                 $t('settings.profile.email')
-                            }}</Label>
+                            }}</FieldLabel>
                             <Input
                                 id="email"
                                 type="email"
@@ -109,8 +108,8 @@ const tabs = computed(() => [
                                     trans('settings.profile.email_placeholder')
                                 "
                             />
-                            <InputError :message="errors.email" />
-                        </div>
+                            <FieldError :errors="[errors.email]" />
+                        </Field>
 
                         <Button
                             :disabled="processing"

@@ -6,7 +6,6 @@ import { computed, ref } from 'vue';
 
 import AuthenticationController from '@/actions/App/Http/Controllers/App/Settings/AuthenticationController';
 import HeadingSmall from '@/components/HeadingSmall.vue';
-import InputError from '@/components/InputError.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import { Button } from '@/components/ui/button';
@@ -20,8 +19,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { isMobileDevice, parseBrowserName, parseOsName } from '@/lib/userAgent';
@@ -199,8 +198,8 @@ const logoutDialogOpen = ref(false);
                                     </DialogDescription>
                                 </DialogHeader>
 
-                                <div class="grid gap-2">
-                                    <Label
+                                <Field class="gap-2">
+                                    <FieldLabel
                                         for="session_password"
                                         class="sr-only"
                                     >
@@ -209,7 +208,7 @@ const logoutDialogOpen = ref(false);
                                                 'settings.authentication.password.current_password',
                                             )
                                         }}
-                                    </Label>
+                                    </FieldLabel>
                                     <Input
                                         id="session_password"
                                         type="password"
@@ -220,8 +219,8 @@ const logoutDialogOpen = ref(false);
                                             )
                                         "
                                     />
-                                    <InputError :message="errors.password" />
-                                </div>
+                                    <FieldError :errors="[errors.password]" />
+                                </Field>
 
                                 <DialogFooter class="gap-2">
                                     <Button
@@ -275,52 +274,52 @@ const logoutDialogOpen = ref(false);
                         class="space-y-6"
                         v-slot="{ errors, processing }"
                     >
-                        <div class="grid gap-2">
-                            <Label for="current_password">{{
+                        <Field class="gap-2">
+                            <FieldLabel for="current_password">{{
                                 $t(
                                     'settings.authentication.password.current_password',
                                 )
-                            }}</Label>
+                            }}</FieldLabel>
                             <Input
                                 id="current_password"
                                 name="current_password"
                                 type="password"
                                 autocomplete="current-password"
                             />
-                            <InputError :message="errors.current_password" />
-                        </div>
+                            <FieldError :errors="[errors.current_password]" />
+                        </Field>
 
-                        <div class="grid gap-2">
-                            <Label for="password">{{
+                        <Field class="gap-2">
+                            <FieldLabel for="password">{{
                                 $t(
                                     'settings.authentication.password.new_password',
                                 )
-                            }}</Label>
+                            }}</FieldLabel>
                             <Input
                                 id="password"
                                 name="password"
                                 type="password"
                                 autocomplete="new-password"
                             />
-                            <InputError :message="errors.password" />
-                        </div>
+                            <FieldError :errors="[errors.password]" />
+                        </Field>
 
-                        <div class="grid gap-2">
-                            <Label for="password_confirmation">{{
+                        <Field class="gap-2">
+                            <FieldLabel for="password_confirmation">{{
                                 $t(
                                     'settings.authentication.password.confirm_password',
                                 )
-                            }}</Label>
+                            }}</FieldLabel>
                             <Input
                                 id="password_confirmation"
                                 name="password_confirmation"
                                 type="password"
                                 autocomplete="new-password"
                             />
-                            <InputError
-                                :message="errors.password_confirmation"
+                            <FieldError
+                                :errors="[errors.password_confirmation]"
                             />
-                        </div>
+                        </Field>
 
                         <Button
                             :disabled="processing"

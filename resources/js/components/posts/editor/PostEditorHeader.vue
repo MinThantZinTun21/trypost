@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { IconCalendar, IconCircleCheck, IconLoader2 } from '@tabler/icons-vue';
+import { IconCalendar, IconCircleCheck } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PostEditorActions from '@/components/posts/editor/PostEditorActions.vue';
+import { Spinner } from '@/components/ui/spinner';
 import { PostStatus } from '@/types/post';
 
 interface Props {
@@ -89,7 +90,7 @@ const isPublished = computed(() =>
                 v-if="isSaving"
                 class="flex items-center gap-1.5 text-xs font-semibold text-foreground/70"
             >
-                <IconLoader2 class="size-3.5 animate-spin" />
+                <Spinner class="size-3.5" aria-hidden="true" />
                 {{ $t('posts.edit.saving') }}
             </span>
             <span

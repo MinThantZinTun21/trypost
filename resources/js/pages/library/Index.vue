@@ -22,7 +22,9 @@ import LibraryItemFormDialog from '@/components/library/LibraryItemFormDialog.vu
 import LibraryMediaThumbnail from '@/components/library/LibraryMediaThumbnail.vue';
 import ScheduleLibraryItemDialog from '@/components/library/ScheduleLibraryItemDialog.vue';
 import PageHeader from '@/components/PageHeader.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -115,11 +117,11 @@ const handleDelete = (item: LibraryItem) => {
                     id="library-grid"
                     class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
                 >
-                    <article
+                    <Card
                         v-for="item in items.data"
                         :key="item.id"
                         :data-testid="`library-item-${item.id}`"
-                        class="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                        class="group gap-0 overflow-hidden py-0 transition-all hover:-translate-y-0.5 hover:shadow-md"
                     >
                         <button
                             type="button"
@@ -150,7 +152,7 @@ const handleDelete = (item: LibraryItem) => {
                             </span>
                         </button>
 
-                        <div class="flex flex-1 flex-col gap-3 p-4">
+                        <CardContent class="flex flex-1 flex-col gap-3 p-4">
                             <div class="flex items-start justify-between gap-2">
                                 <h3
                                     class="line-clamp-2 font-semibold text-foreground"
@@ -190,31 +192,34 @@ const handleDelete = (item: LibraryItem) => {
                             </div>
 
                             <div class="flex flex-wrap gap-1.5">
-                                <span
+                                <Badge
                                     v-if="item.facebook_text"
-                                    class="inline-flex items-center gap-1 rounded-full bg-[#1877f2]/10 px-2 py-0.5 text-xs font-medium text-[#1877f2]"
+                                    variant="secondary"
+                                    class="bg-[#1877f2]/10 px-2 font-medium text-[#1877f2] [&>svg]:size-3.5"
                                 >
-                                    <IconBrandFacebook class="size-3.5" />
+                                    <IconBrandFacebook />
                                     {{ $t('library.texts.facebook') }}
-                                </span>
-                                <span
+                                </Badge>
+                                <Badge
                                     v-if="item.tiktok_caption"
-                                    class="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground"
+                                    variant="secondary"
+                                    class="bg-foreground/10 px-2 font-medium text-foreground [&>svg]:size-3.5"
                                 >
-                                    <IconBrandTiktok class="size-3.5" />
+                                    <IconBrandTiktok />
                                     {{ $t('library.texts.tiktok') }}
-                                </span>
-                                <span
+                                </Badge>
+                                <Badge
                                     v-if="
                                         item.youtube_title ||
                                         item.youtube_description ||
                                         item.youtube_tags.length > 0
                                     "
-                                    class="inline-flex items-center gap-1 rounded-full bg-[#ff0000]/10 px-2 py-0.5 text-xs font-medium text-[#cc0000]"
+                                    variant="secondary"
+                                    class="bg-[#ff0000]/10 px-2 font-medium text-[#cc0000] [&>svg]:size-3.5"
                                 >
-                                    <IconBrandYoutube class="size-3.5" />
+                                    <IconBrandYoutube />
                                     {{ $t('library.texts.youtube') }}
-                                </span>
+                                </Badge>
                             </div>
 
                             <div
@@ -251,8 +256,8 @@ const handleDelete = (item: LibraryItem) => {
                                     {{ $t('library.schedule.action') }}
                                 </Button>
                             </div>
-                        </div>
-                    </article>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <template #next="{ loading }">

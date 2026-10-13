@@ -368,6 +368,9 @@ one-per-network rule — do not reintroduce one.
 ## Frontend (Vue/TypeScript)
 
 - Always use arrow functions in Vue components and TypeScript files. Never use `function` declarations.
+- Build UI from the shadcn-vue components in `resources/js/components/ui` (Button, Badge, Card, Alert, Field, InputGroup, Empty/`EmptyState`, Spinner, Separator, Collapsible, Table, NativeSelect, Textarea, Progress, …) instead of hand-rolled markup. Restyle them with `class`; do not copy their classes onto a raw element. Add a missing component with the shadcn-vue CLI, never by hand (a new npm package still needs approval).
+    - Exceptions: custom widgets the components can't express (the composer's caption textarea with its overflow mirror) and the platform previews, which imitate each network's own UI.
+    - `tests/Unit/ShadcnComponentsTest.php` fails on a raw `<table>`, `<select>`, `<textarea>`, `<hr>`, `<progress>` or non-file `<input>` outside `components/ui`; list a deliberate exception there with its reason.
 
 ## Dialogs
 

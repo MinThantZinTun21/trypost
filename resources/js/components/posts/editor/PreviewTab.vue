@@ -6,6 +6,13 @@ import PhoneMockup from '@/components/PhoneMockup.vue';
 import { PlatformPreview } from '@/components/posts/previews';
 import { Avatar } from '@/components/ui/avatar';
 import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/components/ui/empty';
+import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
@@ -156,25 +163,29 @@ const activeContentType = computed((): string | undefined => {
                     :posted-at="postedAt"
                 />
             </PhoneMockup>
-            <div v-else class="flex flex-col items-center gap-3 text-center">
-                <div
-                    class="inline-flex size-12 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
-                >
-                    <IconDeviceMobile
-                        class="size-6 text-white"
-                        stroke-width="2"
-                    />
-                </div>
-                <p
-                    class="text-base font-bold text-foreground"
-                    style="font-family: var(--font-display)"
-                >
-                    {{ $t('posts.edit.preview_empty.title') }}
-                </p>
-                <p class="text-xs font-medium text-foreground/60">
-                    {{ $t('posts.edit.preview_empty.description') }}
-                </p>
-            </div>
+            <Empty v-else class="flex-none gap-3 p-0 md:p-0">
+                <EmptyHeader class="gap-3">
+                    <EmptyMedia
+                        class="mb-0 size-12 rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
+                    >
+                        <IconDeviceMobile
+                            class="size-6 text-white"
+                            stroke-width="2"
+                        />
+                    </EmptyMedia>
+                    <EmptyTitle
+                        class="text-base font-bold tracking-normal text-foreground"
+                        style="font-family: var(--font-display)"
+                    >
+                        {{ $t('posts.edit.preview_empty.title') }}
+                    </EmptyTitle>
+                    <EmptyDescription
+                        class="text-xs font-medium text-foreground/60"
+                    >
+                        {{ $t('posts.edit.preview_empty.description') }}
+                    </EmptyDescription>
+                </EmptyHeader>
+            </Empty>
         </div>
     </div>
 </template>

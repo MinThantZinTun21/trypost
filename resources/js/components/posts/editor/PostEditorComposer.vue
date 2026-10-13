@@ -6,7 +6,6 @@ import {
     IconFileTypePdf,
     IconGripVertical,
     IconLibraryPhoto,
-    IconLoader2,
     IconMoodSmile,
     IconTrash,
     IconVideo,
@@ -17,11 +16,14 @@ import { computed, nextTick, ref } from 'vue';
 import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
 import AltTextDialog from '@/components/posts/editor/AltTextDialog.vue';
 import EmojiPicker from '@/components/posts/EmojiPicker.vue';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Popover,
     PopoverAnchor,
     PopoverContent,
 } from '@/components/ui/popover';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
@@ -424,7 +426,7 @@ const onAltTextSave = (alt: string): void => {
                         @click="fileInput?.click()"
                     >
                         <template v-if="uploading">
-                            <IconLoader2 class="size-5 animate-spin" />
+                            <Spinner class="size-5" />
                             <span
                                 class="text-[10px] font-bold tracking-widest uppercase tabular-nums"
                                 >{{ uploadProgress }}%</span
@@ -458,13 +460,17 @@ const onAltTextSave = (alt: string): void => {
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger as-child>
-                                    <button
-                                        type="button"
-                                        class="inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-2xs transition-all hover:-translate-y-0.5 hover:bg-violet-100 hover:shadow-sm"
+                                    <Button
+                                        variant="outline"
+                                        size="icon-sm"
+                                        class="rounded-lg shadow-2xs hover:-translate-y-0.5 hover:shadow-sm"
+                                        :aria-label="
+                                            $t('posts.edit.emoji_picker.search')
+                                        "
                                         @click="emojiOpen = !emojiOpen"
                                     >
                                         <IconMoodSmile class="size-4" />
-                                    </button>
+                                    </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{{
                                     $t('posts.edit.emoji_picker.search')
@@ -490,10 +496,14 @@ const onAltTextSave = (alt: string): void => {
                 >
                     <Tooltip>
                         <TooltipTrigger as-child>
-                            <span
+                            <Badge
+                                as="span"
+                                variant="outline"
                                 :data-testid="`content-counter-${limit.platform}`"
-                                class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] leading-none font-bold tabular-nums shadow-2xs transition-colors"
-                                :class="limitClass(limit.state)"
+                                :class="[
+                                    'gap-1.5 px-2 py-1 text-[11px] leading-none font-bold tabular-nums shadow-2xs',
+                                    limitClass(limit.state),
+                                ]"
                             >
                                 <span
                                     class="inline-flex size-3.5 shrink-0 items-center justify-center overflow-hidden rounded-full"
@@ -510,7 +520,7 @@ const onAltTextSave = (alt: string): void => {
                                         >/{{ limit.maxLength }}</span
                                     ></span
                                 >
-                            </span>
+                            </Badge>
                         </TooltipTrigger>
                         <TooltipContent>{{
                             getPlatformLabel(limit.platform)

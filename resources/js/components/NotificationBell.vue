@@ -11,6 +11,12 @@ import {
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
+import {
+    Empty,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/components/ui/empty';
 import { useSidebar } from '@/components/ui/sidebar';
 import {
     Tooltip,
@@ -234,16 +240,18 @@ onBeforeUnmount(() => {
                     <div class="flex items-center gap-1.5">
                         <Tooltip v-if="notifications.length > 0">
                             <TooltipTrigger as-child>
-                                <button
-                                    type="button"
-                                    class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100 max-sm:size-9"
+                                <Button
+                                    variant="outline"
+                                    size="icon-sm"
+                                    class="size-7 rounded-md shadow-2xs max-sm:size-9"
+                                    :aria-label="$t('sidebar.mark_all_read')"
                                     @click="handleMarkAllAsRead"
                                 >
                                     <IconChecks
                                         class="size-3.5"
                                         stroke-width="2.5"
                                     />
-                                </button>
+                                </Button>
                             </TooltipTrigger>
                             <TooltipContent>{{
                                 $t('sidebar.mark_all_read')
@@ -251,28 +259,32 @@ onBeforeUnmount(() => {
                         </Tooltip>
                         <Tooltip v-if="notifications.length > 0">
                             <TooltipTrigger as-child>
-                                <button
-                                    type="button"
-                                    class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100 max-sm:size-9"
+                                <Button
+                                    variant="outline"
+                                    size="icon-sm"
+                                    class="size-7 rounded-md shadow-2xs max-sm:size-9"
+                                    :aria-label="$t('sidebar.archive_all')"
                                     @click="handleArchiveAll"
                                 >
                                     <IconArchive
                                         class="size-3.5"
                                         stroke-width="2.5"
                                     />
-                                </button>
+                                </Button>
                             </TooltipTrigger>
                             <TooltipContent>{{
                                 $t('sidebar.archive_all')
                             }}</TooltipContent>
                         </Tooltip>
-                        <button
-                            type="button"
-                            class="inline-flex size-7 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-all hover:-rotate-90 hover:bg-rose-100 max-sm:size-9"
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            class="size-7 rounded-full shadow-2xs hover:-rotate-90 hover:bg-rose-100 max-sm:size-9"
+                            :aria-label="$t('common.close')"
                             @click="close"
                         >
                             <IconX class="size-3.5" stroke-width="2.5" />
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
@@ -318,9 +330,13 @@ onBeforeUnmount(() => {
                             <div class="shrink-0" @click.stop>
                                 <Tooltip v-if="!notification.read_at">
                                     <TooltipTrigger as-child>
-                                        <button
-                                            type="button"
-                                            class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-foreground/10 hover:text-foreground max-sm:size-9"
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            class="size-7 rounded-md text-foreground/60 hover:bg-foreground/10 hover:text-foreground max-sm:size-9"
+                                            :aria-label="
+                                                $t('sidebar.mark_as_read')
+                                            "
                                             @click="
                                                 handleMarkAsRead(notification)
                                             "
@@ -329,7 +345,7 @@ onBeforeUnmount(() => {
                                                 class="size-3.5"
                                                 stroke-width="2.5"
                                             />
-                                        </button>
+                                        </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>{{
                                         $t('sidebar.mark_as_read')
@@ -340,25 +356,27 @@ onBeforeUnmount(() => {
                     </div>
 
                     <!-- Empty state -->
-                    <div
+                    <Empty
                         v-else-if="!loading"
-                        class="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center"
+                        class="gap-3 px-6 py-12 md:px-6 md:py-12"
                     >
-                        <div
-                            class="inline-flex size-12 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
-                        >
-                            <IconInbox
-                                class="size-6 text-white"
-                                stroke-width="2"
-                            />
-                        </div>
-                        <p
-                            class="text-base font-bold text-foreground"
-                            style="font-family: var(--font-display)"
-                        >
-                            {{ $t('sidebar.no_notifications') }}
-                        </p>
-                    </div>
+                        <EmptyHeader class="gap-3">
+                            <EmptyMedia
+                                class="mb-0 size-12 rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
+                            >
+                                <IconInbox
+                                    class="size-6 text-white"
+                                    stroke-width="2"
+                                />
+                            </EmptyMedia>
+                            <EmptyTitle
+                                class="text-base font-bold tracking-normal text-foreground"
+                                style="font-family: var(--font-display)"
+                            >
+                                {{ $t('sidebar.no_notifications') }}
+                            </EmptyTitle>
+                        </EmptyHeader>
+                    </Empty>
                 </div>
             </div>
         </Transition>

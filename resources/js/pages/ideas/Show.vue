@@ -13,6 +13,7 @@ import ContentIdeaFormDialog from '@/components/ideas/ContentIdeaFormDialog.vue'
 import ContentIdeaSource from '@/components/ideas/ContentIdeaSource.vue';
 import ContentIdeaStatusPicker from '@/components/ideas/ContentIdeaStatusPicker.vue';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { ContentIdeaSummary } from '@/types/content-idea';
@@ -89,12 +90,18 @@ const handleDelete = () => {
                 </div>
             </header>
 
-            <article
+            <Card
                 v-if="idea.details"
-                class="prose max-w-none rounded-xl border border-border bg-card p-6 shadow-2xs prose-neutral dark:prose-invert"
+                class="gap-0 py-0"
                 data-testid="idea-details"
-                v-html="idea.details_html"
-            />
+            >
+                <CardContent class="p-6">
+                    <article
+                        class="prose max-w-none prose-neutral dark:prose-invert"
+                        v-html="idea.details_html"
+                    />
+                </CardContent>
+            </Card>
             <p v-else class="text-sm text-foreground/60">
                 {{ $t('ideas.no_details') }}
             </p>

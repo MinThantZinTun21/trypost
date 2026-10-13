@@ -2,9 +2,9 @@
 import { IconCalendar, IconTrash } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import InputError from '@/components/InputError.vue';
 import PickTimePopover from '@/components/posts/PickTimePopover.vue';
 import { Button } from '@/components/ui/button';
+import { FieldError } from '@/components/ui/field';
 import {
     Tooltip,
     TooltipContent,
@@ -142,6 +142,6 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
                 </Tooltip>
             </TooltipProvider>
         </div>
-        <InputError :message="scheduledAtError" />
+        <FieldError :errors="[scheduledAtError]" />
     </div>
 </template>

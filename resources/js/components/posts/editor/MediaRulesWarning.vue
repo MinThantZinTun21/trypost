@@ -2,6 +2,7 @@
 import { IconAlertTriangle, IconExternalLink } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
 import type { MediaItem } from '@/types/media';
@@ -18,13 +19,14 @@ const warning = computed(() =>
 </script>
 
 <template>
-    <p
+    <Alert
         v-if="warning"
-        class="flex items-start gap-2 rounded-lg border border-border bg-rose-50 p-2 text-xs font-semibold text-rose-700"
+        variant="destructive"
+        class="px-3 py-2"
         data-testid="media-rules-warning"
     >
-        <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
-        <span>
+        <IconAlertTriangle />
+        <AlertDescription class="block text-xs font-semibold">
             {{ $t(`posts.form.warnings.${warning.key}`, warning.params) }}
             <a
                 :href="mediaLimitsDocsUrl(platform)"
@@ -35,6 +37,6 @@ const warning = computed(() =>
                 {{ $t('posts.edit.compliance.media_limits_docs') }}
                 <IconExternalLink class="size-3" />
             </a>
-        </span>
-    </p>
+        </AlertDescription>
+    </Alert>
 </template>

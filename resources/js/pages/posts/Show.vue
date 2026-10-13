@@ -5,7 +5,6 @@ import {
     IconCalendar,
     IconExternalLink,
     IconFileTypePdf,
-    IconLoader2,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
@@ -16,6 +15,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
@@ -154,10 +154,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
             <div
                 class="inline-flex size-14 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
             >
-                <IconLoader2
-                    class="size-7 animate-spin text-white"
-                    stroke-width="2"
-                />
+                <Spinner class="size-7 text-white" />
             </div>
             <p
                 class="text-2xl leading-tight font-semibold text-foreground"

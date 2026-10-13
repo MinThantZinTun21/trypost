@@ -2,6 +2,7 @@
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
+import { Card, CardContent } from '@/components/ui/card';
 import { formatCount } from '@/lib/utils';
 import type { PageMetricTotal } from '@/types/insights';
 
@@ -60,40 +61,39 @@ const comparison = computed(() => {
 </script>
 
 <template>
-    <div
-        class="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 shadow-2xs"
-        :data-testid="`insights-metric-${metric.key}`"
-    >
-        <p class="text-sm font-medium text-foreground/70">
-            {{ $t(`insights.metrics.${metric.key}`) }}
-        </p>
-        <p
-            class="text-3xl text-foreground tabular-nums"
-            style="font-family: var(--font-display)"
-            :data-testid="`insights-metric-${metric.key}-value`"
-        >
-            {{
-                metric.current === null
-                    ? $t('insights.no_value')
-                    : formatCount(metric.current)
-            }}
-        </p>
-        <p
-            class="text-xs"
-            :class="{
-                'text-foreground/60': comparison.tone === 'muted',
-                'text-emerald-700 dark:text-emerald-400':
-                    comparison.tone === 'good',
-                'text-red-700 dark:text-red-400': comparison.tone === 'bad',
-            }"
-        >
-            {{ comparison.text }}
-        </p>
-        <p
-            v-if="HINTED_METRICS.includes(metric.key)"
-            class="text-xs text-foreground/50"
-        >
-            {{ $t(`insights.hints.${metric.key}`) }}
-        </p>
-    </div>
+    <Card class="gap-0 py-0" :data-testid="`insights-metric-${metric.key}`">
+        <CardContent class="flex flex-col gap-2 p-4">
+            <p class="text-sm font-medium text-foreground/70">
+                {{ $t(`insights.metrics.${metric.key}`) }}
+            </p>
+            <p
+                class="text-3xl text-foreground tabular-nums"
+                style="font-family: var(--font-display)"
+                :data-testid="`insights-metric-${metric.key}-value`"
+            >
+                {{
+                    metric.current === null
+                        ? $t('insights.no_value')
+                        : formatCount(metric.current)
+                }}
+            </p>
+            <p
+                class="text-xs"
+                :class="{
+                    'text-foreground/60': comparison.tone === 'muted',
+                    'text-emerald-700 dark:text-emerald-400':
+                        comparison.tone === 'good',
+                    'text-red-700 dark:text-red-400': comparison.tone === 'bad',
+                }"
+            >
+                {{ comparison.text }}
+            </p>
+            <p
+                v-if="HINTED_METRICS.includes(metric.key)"
+                class="text-xs text-foreground/50"
+            >
+                {{ $t(`insights.hints.${metric.key}`) }}
+            </p>
+        </CardContent>
+    </Card>
 </template>
