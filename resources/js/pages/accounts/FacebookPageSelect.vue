@@ -55,7 +55,9 @@ const pageUrl = (username: string | null): string | null =>
                     class="h-10 w-10"
                 />
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight">
+                    <h1
+                        class="font-display text-xl font-semibold tracking-tight"
+                    >
                         {{ $t('accounts.facebook.title') }}
                     </h1>
                     <p class="text-sm text-muted-foreground">

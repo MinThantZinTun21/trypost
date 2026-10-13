@@ -148,7 +148,7 @@ const channels = computed<Channel[]>(() =>
     <div class="space-y-6">
         <div>
             <p
-                class="mb-3 text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                class="mb-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase"
             >
                 {{ $t('posts.edit.publish_to') }}
             </p>
@@ -176,7 +176,7 @@ const channels = computed<Channel[]>(() =>
                     "
                 >
                     <p
-                        class="mb-2 text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                        class="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                     >
                         {{ $t('posts.edit.platform_status') }}
                     </p>
@@ -254,7 +254,7 @@ const channels = computed<Channel[]>(() =>
                                             as-child
                                             variant="outline"
                                             size="icon-sm"
-                                            class="size-7 rounded-full shadow-2xs hover:rotate-3"
+                                            class="size-7 rounded-none"
                                         >
                                             <a
                                                 :href="pp.platform_url"

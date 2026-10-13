@@ -143,7 +143,7 @@ onBeforeUnmount(() => {
     <div
         class="flex w-[min(340px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[10px] bg-card text-foreground"
     >
-        <div class="border-b-2 border-foreground/10 p-2">
+        <div class="border-b border-border p-2">
             <Input
                 v-model="search"
                 type="search"
@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
                 <section v-if="recentEmojis.length > 0">
                     <h3
                         :ref="setHeaderRef('recent')"
-                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-[11px] font-black tracking-widest text-foreground/60 uppercase backdrop-blur"
+                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-xs font-semibold tracking-widest text-muted-foreground uppercase backdrop-blur"
                     >
                         {{ categoryLabel('recent') }}
                     </h3>
@@ -205,7 +205,7 @@ onBeforeUnmount(() => {
                 <section v-for="category in EMOJI_CATEGORIES" :key="category">
                     <h3
                         :ref="setHeaderRef(category)"
-                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-[11px] font-black tracking-widest text-foreground/60 uppercase backdrop-blur"
+                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-xs font-semibold tracking-widest text-muted-foreground uppercase backdrop-blur"
                     >
                         {{ categoryLabel(category) }}
                     </h3>
@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div
-            class="flex items-center justify-between border-t-2 border-foreground/10 px-1 py-1"
+            class="flex items-center justify-between border-t border-border px-1 py-1"
         >
             <button
                 v-if="recentEmojis.length > 0"
@@ -235,7 +235,7 @@ onBeforeUnmount(() => {
                 class="flex size-8 cursor-pointer items-center justify-center rounded-md text-base transition-colors hover:bg-foreground/5 focus:bg-foreground/5 focus:outline-none"
                 :class="
                     activeCategory === 'recent' && !isSearching
-                        ? 'bg-violet-100 ring-2 ring-foreground'
+                        ? 'bg-muted ring-1 ring-foreground'
                         : ''
                 "
                 :title="categoryLabel('recent')"
@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
                 class="flex size-8 cursor-pointer items-center justify-center rounded-md text-base transition-colors hover:bg-foreground/5 focus:bg-foreground/5 focus:outline-none"
                 :class="
                     activeCategory === category && !isSearching
-                        ? 'bg-violet-100 ring-2 ring-foreground'
+                        ? 'bg-muted ring-1 ring-foreground'
                         : ''
                 "
                 :title="categoryLabel(category)"

@@ -226,14 +226,14 @@ onBeforeUnmount(() => {
             <div
                 v-if="show"
                 ref="panel"
-                class="fixed inset-x-2 top-2 z-50 flex h-[32rem] max-h-[calc(100svh-1rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-md sm:inset-x-auto sm:top-4 sm:left-[17rem] sm:w-[22rem]"
+                class="fixed inset-x-2 top-2 z-50 flex h-[32rem] max-h-[calc(100svh-1rem)] flex-col overflow-hidden rounded-none border border-border bg-card shadow-sm sm:inset-x-auto sm:top-4 sm:left-[17rem] sm:w-[22rem]"
             >
                 <!-- Header -->
                 <div
-                    class="flex items-center justify-between gap-2 border-b-2 border-foreground/10 px-4 py-3"
+                    class="flex items-center justify-between gap-2 border-b border-border px-4 py-3"
                 >
                     <h3
-                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                        class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                     >
                         {{ $t('sidebar.notifications') }}
                     </h3>
@@ -279,7 +279,7 @@ onBeforeUnmount(() => {
                         <Button
                             variant="outline"
                             size="icon-sm"
-                            class="size-7 rounded-full shadow-2xs hover:-rotate-90 hover:bg-rose-100 max-sm:size-9"
+                            class="size-7 rounded-none hover:bg-destructive/10 hover:text-destructive max-sm:size-9"
                             :aria-label="$t('common.close')"
                             @click="close"
                         >
@@ -292,7 +292,7 @@ onBeforeUnmount(() => {
                 <div class="flex-1 overflow-y-auto">
                     <div
                         v-if="notifications.length > 0"
-                        class="divide-y-2 divide-dashed divide-foreground/15"
+                        class="divide-y divide-dashed divide-foreground/15"
                     >
                         <button
                             v-for="notification in notifications"
@@ -300,7 +300,7 @@ onBeforeUnmount(() => {
                             type="button"
                             class="flex w-full cursor-pointer items-start gap-2.5 px-3 py-3 text-left transition-colors hover:bg-foreground/5"
                             :class="
-                                !notification.read_at ? 'bg-violet-100/40' : ''
+                                !notification.read_at ? 'bg-primary/10' : ''
                             "
                             @click="handleNotificationClick(notification)"
                         >
@@ -308,7 +308,7 @@ onBeforeUnmount(() => {
                                 class="mt-1.5 inline-block size-2 shrink-0 rounded-full"
                                 :class="
                                     !notification.read_at
-                                        ? 'bg-violet-500 ring-2 ring-violet-200'
+                                        ? 'bg-primary ring-2 ring-primary/30'
                                         : 'bg-transparent'
                                 "
                             />
@@ -362,12 +362,9 @@ onBeforeUnmount(() => {
                     >
                         <EmptyHeader class="gap-3">
                             <EmptyMedia
-                                class="mb-0 size-12 rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
+                                class="mb-0 size-12 rounded-none bg-primary text-primary-foreground"
                             >
-                                <IconInbox
-                                    class="size-6 text-white"
-                                    stroke-width="2"
-                                />
+                                <IconInbox class="size-6" stroke-width="2" />
                             </EmptyMedia>
                             <EmptyTitle
                                 class="text-base font-bold tracking-normal text-foreground"

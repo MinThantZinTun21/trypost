@@ -63,10 +63,7 @@ const shownMetrics = computed(() =>
 </script>
 
 <template>
-    <div
-        class="border-t-2 border-foreground/10 px-4 py-3"
-        data-testid="post-insights"
-    >
+    <div class="border-t border-border px-4 py-3" data-testid="post-insights">
         <p
             v-if="insights === null || insights.read_at === null"
             class="text-xs font-medium text-foreground/60"

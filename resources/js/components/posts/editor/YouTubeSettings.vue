@@ -163,7 +163,7 @@ const descriptionError = computed(() => {
             </CollapsibleTrigger>
             <CollapsibleContent>
                 <CardContent
-                    class="space-y-5 border-t-2 border-foreground/10 px-4 pt-4 pb-4"
+                    class="space-y-5 border-t border-border px-4 pt-4 pb-4"
                 >
                     <div
                         v-if="socialAccount"
@@ -176,7 +176,7 @@ const descriptionError = computed(() => {
                         />
                         <div class="min-w-0 flex-1">
                             <p
-                                class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                                class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                             >
                                 {{ $t('posts.form.youtube.posting_to') }}
                             </p>
@@ -195,7 +195,7 @@ const descriptionError = computed(() => {
                     <Field class="gap-2">
                         <FieldLabel
                             :for="titleId"
-                            class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                            class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                         >
                             {{ $t('posts.form.youtube.title') }}
                         </FieldLabel>
@@ -230,7 +230,7 @@ const descriptionError = computed(() => {
                     <Field class="gap-2">
                         <FieldLabel
                             :for="descriptionId"
-                            class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                            class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                         >
                             {{ $t('posts.form.youtube.description') }}
                         </FieldLabel>
@@ -265,7 +265,7 @@ const descriptionError = computed(() => {
                     <Field class="gap-2">
                         <FieldLabel
                             :for="tagsId"
-                            class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                            class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                         >
                             {{ $t('posts.form.youtube.tags') }}
                         </FieldLabel>

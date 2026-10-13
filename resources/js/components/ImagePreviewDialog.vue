@@ -92,7 +92,7 @@ defineExpose({ open, openCollection, close });
                     v-if="currentItem && isImage(currentItem)"
                     :src="currentItem.url"
                     alt="Preview"
-                    class="max-h-[85vh] max-w-full cursor-pointer rounded-2xl object-contain"
+                    class="max-h-[85vh] max-w-full cursor-pointer rounded-none object-contain"
                     @click="close"
                 />
 
@@ -101,7 +101,7 @@ defineExpose({ open, openCollection, close });
                     :key="currentItem.url"
                     :src="currentItem.url"
                     data-testid="lightbox-video"
-                    class="max-h-[85vh] max-w-full rounded-2xl bg-black"
+                    class="max-h-[85vh] max-w-full rounded-none bg-black"
                     controls
                     autoplay
                     preload="metadata"
@@ -114,7 +114,7 @@ defineExpose({ open, openCollection, close });
                     :key="currentItem.url"
                     :src="currentItem.url"
                     title="PDF preview"
-                    class="h-[85vh] w-full rounded-2xl bg-white"
+                    class="h-[85vh] w-full rounded-none bg-white"
                     @click.stop
                 />
 
@@ -149,7 +149,7 @@ defineExpose({ open, openCollection, close });
 
                 <div
                     v-if="showNav"
-                    class="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white tabular-nums"
+                    class="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-none bg-black/60 px-3 py-1 text-xs text-white tabular-nums"
                 >
                     {{ safeIndex + 1 }} / {{ items.length }}
                 </div>

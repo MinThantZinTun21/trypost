@@ -393,9 +393,9 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                     class="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm"
                 >
                     <div
-                        class="inline-flex size-14 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
+                        class="inline-flex size-14 items-center justify-center rounded-none bg-primary text-primary-foreground"
                     >
-                        <Spinner class="size-7 text-white" />
+                        <Spinner class="size-7" />
                     </div>
                     <div class="text-center">
                         <p
@@ -417,7 +417,7 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                     }"
                 >
                     <div
-                        class="w-full overflow-y-auto lg:w-2/3 lg:border-r-2 lg:border-border"
+                        class="w-full overflow-y-auto lg:w-2/3 lg:border-r lg:border-border"
                         :class="{ 'hidden lg:block': mobileView !== 'compose' }"
                     >
                         <PostEditorComposer

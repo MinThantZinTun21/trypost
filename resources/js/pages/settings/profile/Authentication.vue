@@ -81,7 +81,7 @@ const logoutDialogOpen = ref(false);
                             v-for="session in sessions"
                             :key="session.id"
                             :class="[
-                                'flex items-center gap-4 rounded-xl border border-border p-4 shadow-2xs',
+                                'flex items-center gap-4 rounded-none border border-border p-4 shadow-2xs',
                                 session.is_current
                                     ? 'bg-emerald-50'
                                     : 'bg-card',
@@ -90,10 +90,10 @@ const logoutDialogOpen = ref(false);
                         >
                             <div
                                 :class="[
-                                    'inline-flex size-10 flex-shrink-0 -rotate-2 items-center justify-center rounded-2xl border border-border shadow-2xs',
+                                    'inline-flex size-10 flex-shrink-0 items-center justify-center rounded-none border border-border shadow-2xs',
                                     session.is_current
                                         ? 'bg-emerald-200'
-                                        : 'bg-violet-100',
+                                        : 'bg-muted',
                                 ]"
                             >
                                 <component

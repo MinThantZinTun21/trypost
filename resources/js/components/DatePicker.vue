@@ -206,7 +206,7 @@ const displayText = computed(() => {
                 initial-focus
             />
             <!-- Time Picker -->
-            <div v-if="showTime" class="border-t-2 border-foreground/10 p-3">
+            <div v-if="showTime" class="border-t border-border p-3">
                 <div class="flex items-center gap-2">
                     <Select
                         v-model="selectedHour"

@@ -63,7 +63,9 @@ const comparison = computed(() => {
 <template>
     <Card class="gap-0 py-0" :data-testid="`insights-metric-${metric.key}`">
         <CardContent class="flex flex-col gap-2 p-4">
-            <p class="text-sm font-medium text-foreground/70">
+            <p
+                class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+            >
                 {{ $t(`insights.metrics.${metric.key}`) }}
             </p>
             <p

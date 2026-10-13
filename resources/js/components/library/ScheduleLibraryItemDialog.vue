@@ -83,7 +83,7 @@ const submit = () => {
                         v-for="account in socialAccounts"
                         :key="account.id"
                         :for="`library-schedule-account-checkbox-${account.id}`"
-                        class="cursor-pointer transition-colors hover:bg-accent has-[>[data-slot=field]]:rounded-xl [&>*]:data-[slot=field]:p-3"
+                        class="cursor-pointer transition-colors hover:bg-muted has-[>[data-slot=field]]:rounded-none [&>*]:data-[slot=field]:p-3"
                         :data-testid="`library-schedule-account-${account.id}`"
                     >
                         <Field orientation="horizontal">

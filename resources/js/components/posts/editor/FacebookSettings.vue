@@ -153,7 +153,7 @@ const pickAspectRatio = (value: string) => {
 
             <CollapsibleContent>
                 <CardContent
-                    class="space-y-5 border-t-2 border-foreground/10 px-4 pt-4 pb-4"
+                    class="space-y-5 border-t border-border px-4 pt-4 pb-4"
                 >
                     <div
                         v-if="socialAccount"
@@ -166,7 +166,7 @@ const pickAspectRatio = (value: string) => {
                         />
                         <div class="min-w-0 flex-1">
                             <p
-                                class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                                class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                             >
                                 {{ $t('posts.form.facebook.posting_to') }}
                             </p>
@@ -185,7 +185,7 @@ const pickAspectRatio = (value: string) => {
 
                     <div class="space-y-2">
                         <p
-                            class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                            class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                         >
                             {{ $t('posts.form.facebook.variant_label') }}
                         </p>
@@ -194,11 +194,11 @@ const pickAspectRatio = (value: string) => {
                                 v-for="variant in variants"
                                 :key="variant.value"
                                 type="button"
-                                class="cursor-pointer rounded-full border px-3 py-1 text-xs font-bold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                class="cursor-pointer rounded-none border px-3 py-1 text-xs font-semibold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                                 :class="
                                     contentType === variant.value
-                                        ? 'border-border bg-violet-100 text-foreground shadow-2xs'
-                                        : 'border-foreground/30 text-foreground/70 hover:border-primary/40 hover:text-foreground'
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                                 "
                                 :disabled="disabled"
                                 @click="pickVariant(variant.value)"
@@ -210,7 +210,7 @@ const pickAspectRatio = (value: string) => {
 
                     <div v-if="isFeed" class="space-y-2">
                         <p
-                            class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                            class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                         >
                             {{ $t('posts.form.facebook.aspect_label') }}
                         </p>
@@ -219,11 +219,11 @@ const pickAspectRatio = (value: string) => {
                                 v-for="ratio in aspectRatios"
                                 :key="ratio.value"
                                 type="button"
-                                class="cursor-pointer rounded-full border px-3 py-1 text-xs font-bold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                class="cursor-pointer rounded-none border px-3 py-1 text-xs font-semibold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                                 :class="
                                     selectedAspectRatio === ratio.value
-                                        ? 'border-border bg-violet-100 text-foreground shadow-2xs'
-                                        : 'border-foreground/30 text-foreground/70 hover:border-primary/40 hover:text-foreground'
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                                 "
                                 :disabled="disabled"
                                 @click="pickAspectRatio(ratio.value)"
@@ -237,7 +237,7 @@ const pickAspectRatio = (value: string) => {
                         <Field class="gap-2">
                             <FieldLabel
                                 :for="titleId"
-                                class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                                class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                             >
                                 {{ $t('posts.form.facebook.reel_title') }}
                             </FieldLabel>
@@ -258,7 +258,7 @@ const pickAspectRatio = (value: string) => {
                         <Field class="gap-2">
                             <FieldLabel
                                 :for="descriptionId"
-                                class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                                class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                             >
                                 {{ $t('posts.form.facebook.reel_description') }}
                             </FieldLabel>

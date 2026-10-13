@@ -267,7 +267,7 @@ const isCurrentMonth = (day: dayjs.Dayjs): boolean => {
 const getStatusColor = (status: string): string => {
     const colors: Record<string, string> = {
         draft: 'bg-card text-foreground',
-        scheduled: 'bg-violet-100 text-foreground',
+        scheduled: 'bg-primary/20 text-foreground',
         publishing: 'bg-amber-100 text-foreground',
         published: 'bg-emerald-100 text-foreground',
         partially_published: 'bg-amber-100 text-foreground',
@@ -299,7 +299,7 @@ const formatTime = (scheduledAt: string): string => {
         <div class="flex h-full flex-col">
             <!-- Mobile header: nav + date jump on top, full-width New post below -->
             <header
-                class="flex shrink-0 flex-col gap-2 border-b-2 border-border bg-card px-4 py-3 lg:hidden"
+                class="flex shrink-0 flex-col gap-2 border-b border-border bg-card px-4 py-3 lg:hidden"
             >
                 <div class="flex items-center justify-between gap-2 pl-12">
                     <div class="flex items-center gap-2">
@@ -341,7 +341,7 @@ const formatTime = (scheduledAt: string): string => {
 
             <!-- Desktop header: nav · title · view switcher + new post -->
             <header
-                class="hidden shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b-2 border-border bg-card px-6 py-3 lg:grid"
+                class="hidden shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border bg-card px-6 py-3 lg:grid"
             >
                 <div class="flex items-center gap-2">
                     <Button variant="outline" size="icon" @click="navigate(-1)">
@@ -388,11 +388,9 @@ const formatTime = (scheduledAt: string): string => {
             <!-- Day View (mobile or when view=day) -->
             <div v-if="effectiveView === 'day'" class="flex-1 overflow-y-auto">
                 <!-- Mobile Header Title -->
-                <div
-                    class="border-b-2 border-foreground/10 bg-card px-4 py-3 lg:hidden"
-                >
+                <div class="border-b border-border bg-card px-4 py-3 lg:hidden">
                     <h2
-                        class="text-center text-base font-bold text-foreground capitalize"
+                        class="text-center font-display text-base font-semibold text-foreground capitalize"
                     >
                         {{ dayHeaderTitle }}
                     </h2>
@@ -408,7 +406,7 @@ const formatTime = (scheduledAt: string): string => {
                             class="block"
                         >
                             <div
-                                class="rounded-xl border border-border p-4 shadow-2xs transition-all hover:shadow-md"
+                                class="rounded-none border border-border p-4 shadow-2xs transition-all hover:shadow-sm"
                                 :class="getStatusColor(post.status)"
                             >
                                 <div
@@ -528,20 +526,20 @@ const formatTime = (scheduledAt: string): string => {
             <!-- Week View -->
             <div
                 v-else-if="effectiveView === 'week'"
-                class="grid flex-1 grid-cols-7 divide-x-2 divide-foreground/10 overflow-hidden"
+                class="grid flex-1 grid-cols-7 divide-x divide-border overflow-hidden"
             >
                 <div
                     v-for="day in weekDays"
                     :key="day.format('YYYY-MM-DD')"
                     class="flex min-h-0 flex-col"
-                    :class="{ 'bg-violet-100/40': isToday(day) }"
+                    :class="{ 'bg-primary/10': isToday(day) }"
                 >
                     <!-- Day Header -->
                     <div
-                        class="flex flex-col items-center border-b-2 border-foreground/10 bg-card py-3"
+                        class="flex flex-col items-center border-b border-border bg-card py-3"
                     >
                         <span
-                            class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                            class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                         >
                             {{ day.format('dddd') }}
                         </span>
@@ -563,7 +561,7 @@ const formatTime = (scheduledAt: string): string => {
                         <button
                             type="button"
                             :disabled="creatingPost"
-                            class="flex w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-primary/40 hover:bg-foreground/5 hover:text-foreground"
+                            class="flex w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-primary/40 hover:bg-foreground/5 hover:text-foreground"
                             @click="createPost(day.format('YYYY-MM-DD'))"
                         >
                             <IconPlus class="size-4" />
@@ -672,12 +670,12 @@ const formatTime = (scheduledAt: string): string => {
             <div v-else class="flex flex-1 flex-col">
                 <!-- Weekday Headers -->
                 <div
-                    class="grid grid-cols-7 divide-x-2 divide-foreground/10 border-b-2 border-foreground/10 bg-card"
+                    class="grid grid-cols-7 divide-x divide-border border-b border-border bg-card"
                 >
                     <div
                         v-for="day in weekdayNames"
                         :key="day"
-                        class="py-3 text-center text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                        class="py-3 text-center text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                     >
                         {{ day }}
                     </div>
@@ -685,7 +683,7 @@ const formatTime = (scheduledAt: string): string => {
 
                 <!-- Calendar Grid -->
                 <div
-                    class="grid flex-1 divide-y-2 divide-foreground/10"
+                    class="grid flex-1 divide-y divide-border"
                     :style="{
                         gridTemplateRows: `repeat(${calendarWeeks.length}, minmax(0, 1fr))`,
                     }"
@@ -693,14 +691,14 @@ const formatTime = (scheduledAt: string): string => {
                     <div
                         v-for="(week, weekIndex) in calendarWeeks"
                         :key="weekIndex"
-                        class="grid min-h-0 grid-cols-7 divide-x-2 divide-foreground/10"
+                        class="grid min-h-0 grid-cols-7 divide-x divide-border"
                     >
                         <div
                             v-for="day in week"
                             :key="day.format('YYYY-MM-DD')"
                             class="group flex min-h-0 flex-col overflow-hidden p-2"
                             :class="{
-                                'bg-violet-100/40': isToday(day),
+                                'bg-primary/10': isToday(day),
                                 'bg-foreground/[0.03]': !isCurrentMonth(day),
                             }"
                         >
@@ -723,7 +721,7 @@ const formatTime = (scheduledAt: string): string => {
                                 <button
                                     type="button"
                                     :disabled="creatingPost"
-                                    class="inline-flex size-6 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground opacity-0 shadow-2xs transition-all group-hover:opacity-100 hover:rotate-90 hover:bg-violet-100 focus:opacity-100"
+                                    class="inline-flex size-6 cursor-pointer items-center justify-center rounded-none border border-border bg-card text-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-muted focus:opacity-100"
                                     @click="
                                         createPost(day.format('YYYY-MM-DD'))
                                     "

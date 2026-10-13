@@ -22,9 +22,9 @@ export interface ContentTypeOption {
 }
 
 const PLATFORM_THEMES: Record<string, { bg: string; rotate: string }> = {
-    facebook: { bg: 'bg-sky-200', rotate: '' },
-    tiktok: { bg: 'bg-fuchsia-200', rotate: '' },
-    youtube: { bg: 'bg-red-200', rotate: '' },
+    facebook: { bg: 'bg-muted', rotate: '' },
+    tiktok: { bg: 'bg-muted', rotate: '' },
+    youtube: { bg: 'bg-muted', rotate: '' },
 };
 
 export const getPlatformLogo = (platform: string): string =>

@@ -349,7 +349,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
 
             <div
                 ref="viewportEl"
-                class="relative aspect-square w-full touch-none overflow-hidden rounded-xl border border-border bg-muted select-none"
+                class="relative aspect-square w-full touch-none overflow-hidden rounded-none border border-border bg-muted select-none"
                 @pointermove="onPointerMove"
                 @pointerup="onPointerUp"
                 @pointercancel="onPointerUp"

@@ -50,7 +50,7 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
         v-if="isScheduled && canEdit"
         type="button"
         variant="outline"
-        class="bg-background hover:bg-violet-50"
+        class="bg-background hover:bg-muted"
         :disabled="isSubmitting"
         @click="emit('unschedule')"
     >
@@ -69,11 +69,11 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
                             type="button"
                             variant="outline"
                             size="icon"
-                            class="bg-rose-100 hover:bg-rose-200"
+                            class="bg-destructive/10 hover:bg-destructive/20"
                             :disabled="isSaving || isSubmitting"
                             @click="emit('delete')"
                         >
-                            <IconTrash class="size-4 text-rose-700" />
+                            <IconTrash class="size-4 text-destructive" />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>{{

@@ -9,7 +9,7 @@ defineProps<{
 <template>
     <header class="space-y-1">
         <h1
-            class="text-2xl leading-tight font-extrabold tracking-tight text-foreground sm:text-4xl"
+            class="font-display text-2xl leading-tight font-semibold tracking-tight text-foreground sm:text-4xl"
         >
             {{ title }}
             <span v-if="total != null && total > 0" class="text-brand"
