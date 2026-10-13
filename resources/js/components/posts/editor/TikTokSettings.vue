@@ -18,6 +18,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -595,9 +596,9 @@ watch(
                         <div
                             class="flex flex-wrap items-center gap-x-6 gap-y-2"
                         >
-                            <label
-                                class="flex items-center gap-2 text-sm"
-                                :class="{ 'opacity-50': commentDisabled }"
+                            <Field
+                                orientation="horizontal"
+                                class="w-auto gap-2"
                                 :title="
                                     commentDisabled
                                         ? $t(
@@ -607,17 +608,23 @@ watch(
                                 "
                             >
                                 <Checkbox
+                                    :id="fieldId('allow-comments')"
                                     v-model="allowComments"
                                     :disabled="
                                         props.disabled || commentDisabled
                                     "
                                 />
-                                {{ $t('posts.form.tiktok.comments') }}
-                            </label>
+                                <FieldLabel
+                                    :for="fieldId('allow-comments')"
+                                    class="text-sm font-normal"
+                                >
+                                    {{ $t('posts.form.tiktok.comments') }}
+                                </FieldLabel>
+                            </Field>
                             <template v-if="!isPhotoPost">
-                                <label
-                                    class="flex items-center gap-2 text-sm"
-                                    :class="{ 'opacity-50': duetDisabled }"
+                                <Field
+                                    orientation="horizontal"
+                                    class="w-auto gap-2"
                                     :title="
                                         duetDisabled
                                             ? $t(
@@ -627,16 +634,22 @@ watch(
                                     "
                                 >
                                     <Checkbox
+                                        :id="fieldId('allow-duet')"
                                         v-model="allowDuet"
                                         :disabled="
                                             props.disabled || duetDisabled
                                         "
                                     />
-                                    {{ $t('posts.form.tiktok.duet') }}
-                                </label>
-                                <label
-                                    class="flex items-center gap-2 text-sm"
-                                    :class="{ 'opacity-50': stitchDisabled }"
+                                    <FieldLabel
+                                        :for="fieldId('allow-duet')"
+                                        class="text-sm font-normal"
+                                    >
+                                        {{ $t('posts.form.tiktok.duet') }}
+                                    </FieldLabel>
+                                </Field>
+                                <Field
+                                    orientation="horizontal"
+                                    class="w-auto gap-2"
                                     :title="
                                         stitchDisabled
                                             ? $t(
@@ -646,13 +659,19 @@ watch(
                                     "
                                 >
                                     <Checkbox
+                                        :id="fieldId('allow-stitch')"
                                         v-model="allowStitch"
                                         :disabled="
                                             props.disabled || stitchDisabled
                                         "
                                     />
-                                    {{ $t('posts.form.tiktok.stitch') }}
-                                </label>
+                                    <FieldLabel
+                                        :for="fieldId('allow-stitch')"
+                                        class="text-sm font-normal"
+                                    >
+                                        {{ $t('posts.form.tiktok.stitch') }}
+                                    </FieldLabel>
+                                </Field>
                             </template>
                         </div>
                     </div>
@@ -660,25 +679,39 @@ watch(
                     <Separator />
 
                     <!-- Video made with AI (independent) -->
-                    <label
+                    <Field
                         v-if="!isPhotoPost"
-                        class="flex items-center gap-2 text-sm"
+                        orientation="horizontal"
+                        class="w-auto gap-2"
                     >
-                        <Checkbox v-model="isAigc" :disabled="props.disabled" />
-                        {{ $t('posts.form.tiktok.is_aigc') }}
-                    </label>
+                        <Checkbox
+                            :id="fieldId('is-aigc')"
+                            v-model="isAigc"
+                            :disabled="props.disabled"
+                        />
+                        <FieldLabel
+                            :for="fieldId('is-aigc')"
+                            class="text-sm font-normal"
+                        >
+                            {{ $t('posts.form.tiktok.is_aigc') }}
+                        </FieldLabel>
+                    </Field>
 
                     <!-- Disclose video content (parent toggle) -->
                     <div class="space-y-3">
-                        <label
-                            class="flex items-center gap-2 text-sm font-medium"
-                        >
+                        <Field orientation="horizontal" class="w-auto gap-2">
                             <Checkbox
+                                :id="fieldId('disclose')"
                                 v-model="discloseOpen"
                                 :disabled="props.disabled"
                             />
-                            {{ $t('posts.form.tiktok.disclose') }}
-                        </label>
+                            <FieldLabel
+                                :for="fieldId('disclose')"
+                                class="text-sm"
+                            >
+                                {{ $t('posts.form.tiktok.disclose') }}
+                            </FieldLabel>
+                        </Field>
                         <p class="ml-6 text-xs font-medium text-foreground/60">
                             {{ $t('posts.form.tiktok.disclose_hint') }}
                         </p>
@@ -715,13 +748,26 @@ watch(
                         <!-- Sub-toggles (only visible when disclose is on) -->
                         <div v-if="discloseOpen" class="ml-6 space-y-3">
                             <div class="space-y-1">
-                                <label class="flex items-center gap-2 text-sm">
+                                <Field
+                                    orientation="horizontal"
+                                    class="w-auto gap-2"
+                                >
                                     <Checkbox
+                                        :id="fieldId('brand-organic')"
                                         v-model="brandOrganicToggle"
                                         :disabled="props.disabled"
                                     />
-                                    {{ $t('posts.form.tiktok.brand_organic') }}
-                                </label>
+                                    <FieldLabel
+                                        :for="fieldId('brand-organic')"
+                                        class="text-sm font-normal"
+                                    >
+                                        {{
+                                            $t(
+                                                'posts.form.tiktok.brand_organic',
+                                            )
+                                        }}
+                                    </FieldLabel>
+                                </Field>
                                 <p
                                     class="ml-6 text-xs font-medium text-foreground/60"
                                 >
@@ -733,13 +779,26 @@ watch(
                                 </p>
                             </div>
                             <div class="space-y-1">
-                                <label class="flex items-center gap-2 text-sm">
+                                <Field
+                                    orientation="horizontal"
+                                    class="w-auto gap-2"
+                                >
                                     <Checkbox
+                                        :id="fieldId('brand-content')"
                                         v-model="brandContentToggle"
                                         :disabled="props.disabled"
                                     />
-                                    {{ $t('posts.form.tiktok.brand_content') }}
-                                </label>
+                                    <FieldLabel
+                                        :for="fieldId('brand-content')"
+                                        class="text-sm font-normal"
+                                    >
+                                        {{
+                                            $t(
+                                                'posts.form.tiktok.brand_content',
+                                            )
+                                        }}
+                                    </FieldLabel>
+                                </Field>
                                 <p
                                     class="ml-6 text-xs font-medium text-foreground/60"
                                 >

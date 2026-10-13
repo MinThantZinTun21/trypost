@@ -3,7 +3,6 @@ import { useForm } from '@inertiajs/vue3';
 import { watch } from 'vue';
 
 import { schedule as scheduleItem } from '@/actions/App/Http/Controllers/App/LibraryItemController';
-import InputError from '@/components/InputError.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,6 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { errorForField } from '@/lib/formErrors';
 import type { LibraryItem, LibrarySocialAccount } from '@/types/library';
 
@@ -79,40 +79,46 @@ const submit = () => {
                 </p>
 
                 <div v-else class="grid gap-2">
-                    <label
+                    <FieldLabel
                         v-for="account in socialAccounts"
                         :key="account.id"
-                        class="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                        :for="`library-schedule-account-checkbox-${account.id}`"
+                        class="cursor-pointer transition-colors hover:bg-accent has-[>[data-slot=field]]:rounded-xl [&>*]:data-[slot=field]:p-3"
                         :data-testid="`library-schedule-account-${account.id}`"
                     >
-                        <Checkbox
-                            :model-value="
-                                form.social_account_ids.includes(account.id)
-                            "
-                            @update:model-value="
-                                (checked) => toggle(account.id, checked)
-                            "
-                        />
-                        <PlatformLogo
-                            :platform="account.platform"
-                            size="sm"
-                            :tilt="false"
-                        />
-                        <span class="min-w-0 flex-1">
-                            <span class="block truncate text-sm font-medium">
-                                {{ account.display_name }}
+                        <Field orientation="horizontal">
+                            <Checkbox
+                                :id="`library-schedule-account-checkbox-${account.id}`"
+                                :model-value="
+                                    form.social_account_ids.includes(account.id)
+                                "
+                                @update:model-value="
+                                    (checked) => toggle(account.id, checked)
+                                "
+                            />
+                            <PlatformLogo
+                                :platform="account.platform"
+                                size="sm"
+                                :tilt="false"
+                            />
+                            <span class="min-w-0 flex-1">
+                                <span
+                                    class="block truncate text-sm font-medium"
+                                >
+                                    {{ account.display_name }}
+                                </span>
+                                <span
+                                    v-if="account.username"
+                                    class="block truncate text-xs font-normal text-muted-foreground"
+                                >
+                                    @{{ account.username }}
+                                </span>
                             </span>
-                            <span
-                                v-if="account.username"
-                                class="block truncate text-xs text-muted-foreground"
-                            >
-                                @{{ account.username }}
-                            </span>
-                        </span>
-                    </label>
+                        </Field>
+                    </FieldLabel>
                 </div>
 
-                <InputError :message="errorFor('social_account_ids')" />
+                <FieldError :errors="[errorFor('social_account_ids')]" />
 
                 <DialogFooter class="gap-2">
                     <Button

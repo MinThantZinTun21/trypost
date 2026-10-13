@@ -3,10 +3,16 @@ import { Form, Head } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+    InputGroup,
+    InputGroupAddon,
+    InputGroupButton,
+    InputGroupInput,
+} from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -52,8 +58,10 @@ const pageErrors = usePageErrors();
                 class="flex flex-col gap-6"
             >
                 <div class="grid gap-6">
-                    <div class="grid gap-2">
-                        <Label for="email">{{ $t('auth.login.email') }}</Label>
+                    <Field class="gap-2">
+                        <FieldLabel for="email">{{
+                            $t('auth.login.email')
+                        }}</FieldLabel>
                         <Input
                             id="email"
                             type="email"
@@ -64,17 +72,17 @@ const pageErrors = usePageErrors();
                             placeholder="email@example.com"
                             :default-value="email ?? devLogin?.email ?? ''"
                         />
-                        <InputError
-                            :message="errors.email || pageErrors.email"
+                        <FieldError
+                            :errors="[errors.email || pageErrors.email]"
                         />
-                    </div>
+                    </Field>
 
-                    <div class="grid gap-2">
-                        <Label for="password">{{
+                    <Field class="gap-2">
+                        <FieldLabel for="password">{{
                             $t('auth.login.password')
-                        }}</Label>
-                        <div class="relative">
-                            <Input
+                        }}</FieldLabel>
+                        <InputGroup>
+                            <InputGroupInput
                                 id="password"
                                 :type="showPassword ? 'text' : 'password'"
                                 name="password"
@@ -83,16 +91,23 @@ const pageErrors = usePageErrors();
                                 :placeholder="$t('auth.login.password')"
                                 :default-value="devLogin?.password ?? ''"
                             />
-                            <div
-                                class="absolute inset-y-0 end-0 flex items-center pe-3"
-                            >
+                            <InputGroupAddon align="inline-end">
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger as-child>
-                                            <button
+                                            <InputGroupButton
                                                 type="button"
+                                                size="icon-xs"
                                                 :tabindex="-1"
-                                                class="cursor-pointer text-muted-foreground hover:text-foreground"
+                                                :aria-label="
+                                                    showPassword
+                                                        ? $t(
+                                                              'auth.login.hide_password',
+                                                          )
+                                                        : $t(
+                                                              'auth.login.show_password',
+                                                          )
+                                                "
                                                 @click="
                                                     showPassword = !showPassword
                                                 "
@@ -105,7 +120,7 @@ const pageErrors = usePageErrors();
                                                     v-else
                                                     class="size-4"
                                                 />
-                                            </button>
+                                            </InputGroupButton>
                                         </TooltipTrigger>
                                         <TooltipContent>
                                             <p>
@@ -122,10 +137,10 @@ const pageErrors = usePageErrors();
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
-                            </div>
-                        </div>
-                        <InputError :message="errors.password" />
-                    </div>
+                            </InputGroupAddon>
+                        </InputGroup>
+                        <FieldError :errors="[errors.password]" />
+                    </Field>
 
                     <div class="flex items-center justify-between">
                         <Label

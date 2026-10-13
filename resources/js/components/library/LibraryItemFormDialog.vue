@@ -14,7 +14,6 @@ import {
     store as storeItem,
     update as updateItem,
 } from '@/actions/App/Http/Controllers/App/LibraryItemController';
-import InputError from '@/components/InputError.vue';
 import LibraryMediaThumbnail from '@/components/library/LibraryMediaThumbnail.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,8 +25,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useMediaUpload } from '@/composables/useMediaUpload';
@@ -147,21 +146,21 @@ const submit = () => {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div class="grid gap-2">
-                    <Label for="library_name">{{
+                <Field class="gap-2">
+                    <FieldLabel for="library_name">{{
                         $t('library.form.name')
-                    }}</Label>
+                    }}</FieldLabel>
                     <Input
                         id="library_name"
                         v-model="form.name"
                         :placeholder="trans('library.form.name_placeholder')"
                         data-testid="library-name-input"
                     />
-                    <InputError :message="form.errors.name" />
-                </div>
+                    <FieldError :errors="[form.errors.name]" />
+                </Field>
 
-                <div class="grid gap-2">
-                    <Label>{{ $t('library.form.media') }}</Label>
+                <Field class="gap-2">
+                    <FieldLabel>{{ $t('library.form.media') }}</FieldLabel>
                     <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
                         <div
                             v-for="file in media"
@@ -218,17 +217,17 @@ const submit = () => {
                             })
                         }}
                     </p>
-                    <InputError :message="errorFor('media_ids')" />
-                </div>
+                    <FieldError :errors="[errorFor('media_ids')]" />
+                </Field>
 
                 <section class="grid gap-2 rounded-xl border border-border p-4">
                     <h3 class="flex items-center gap-2 text-sm font-semibold">
                         <IconBrandFacebook class="size-4 text-[#1877f2]" />
                         {{ $t('library.texts.facebook') }}
                     </h3>
-                    <Label for="library_facebook_text" class="sr-only">{{
+                    <FieldLabel for="library_facebook_text" class="sr-only">{{
                         $t('library.form.facebook_text')
-                    }}</Label>
+                    }}</FieldLabel>
                     <Textarea
                         id="library_facebook_text"
                         v-model="form.facebook_text"
@@ -238,7 +237,7 @@ const submit = () => {
                         "
                         data-testid="library-facebook-text-input"
                     />
-                    <InputError :message="form.errors.facebook_text" />
+                    <FieldError :errors="[form.errors.facebook_text]" />
                 </section>
 
                 <section class="grid gap-2 rounded-xl border border-border p-4">
@@ -246,9 +245,9 @@ const submit = () => {
                         <IconBrandTiktok class="size-4" />
                         {{ $t('library.texts.tiktok') }}
                     </h3>
-                    <Label for="library_tiktok_caption" class="sr-only">{{
+                    <FieldLabel for="library_tiktok_caption" class="sr-only">{{
                         $t('library.form.tiktok_caption')
-                    }}</Label>
+                    }}</FieldLabel>
                     <Textarea
                         id="library_tiktok_caption"
                         v-model="form.tiktok_caption"
@@ -258,7 +257,7 @@ const submit = () => {
                         "
                         data-testid="library-tiktok-caption-input"
                     />
-                    <InputError :message="form.errors.tiktok_caption" />
+                    <FieldError :errors="[form.errors.tiktok_caption]" />
                 </section>
 
                 <section class="grid gap-3 rounded-xl border border-border p-4">
@@ -266,10 +265,10 @@ const submit = () => {
                         <IconBrandYoutube class="size-4 text-[#ff0000]" />
                         {{ $t('library.texts.youtube') }}
                     </h3>
-                    <div class="grid gap-2">
-                        <Label for="library_youtube_title">{{
+                    <Field class="gap-2">
+                        <FieldLabel for="library_youtube_title">{{
                             $t('library.form.youtube_title')
-                        }}</Label>
+                        }}</FieldLabel>
                         <Input
                             id="library_youtube_title"
                             v-model="form.youtube_title"
@@ -278,12 +277,12 @@ const submit = () => {
                             "
                             data-testid="library-youtube-title-input"
                         />
-                        <InputError :message="form.errors.youtube_title" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="library_youtube_description">{{
+                        <FieldError :errors="[form.errors.youtube_title]" />
+                    </Field>
+                    <Field class="gap-2">
+                        <FieldLabel for="library_youtube_description">{{
                             $t('library.form.youtube_description')
-                        }}</Label>
+                        }}</FieldLabel>
                         <Textarea
                             id="library_youtube_description"
                             v-model="form.youtube_description"
@@ -295,14 +294,14 @@ const submit = () => {
                             "
                             data-testid="library-youtube-description-input"
                         />
-                        <InputError
-                            :message="form.errors.youtube_description"
+                        <FieldError
+                            :errors="[form.errors.youtube_description]"
                         />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="library_youtube_tags">{{
+                    </Field>
+                    <Field class="gap-2">
+                        <FieldLabel for="library_youtube_tags">{{
                             $t('library.form.youtube_tags')
-                        }}</Label>
+                        }}</FieldLabel>
                         <Input
                             id="library_youtube_tags"
                             v-model="tagsText"
@@ -326,8 +325,8 @@ const submit = () => {
                                 })
                             }}
                         </p>
-                        <InputError :message="errorFor('youtube_tags')" />
-                    </div>
+                        <FieldError :errors="[errorFor('youtube_tags')]" />
+                    </Field>
                 </section>
 
                 <DialogFooter class="gap-2">
