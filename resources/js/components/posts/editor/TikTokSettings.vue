@@ -9,6 +9,7 @@ import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import InputError from '@/components/InputError.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -497,30 +499,38 @@ watch(
                 <p class="text-xs font-medium text-foreground/60">
                     {{ $t('posts.form.tiktok.privacy_hint') }}
                 </p>
-                <p
+                <Alert
                     v-if="brandContentToggle"
-                    class="flex items-start gap-1.5 rounded-md border border-border bg-amber-50 p-2 text-xs font-semibold text-amber-800"
+                    variant="warning"
+                    class="px-3 py-2"
                 >
-                    <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
-                    {{
-                        $t('posts.form.tiktok.privacy.private_disabled_branded')
-                    }}
-                </p>
+                    <IconAlertTriangle />
+                    <AlertDescription class="text-xs font-semibold">
+                        {{
+                            $t(
+                                'posts.form.tiktok.privacy.private_disabled_branded',
+                            )
+                        }}
+                    </AlertDescription>
+                </Alert>
             </div>
 
             <!-- Max duration warning -->
-            <p
+            <Alert
                 v-if="isVideoPost && exceedsMaxDuration"
-                class="flex items-start gap-2 rounded-lg border border-border bg-rose-50 p-2 text-xs font-semibold text-rose-700"
+                variant="destructive"
+                class="px-3 py-2"
             >
-                <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
-                {{
-                    $t('posts.form.tiktok.max_duration_exceeded', {
-                        duration: String(videoDurationSec ?? 0),
-                        max: String(maxDurationSec ?? 0),
-                    })
-                }}
-            </p>
+                <IconAlertTriangle />
+                <AlertDescription class="text-xs font-semibold">
+                    {{
+                        $t('posts.form.tiktok.max_duration_exceeded', {
+                            duration: String(videoDurationSec ?? 0),
+                            max: String(maxDurationSec ?? 0),
+                        })
+                    }}
+                </AlertDescription>
+            </Alert>
 
             <!-- Auto Add Music (photos only) -->
             <div v-if="isPhotoPost" class="space-y-2">
@@ -609,7 +619,7 @@ watch(
                 </div>
             </div>
 
-            <div class="border-t-2 border-foreground/10" />
+            <Separator />
 
             <!-- Video made with AI (independent) -->
             <label v-if="!isPhotoPost" class="flex items-center gap-2 text-sm">
@@ -631,22 +641,19 @@ watch(
                 </p>
 
                 <!-- Promotional Content warning (shown once a sub-toggle is picked) -->
-                <div
+                <Alert
                     v-if="hasAnyBrandToggle"
-                    class="ml-6 flex items-start gap-3 rounded-lg border border-border bg-amber-100 p-3 shadow-2xs"
+                    variant="warning"
+                    class="ml-6 w-auto p-3"
                 >
-                    <IconAlertTriangle
-                        class="mt-0.5 size-4 shrink-0 text-amber-700"
-                    />
-                    <div class="text-xs text-amber-800">
-                        <p class="font-bold">{{ $t(promotionalTitleKey) }}</p>
-                        <p class="font-medium">
-                            {{
-                                $t('posts.form.tiktok.promotional_description')
-                            }}
-                        </p>
-                    </div>
-                </div>
+                    <IconAlertTriangle />
+                    <AlertTitle class="line-clamp-none text-xs font-bold">
+                        {{ $t(promotionalTitleKey) }}
+                    </AlertTitle>
+                    <AlertDescription class="text-xs font-medium">
+                        {{ $t('posts.form.tiktok.promotional_description') }}
+                    </AlertDescription>
+                </Alert>
 
                 <!-- Compliance incomplete hint (disclose ON but no sub-toggle) -->
                 <p

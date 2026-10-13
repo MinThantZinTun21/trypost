@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { IconLoader2 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onUnmounted, ref, watch } from 'vue';
 
@@ -10,6 +9,7 @@ import PostEditorComposer from '@/components/posts/editor/PostEditorComposer.vue
 import PostEditorHeader from '@/components/posts/editor/PostEditorHeader.vue';
 import PostEditorMobileNav from '@/components/posts/editor/PostEditorMobileNav.vue';
 import PostEditorTabs from '@/components/posts/editor/PostEditorTabs.vue';
+import { Spinner } from '@/components/ui/spinner';
 import { usePollWhile } from '@/composables/usePollWhile';
 import {
     firstCompatibleVariant,
@@ -395,10 +395,7 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                     <div
                         class="inline-flex size-14 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
                     >
-                        <IconLoader2
-                            class="size-7 animate-spin text-white"
-                            stroke-width="2"
-                        />
+                        <Spinner class="size-7 text-white" />
                     </div>
                     <div class="text-center">
                         <p

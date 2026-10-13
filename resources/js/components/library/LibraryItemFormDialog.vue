@@ -4,7 +4,6 @@ import {
     IconBrandFacebook,
     IconBrandTiktok,
     IconBrandYoutube,
-    IconLoader2,
     IconPhotoPlus,
     IconX,
 } from '@tabler/icons-vue';
@@ -29,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useMediaUpload } from '@/composables/useMediaUpload';
 import { errorForField } from '@/lib/formErrors';
@@ -189,7 +189,7 @@ const submit = () => {
                             @click="fileInput?.click()"
                         >
                             <template v-if="uploading">
-                                <IconLoader2 class="size-5 animate-spin" />
+                                <Spinner class="size-5" />
                                 <span class="text-[10px] font-bold tabular-nums"
                                     >{{ uploadProgress }}%</span
                                 >

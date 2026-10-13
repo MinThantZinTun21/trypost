@@ -6,7 +6,6 @@ import {
     IconFileTypePdf,
     IconGripVertical,
     IconLibraryPhoto,
-    IconLoader2,
     IconMoodSmile,
     IconTrash,
     IconVideo,
@@ -22,6 +21,7 @@ import {
     PopoverAnchor,
     PopoverContent,
 } from '@/components/ui/popover';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
@@ -424,7 +424,7 @@ const onAltTextSave = (alt: string): void => {
                         @click="fileInput?.click()"
                     >
                         <template v-if="uploading">
-                            <IconLoader2 class="size-5 animate-spin" />
+                            <Spinner class="size-5" />
                             <span
                                 class="text-[10px] font-bold tracking-widest uppercase tabular-nums"
                                 >{{ uploadProgress }}%</span
