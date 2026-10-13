@@ -22,6 +22,7 @@ import LibraryItemFormDialog from '@/components/library/LibraryItemFormDialog.vu
 import LibraryMediaThumbnail from '@/components/library/LibraryMediaThumbnail.vue';
 import ScheduleLibraryItemDialog from '@/components/library/ScheduleLibraryItemDialog.vue';
 import PageHeader from '@/components/PageHeader.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -191,31 +192,34 @@ const handleDelete = (item: LibraryItem) => {
                             </div>
 
                             <div class="flex flex-wrap gap-1.5">
-                                <span
+                                <Badge
                                     v-if="item.facebook_text"
-                                    class="inline-flex items-center gap-1 rounded-full bg-[#1877f2]/10 px-2 py-0.5 text-xs font-medium text-[#1877f2]"
+                                    variant="secondary"
+                                    class="bg-[#1877f2]/10 px-2 font-medium text-[#1877f2] [&>svg]:size-3.5"
                                 >
-                                    <IconBrandFacebook class="size-3.5" />
+                                    <IconBrandFacebook />
                                     {{ $t('library.texts.facebook') }}
-                                </span>
-                                <span
+                                </Badge>
+                                <Badge
                                     v-if="item.tiktok_caption"
-                                    class="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground"
+                                    variant="secondary"
+                                    class="bg-foreground/10 px-2 font-medium text-foreground [&>svg]:size-3.5"
                                 >
-                                    <IconBrandTiktok class="size-3.5" />
+                                    <IconBrandTiktok />
                                     {{ $t('library.texts.tiktok') }}
-                                </span>
-                                <span
+                                </Badge>
+                                <Badge
                                     v-if="
                                         item.youtube_title ||
                                         item.youtube_description ||
                                         item.youtube_tags.length > 0
                                     "
-                                    class="inline-flex items-center gap-1 rounded-full bg-[#ff0000]/10 px-2 py-0.5 text-xs font-medium text-[#cc0000]"
+                                    variant="secondary"
+                                    class="bg-[#ff0000]/10 px-2 font-medium text-[#cc0000] [&>svg]:size-3.5"
                                 >
-                                    <IconBrandYoutube class="size-3.5" />
+                                    <IconBrandYoutube />
                                     {{ $t('library.texts.youtube') }}
-                                </span>
+                                </Badge>
                             </div>
 
                             <div

@@ -2,6 +2,7 @@
 import { useForm } from '@inertiajs/vue3';
 import { IconBrandFacebook, IconExternalLink } from '@tabler/icons-vue';
 
+import EmptyState from '@/components/EmptyState.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,19 +64,12 @@ const pageUrl = (username: string | null): string | null =>
                 </div>
             </div>
 
-            <div v-if="pages.length === 0" class="py-12 text-center">
-                <div
-                    class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted"
-                >
-                    <IconBrandFacebook class="h-7 w-7 text-muted-foreground" />
-                </div>
-                <h3 class="mt-4 text-lg font-semibold">
-                    {{ $t('accounts.facebook.no_pages') }}
-                </h3>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    {{ $t('accounts.facebook.no_pages_description') }}
-                </p>
-            </div>
+            <EmptyState
+                v-if="pages.length === 0"
+                :icon="IconBrandFacebook"
+                :title="$t('accounts.facebook.no_pages')"
+                :description="$t('accounts.facebook.no_pages_description')"
+            />
 
             <div v-else class="grid gap-3">
                 <Card v-for="page in pages" :key="page.id" class="gap-0 py-0">
