@@ -2,7 +2,6 @@
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import InputError from '@/components/InputError.vue';
 import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,8 +10,8 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -235,13 +234,13 @@ const pickAspectRatio = (value: string) => {
                     </div>
 
                     <template v-if="isReel">
-                        <div class="space-y-2">
-                            <Label
+                        <Field class="gap-2">
+                            <FieldLabel
                                 :for="titleId"
                                 class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                             >
                                 {{ $t('posts.form.facebook.reel_title') }}
-                            </Label>
+                            </FieldLabel>
                             <Input
                                 :id="titleId"
                                 v-model="title"
@@ -254,15 +253,15 @@ const pickAspectRatio = (value: string) => {
                                     )
                                 "
                             />
-                            <InputError :message="titleError" />
-                        </div>
-                        <div class="space-y-2">
-                            <Label
+                            <FieldError :errors="[titleError]" />
+                        </Field>
+                        <Field class="gap-2">
+                            <FieldLabel
                                 :for="descriptionId"
                                 class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                             >
                                 {{ $t('posts.form.facebook.reel_description') }}
-                            </Label>
+                            </FieldLabel>
                             <Textarea
                                 :id="descriptionId"
                                 v-model="description"
@@ -278,8 +277,8 @@ const pickAspectRatio = (value: string) => {
                                 "
                                 class="field-sizing-fixed min-h-24 w-full resize-y"
                             />
-                            <InputError :message="descriptionError" />
-                        </div>
+                            <FieldError :errors="[descriptionError]" />
+                        </Field>
                     </template>
 
                     <MediaRulesWarning

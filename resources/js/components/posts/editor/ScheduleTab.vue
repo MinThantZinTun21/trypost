@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { IconExternalLink, IconLoader2 } from '@tabler/icons-vue';
+import { IconExternalLink } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import type { PlatformIssue } from '@/composables/usePostCompliance';
@@ -227,8 +229,9 @@ const channels = computed<Channel[]>(() =>
                                             "
                                             variant="warning"
                                         >
-                                            <IconLoader2
-                                                class="size-3 animate-spin"
+                                            <Spinner
+                                                class="size-3"
+                                                aria-hidden="true"
                                             />
                                             {{
                                                 $t(
@@ -246,18 +249,29 @@ const channels = computed<Channel[]>(() =>
                                                 $t('posts.edit.status.failed')
                                             }}</Badge
                                         >
-                                        <a
+                                        <Button
                                             v-if="pp.platform_url"
-                                            :href="pp.platform_url"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="inline-flex size-7 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-transform hover:rotate-3 hover:bg-violet-100"
+                                            as-child
+                                            variant="outline"
+                                            size="icon-sm"
+                                            class="size-7 rounded-full shadow-2xs hover:rotate-3"
                                         >
-                                            <IconExternalLink
-                                                class="size-3.5"
-                                                stroke-width="2.5"
-                                            />
-                                        </a>
+                                            <a
+                                                :href="pp.platform_url"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                :aria-label="
+                                                    $t(
+                                                        'posts.edit.view_on_platform',
+                                                    )
+                                                "
+                                            >
+                                                <IconExternalLink
+                                                    class="size-3.5"
+                                                    stroke-width="2.5"
+                                                />
+                                            </a>
+                                        </Button>
                                     </div>
                                 </div>
                                 <p

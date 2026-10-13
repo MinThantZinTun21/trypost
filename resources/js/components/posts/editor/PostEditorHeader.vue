@@ -90,7 +90,7 @@ const isPublished = computed(() =>
                 v-if="isSaving"
                 class="flex items-center gap-1.5 text-xs font-semibold text-foreground/70"
             >
-                <Spinner class="size-3.5" />
+                <Spinner class="size-3.5" aria-hidden="true" />
                 {{ $t('posts.edit.saving') }}
             </span>
             <span

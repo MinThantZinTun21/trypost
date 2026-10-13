@@ -3,7 +3,6 @@ import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
-import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -11,8 +10,8 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -193,13 +192,13 @@ const descriptionError = computed(() => {
                             </p>
                         </div>
                     </div>
-                    <div class="space-y-2">
-                        <Label
+                    <Field class="gap-2">
+                        <FieldLabel
                             :for="titleId"
                             class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                         >
                             {{ $t('posts.form.youtube.title') }}
-                        </Label>
+                        </FieldLabel>
                         <Input
                             :id="titleId"
                             v-model="title"
@@ -226,15 +225,15 @@ const descriptionError = computed(() => {
                                 })
                             }}
                         </p>
-                        <InputError :message="titleError" />
-                    </div>
-                    <div class="space-y-2">
-                        <Label
+                        <FieldError :errors="[titleError]" />
+                    </Field>
+                    <Field class="gap-2">
+                        <FieldLabel
                             :for="descriptionId"
                             class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                         >
                             {{ $t('posts.form.youtube.description') }}
-                        </Label>
+                        </FieldLabel>
                         <Textarea
                             :id="descriptionId"
                             v-model="description"
@@ -261,15 +260,15 @@ const descriptionError = computed(() => {
                                 })
                             }}
                         </p>
-                        <InputError :message="descriptionError" />
-                    </div>
-                    <div class="space-y-2">
-                        <Label
+                        <FieldError :errors="[descriptionError]" />
+                    </Field>
+                    <Field class="gap-2">
+                        <FieldLabel
                             :for="tagsId"
                             class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                         >
                             {{ $t('posts.form.youtube.tags') }}
-                        </Label>
+                        </FieldLabel>
                         <Input
                             :id="tagsId"
                             :model-value="tagsText"
@@ -298,8 +297,8 @@ const descriptionError = computed(() => {
                                 })
                             }}
                         </p>
-                        <InputError :message="tagsError" />
-                    </div>
+                        <FieldError :errors="[tagsError]" />
+                    </Field>
                 </CardContent>
             </CollapsibleContent>
         </Collapsible>

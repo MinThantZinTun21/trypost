@@ -8,7 +8,6 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
-import InputError from '@/components/InputError.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,7 +17,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -326,7 +325,7 @@ watch(
                     class="space-y-5 border-t-2 border-foreground/10 px-4 pt-4 pb-4"
                 >
                     <!-- Variant: Video / Photo carousel -->
-                    <div class="space-y-2">
+                    <Field class="gap-2">
                         <p
                             class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                         >
@@ -349,8 +348,8 @@ watch(
                                 {{ $t(variant.labelKey) }}
                             </button>
                         </div>
-                        <InputError :message="contentTypeError" />
-                    </div>
+                        <FieldError :errors="[contentTypeError]" />
+                    </Field>
 
                     <!-- Creator identity -->
                     <div
@@ -382,11 +381,11 @@ watch(
                     </div>
 
                     <!-- Caption (videos) -->
-                    <div v-if="isVideoPost" class="space-y-2">
-                        <Label
+                    <Field v-if="isVideoPost" class="gap-2">
+                        <FieldLabel
                             :for="fieldId('caption')"
                             class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
-                            >{{ $t('posts.form.tiktok.caption') }}</Label
+                            >{{ $t('posts.form.tiktok.caption') }}</FieldLabel
                         >
                         <Textarea
                             :id="fieldId('caption')"
@@ -407,18 +406,18 @@ watch(
                                 })
                             }}
                         </p>
-                        <InputError :message="captionError" />
-                    </div>
+                        <FieldError :errors="[captionError]" />
+                    </Field>
 
                     <!-- Title and description (photos) -->
                     <template v-if="isPhotoPost">
-                        <div class="space-y-2">
-                            <Label
+                        <Field class="gap-2">
+                            <FieldLabel
                                 :for="fieldId('title')"
                                 class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                                 >{{
                                     $t('posts.form.tiktok.photo_title')
-                                }}</Label
+                                }}</FieldLabel
                             >
                             <Input
                                 :id="fieldId('title')"
@@ -444,15 +443,15 @@ watch(
                                     })
                                 }}
                             </p>
-                            <InputError :message="photoTitleError" />
-                        </div>
-                        <div class="space-y-2">
-                            <Label
+                            <FieldError :errors="[photoTitleError]" />
+                        </Field>
+                        <Field class="gap-2">
+                            <FieldLabel
                                 :for="fieldId('description')"
                                 class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                                 >{{
                                     $t('posts.form.tiktok.photo_description')
-                                }}</Label
+                                }}</FieldLabel
                             >
                             <Textarea
                                 :id="fieldId('description')"
@@ -479,15 +478,17 @@ watch(
                                     })
                                 }}
                             </p>
-                            <InputError :message="photoDescriptionError" />
-                        </div>
+                            <FieldError :errors="[photoDescriptionError]" />
+                        </Field>
                     </template>
 
                     <!-- Privacy Level -->
-                    <div class="space-y-2">
-                        <Label
+                    <Field class="gap-2">
+                        <FieldLabel
                             class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
-                            >{{ $t('posts.form.tiktok.privacy_level') }}</Label
+                            >{{
+                                $t('posts.form.tiktok.privacy_level')
+                            }}</FieldLabel
                         >
                         <Select
                             v-model="privacyLevel"
@@ -523,7 +524,7 @@ watch(
                                 </SelectItem>
                             </SelectContent>
                         </Select>
-                        <InputError :message="privacyError" />
+                        <FieldError :errors="[privacyError]" />
                         <p class="text-xs font-medium text-foreground/60">
                             {{ $t('posts.form.tiktok.privacy_hint') }}
                         </p>
@@ -541,7 +542,7 @@ watch(
                                 }}
                             </AlertDescription>
                         </Alert>
-                    </div>
+                    </Field>
 
                     <!-- Max duration warning -->
                     <Alert
