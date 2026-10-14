@@ -110,6 +110,32 @@ test('calendar payload exposes post content for rendering', function () {
     );
 });
 
+test('calendar payload names the social account of each target', function () {
+    $scheduledAt = now('UTC')->startOfWeek()->addDays(2)->setTime(12, 0);
+    $this->socialAccount->update(['display_name' => 'Lucky Studio', 'username' => 'luckystudio']);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => $scheduledAt,
+    ]);
+    PostPlatform::factory()->facebook()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+        'enabled' => true,
+    ]);
+
+    $dateKey = $scheduledAt->format('Y-m-d');
+
+    $this->actingAs($this->user)->get(route('app.calendar'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where("posts.{$dateKey}.0.post_platforms.0.social_account.display_label", 'Lucky Studio')
+            ->where("posts.{$dateKey}.0.post_platforms.0.social_account.username", 'luckystudio')
+        );
+});
+
 test('calendar does not include unscheduled drafts', function () {
     $scheduledAt = now('UTC')->startOfWeek()->addDays(2)->setTime(12, 0);
 
