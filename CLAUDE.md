@@ -271,16 +271,18 @@ before adding anything.
   videos up to 50 MB (the Bot API's upload limits; a missing file is left out)
   as albums of up to 10 items and 50 MB, the text as the first caption when it
   fits in 1024 UTF-16 units (`TelegramClient::length()`), else as messages
-  after, split between lines (`TelegramClient::split()`). The job caches how
-  many steps went out, so a retry resumes and never posts an album twice. `PostMirrorText` builds the
+  after, split between lines (`TelegramClient::split()`). Each step is keyed
+  by what it sends and the job caches the keys that went out, so a retry
+  never posts an album twice. `PostMirrorText` builds the
   text: content (or the YouTube title), a Download link per video, then the
   live links.
 - The Download link is `media.download` (`routes/media.php`): a permanent
   signed URL that needs no sign-in, so a video over 50 MB is still reachable
   from the channel. On R2 it redirects to a 30-minute presigned URL that forces
   a download; a local disk streams the file.
-- `TelegramClient` waits out a 429 of up to 60 s in place (`Sleep`, fake it in
-  tests) and resends the same call; a longer one releases the job. Any other
+- `TelegramClient` waits out a 429 of up to 10 s in place (`Sleep`, fake it in
+  tests) and resends the same call; a longer one releases the job, because the
+  wait holds the one worker that also publishes Posts. Any other
   4xx fails at once; the final
   failure stores a `TelegramFailed` Notification. `php artisan telegram:test`
   sends a test message and explains a refusal.

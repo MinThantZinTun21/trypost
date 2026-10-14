@@ -38,11 +38,14 @@ class TelegramClient
     /** Most bytes the mirror puts in one album request, so it uploads in time. */
     public const int ALBUM_BYTES_LIMIT = 50 * 1024 * 1024;
 
-    /** Longest 429 `retry_after` waited out in place; a longer one releases the job. */
-    private const int RATE_LIMIT_MAX_WAIT = 60;
+    /**
+     * Longest 429 `retry_after` waited out in place; a longer one releases the
+     * job. Kept short: the wait holds the one worker that also publishes Posts.
+     */
+    private const int RATE_LIMIT_MAX_WAIT = 10;
 
     /** 429s waited out in place for one call before giving up. */
-    private const int RATE_LIMIT_RETRIES = 3;
+    private const int RATE_LIMIT_RETRIES = 2;
 
     /** Seconds one upload may take: up to 50 MB leaves the server. */
     private const int UPLOAD_TIMEOUT = 300;
@@ -190,7 +193,8 @@ class TelegramClient
     }
 
     /**
-     * A multipart request that streams each file from storage.
+     * A multipart request that streams each file from storage. Each try opens
+     * fresh streams, since a retried request cannot reuse a read one.
      *
      * @param  array<string, MediaItem>  $files
      * @param  array<string, string>  $fields
@@ -200,23 +204,32 @@ class TelegramClient
     private function upload(string $method, array $files, array $fields): void
     {
         $this->waitingOutRateLimits(function () use ($method, $files, $fields): void {
-            // Fresh streams per try: a retried request cannot reuse a read one.
             $request = Http::timeout(self::UPLOAD_TIMEOUT);
+            $streams = [];
 
-            foreach ($files as $name => $item) {
-                $stream = Storage::readStream($item->path);
+            try {
+                foreach ($files as $name => $item) {
+                    $stream = Storage::readStream($item->path);
 
-                if ($stream === null) {
-                    throw new RuntimeException("Media file {$item->path} is missing from storage.");
+                    if ($stream === null) {
+                        throw new RuntimeException("Media file {$item->path} is missing from storage.");
+                    }
+
+                    $streams[] = $stream;
+                    $request = $request->attach($name, $stream, $item->filename());
                 }
 
-                $request = $request->attach($name, $stream, $item->filename());
+                $request->post($this->endpoint($method), [
+                    'chat_id' => (string) config('trypost.telegram.channel_id'),
+                    ...$fields,
+                ])->throw();
+            } finally {
+                foreach ($streams as $stream) {
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
+                }
             }
-
-            $request->post($this->endpoint($method), [
-                'chat_id' => (string) config('trypost.telegram.channel_id'),
-                ...$fields,
-            ])->throw();
         });
     }
 

@@ -92,11 +92,11 @@ class FinalizePostPublication
             SendPostToTelegram::dispatch($settled);
         }
 
-        if ($outcome['successful']) {
+        if (data_get($outcome, 'successful')) {
             return;
         }
 
-        $this->notifyFailure($outcome['post'], $outcome['platforms']);
+        $this->notifyFailure($settled, data_get($outcome, 'platforms'));
     }
 
     /**

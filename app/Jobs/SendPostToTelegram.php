@@ -19,13 +19,12 @@ use Throwable;
  * Sends a Post's Telegram mirror (ADR 0008) once it has published fully or
  * partly. `telegram_sent_at` marks it sent, so a second run sends nothing.
  *
- * It runs PostMirror's steps and caches how many went out, so a retry resumes
- * where the last try stopped instead of posting an album twice. TelegramClient
- * waits out a short 429 itself; a longer `retry_after` releases the job for
- * that long. Any other refusal (bot not an admin, wrong channel) fails at once,
- * since a retry cannot fix it. The
- * last failure tells the Owner with a TelegramFailed Notification and leaves
- * the Post's status alone: the Post itself did publish.
+ * It runs PostMirror's steps and caches the keys of those that went out, so a
+ * retry skips them instead of posting an album twice. TelegramClient waits out
+ * a short 429 itself; a longer `retry_after` releases the job for that long.
+ * Any other refusal (bot not an admin, wrong channel) fails at once, since a
+ * retry cannot fix it. The last failure tells the Owner with a TelegramFailed
+ * Notification and leaves the Post's status alone: the Post did publish.
  */
 class SendPostToTelegram implements ShouldQueue
 {
@@ -41,7 +40,7 @@ class SendPostToTelegram implements ShouldQueue
     /** Longest refusal reason shown in the TelegramFailed Notification. */
     private const int REASON_LIMIT = 200;
 
-    /** Hours a partly sent mirror remembers its progress. */
+    /** Hours a partly sent mirror remembers which steps went out. */
     private const int PROGRESS_HOURS = 24;
 
     /** A Post deleted before the mirror ran needs no mirror. */
@@ -94,18 +93,23 @@ class SendPostToTelegram implements ShouldQueue
      */
     private function sendRemainingSteps(PostMirror $mirror, Post $post): void
     {
-        $sent = (int) Cache::get($this->progressKey($post), 0);
+        /** @var list<string> $sent */
+        $sent = Cache::get($this->progressKey($post), []);
 
-        foreach (array_slice($mirror->steps($post), $sent) as $step) {
+        foreach ($mirror->steps($post) as $key => $step) {
+            if (in_array($key, $sent, true)) {
+                continue;
+            }
+
             $step();
-            $sent++;
+            $sent[] = $key;
             Cache::put($this->progressKey($post), $sent, now()->addHours(self::PROGRESS_HOURS));
         }
     }
 
     private function progressKey(Post $post): string
     {
-        return "telegram-mirror:{$post->id}:steps-sent";
+        return "telegram-mirror:{$post->id}:sent-steps";
     }
 
     public function failed(?Throwable $exception): void

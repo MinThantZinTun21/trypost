@@ -14,15 +14,16 @@ use Illuminate\Support\Facades\Storage;
  * Plans one Post's Telegram mirror as an ordered list of Bot API calls: its
  * photos and videos within the upload limits (one at a time, or as albums of
  * up to ten), with the text as the caption when it fits and as following
- * messages when it does not. SendPostToTelegram runs the steps and remembers
- * how many went out, so a retry resumes instead of posting an album twice.
+ * messages when it does not. Each step is keyed by what it sends, so
+ * SendPostToTelegram can remember which went out and a retry never posts an
+ * album twice, even if the plan changed in between.
  */
 class PostMirror
 {
     public function __construct(private TelegramClient $telegram) {}
 
     /**
-     * @return list<Closure(): void>
+     * @return array<string, Closure(): void>
      */
     public function steps(Post $post): array
     {
@@ -37,21 +38,41 @@ class PostMirror
         $steps = [];
 
         foreach ($this->albums($uploads) as $index => $album) {
-            $steps[] = fn () => $this->sendAlbum($album, $index === 0 ? $caption : null);
+            $albumCaption = $index === 0 ? $caption : null;
+            $steps[$this->albumKey($album, $albumCaption)] = fn () => $this->sendAlbum($album, $albumCaption);
         }
 
         return $caption === null ? [...$steps, ...$this->messages($text)] : $steps;
     }
 
     /**
-     * @return list<Closure(): void>
+     * @param  list<MediaItem>  $album
+     */
+    private function albumKey(array $album, ?string $caption): string
+    {
+        $ids = collect($album)->map(fn (MediaItem $item): string => (string) $item->id)->implode(',');
+        $captionHash = md5((string) $caption);
+
+        return "album:{$ids}:{$captionHash}";
+    }
+
+    /**
+     * @return array<string, Closure(): void>
      */
     private function messages(string $text): array
     {
-        return array_map(
-            fn (string $chunk): Closure => fn () => $this->telegram->sendMessage($chunk),
-            TelegramClient::split($text),
-        );
+        return collect(TelegramClient::split($text))
+            ->mapWithKeys(fn (string $chunk, int $index): array => [
+                $this->messageKey($index, $chunk) => fn () => $this->telegram->sendMessage($chunk),
+            ])
+            ->all();
+    }
+
+    private function messageKey(int $index, string $chunk): string
+    {
+        $chunkHash = md5($chunk);
+
+        return "message:{$index}:{$chunkHash}";
     }
 
     /**

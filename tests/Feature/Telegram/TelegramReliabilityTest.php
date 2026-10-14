@@ -55,12 +55,12 @@ test('a short 429 is waited out in place and the same call is sent again', funct
     Sleep::fake();
     $api = config('trypost.telegram.api');
     Http::fake(["{$api}/*" => Http::sequence()
-        ->push(['ok' => false, 'description' => 'Too Many Requests: retry after 17', 'parameters' => ['retry_after' => 17]], Response::HTTP_TOO_MANY_REQUESTS)
+        ->push(['ok' => false, 'description' => 'Too Many Requests: retry after 7', 'parameters' => ['retry_after' => 7]], Response::HTTP_TOO_MANY_REQUESTS)
         ->push(['ok' => true, 'result' => []])]);
 
     SendPostToTelegram::dispatch($this->post);
 
-    Sleep::assertSequence([Sleep::for(17)->seconds()]);
+    Sleep::assertSequence([Sleep::for(7)->seconds()]);
     Http::assertSentCount(2);
     expect($this->post->fresh()->telegram_sent_at)->not->toBeNull();
 });
