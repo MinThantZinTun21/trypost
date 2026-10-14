@@ -9,6 +9,7 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Throwable;
 
 /**
  * Sends to the Owner's one Telegram channel through the Bot API
@@ -34,6 +35,32 @@ class TelegramClient
 
     /** Seconds one upload may take: up to 50 MB leaves the server. */
     private const int UPLOAD_TIMEOUT = 300;
+
+    /**
+     * The reason Telegram gave for refusing a request (its `description`),
+     * or the error's own message.
+     */
+    public static function errorDescription(Throwable $exception): string
+    {
+        if ($exception instanceof RequestException) {
+            return (string) (data_get($exception->response->json(), 'description') ?? "HTTP {$exception->response->status()}");
+        }
+
+        return $exception->getMessage();
+    }
+
+    /**
+     * Seconds Telegram asked to wait before the next call (429 Too Many
+     * Requests, `parameters.retry_after`), or null for any other error.
+     */
+    public static function retryAfter(Throwable $exception): ?int
+    {
+        if (! $exception instanceof RequestException || ! $exception->response->tooManyRequests()) {
+            return null;
+        }
+
+        return max(1, (int) data_get($exception->response->json(), 'parameters.retry_after', 1));
+    }
 
     public function isConfigured(): bool
     {
