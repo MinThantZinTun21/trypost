@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Post;
-use App\Services\Telegram\PostMirrorText;
+use App\Services\Telegram\PostMirror;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -22,9 +22,12 @@ class SendPostToTelegram implements ShouldQueue
 
     public int $backoff = 30;
 
+    /** Several uploads of up to 50 MB each; stays under the queue's retry_after (960). */
+    public int $timeout = 600;
+
     public function __construct(public Post $post) {}
 
-    public function handle(TelegramClient $telegram): void
+    public function handle(TelegramClient $telegram, PostMirror $mirror): void
     {
         if (! $telegram->isConfigured()) {
             return;
@@ -40,7 +43,7 @@ class SendPostToTelegram implements ShouldQueue
             return;
         }
 
-        $telegram->sendMessage(PostMirrorText::for($post));
+        $mirror->send($post);
 
         $post->update(['telegram_sent_at' => now()]);
     }
