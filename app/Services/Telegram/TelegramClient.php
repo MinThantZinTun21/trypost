@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Telegram;
 
 use App\Dto\MediaItem;
+use Closure;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use RuntimeException;
 use Throwable;
 
@@ -18,10 +20,10 @@ use Throwable;
  */
 class TelegramClient
 {
-    /** Bot API limit for a text message, in characters. */
+    /** Bot API limit for a text message, in UTF-16 code units. */
     public const int MESSAGE_LIMIT = 4096;
 
-    /** Bot API limit for a media caption, in characters. */
+    /** Bot API limit for a media caption, in UTF-16 code units. */
     public const int CAPTION_LIMIT = 1024;
 
     /** Largest photo the Bot API accepts as an upload, in bytes. */
@@ -32,6 +34,15 @@ class TelegramClient
 
     /** Most items in one media group (album). */
     public const int ALBUM_LIMIT = 10;
+
+    /** Most bytes the mirror puts in one album request, so it uploads in time. */
+    public const int ALBUM_BYTES_LIMIT = 50 * 1024 * 1024;
+
+    /** Longest 429 `retry_after` waited out in place; a longer one releases the job. */
+    private const int RATE_LIMIT_MAX_WAIT = 60;
+
+    /** 429s waited out in place for one call before giving up. */
+    private const int RATE_LIMIT_RETRIES = 3;
 
     /** Seconds one upload may take: up to 50 MB leaves the server. */
     private const int UPLOAD_TIMEOUT = 300;
@@ -62,6 +73,50 @@ class TelegramClient
         return max(1, (int) data_get($exception->response->json(), 'parameters.retry_after', 1));
     }
 
+    /**
+     * Text length as Telegram counts it: UTF-16 code units, so an emoji
+     * outside the Basic Multilingual Plane counts as two.
+     */
+    public static function length(string $text): int
+    {
+        return intdiv(strlen(mb_convert_encoding($text, 'UTF-16LE', 'UTF-8')), 2);
+    }
+
+    /**
+     * Splits text into chunks within the limit, breaking between lines so a
+     * link is never cut in half; only a line longer than the limit is cut.
+     *
+     * @return list<string>
+     */
+    public static function split(string $text, int $limit = self::MESSAGE_LIMIT): array
+    {
+        $chunks = [];
+        $current = null;
+
+        foreach (explode("\n", $text) as $line) {
+            // Each code point is at most two UTF-16 units, so half the limit always fits.
+            $pieces = self::length($line) > $limit ? mb_str_split($line, intdiv($limit, 2)) : [$line];
+
+            foreach ($pieces as $index => $piece) {
+                $separator = $index === 0 ? "\n" : '';
+                $candidate = $current === null ? $piece : "{$current}{$separator}{$piece}";
+
+                if (self::length($candidate) <= $limit) {
+                    $current = $candidate;
+
+                    continue;
+                }
+
+                $chunks[] = $current;
+                $current = $piece;
+            }
+        }
+
+        $chunks[] = $current;
+
+        return array_values(array_filter($chunks, fn (?string $chunk): bool => filled($chunk)));
+    }
+
     public function isConfigured(): bool
     {
         return filled(config('trypost.telegram.bot_token'))
@@ -75,7 +130,7 @@ class TelegramClient
      */
     public function sendMessage(string $text): void
     {
-        foreach (mb_str_split($text, self::MESSAGE_LIMIT) as $chunk) {
+        foreach (self::split($text) as $chunk) {
             $this->call('sendMessage', [
                 'chat_id' => config('trypost.telegram.channel_id'),
                 'text' => $chunk,
@@ -144,36 +199,64 @@ class TelegramClient
      */
     private function upload(string $method, array $files, array $fields): void
     {
-        $request = Http::timeout(self::UPLOAD_TIMEOUT);
+        $this->waitingOutRateLimits(function () use ($method, $files, $fields): void {
+            // Fresh streams per try: a retried request cannot reuse a read one.
+            $request = Http::timeout(self::UPLOAD_TIMEOUT);
 
-        foreach ($files as $name => $item) {
-            $stream = Storage::readStream($item->path);
+            foreach ($files as $name => $item) {
+                $stream = Storage::readStream($item->path);
 
-            if ($stream === null) {
-                throw new RuntimeException("Media file {$item->path} is missing from storage.");
+                if ($stream === null) {
+                    throw new RuntimeException("Media file {$item->path} is missing from storage.");
+                }
+
+                $request = $request->attach($name, $stream, $item->filename());
             }
 
-            $request = $request->attach($name, $stream, $item->original_filename ?: basename($item->path));
-        }
-
-        $request->post($this->endpoint($method), [
-            'chat_id' => (string) config('trypost.telegram.channel_id'),
-            ...$fields,
-        ])->throw();
+            $request->post($this->endpoint($method), [
+                'chat_id' => (string) config('trypost.telegram.channel_id'),
+                ...$fields,
+            ])->throw();
+        });
     }
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
      *
      * @throws RequestException
      */
-    private function call(string $method, array $payload): array
+    private function call(string $method, array $payload): void
     {
-        return Http::asJson()
+        $this->waitingOutRateLimits(fn () => Http::asJson()
             ->post($this->endpoint($method), $payload)
-            ->throw()
-            ->json();
+            ->throw());
+    }
+
+    /**
+     * Runs one Bot API call, waiting out a short 429 and trying the same call
+     * again, so a rate limit never sends earlier parts of a mirror twice.
+     *
+     * @param  Closure(): mixed  $send
+     *
+     * @throws RequestException
+     */
+    private function waitingOutRateLimits(Closure $send): void
+    {
+        for ($try = 1; ; $try++) {
+            try {
+                $send();
+
+                return;
+            } catch (RequestException $exception) {
+                $retryAfter = self::retryAfter($exception);
+
+                if ($retryAfter === null || $retryAfter > self::RATE_LIMIT_MAX_WAIT || $try > self::RATE_LIMIT_RETRIES) {
+                    throw $exception;
+                }
+
+                Sleep::for($retryAfter)->seconds();
+            }
+        }
     }
 
     private function endpoint(string $method): string

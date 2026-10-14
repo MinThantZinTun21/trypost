@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Dto\MediaItem;
 use App\Models\Media;
 use Illuminate\Filesystem\LocalFilesystemAdapter;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,7 @@ class DownloadMediaController extends Controller
 
     public function __invoke(Media $media): RedirectResponse|StreamedResponse
     {
-        $filename = $media->original_filename ?: basename($media->path);
+        $filename = MediaItem::fromMedia($media)->filename();
         $disk = Storage::disk();
 
         if ($disk instanceof LocalFilesystemAdapter || ! $disk->providesTemporaryUrls()) {

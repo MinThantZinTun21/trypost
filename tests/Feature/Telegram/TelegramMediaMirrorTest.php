@@ -208,3 +208,41 @@ test('images get no download link', function () {
 
     expect(multipartField(telegramMediaRequests('sendPhoto')[0], 'caption'))->not->toContain('/download');
 });
+
+test('an album never carries more than the album byte limit in one request', function () {
+    $thirtyMegabytes = 30 * 1024 * 1024;
+    $post = telegramMediaPost([
+        ['type' => 'video', 'size' => $thirtyMegabytes],
+        ['type' => 'video', 'size' => $thirtyMegabytes],
+        ['type' => 'image'],
+    ]);
+
+    SendPostToTelegram::dispatchSync($post);
+
+    expect(telegramMediaRequests('sendVideo'))->toHaveCount(1);
+    $albums = telegramMediaRequests('sendMediaGroup');
+    expect($albums)->toHaveCount(1)
+        ->and(json_decode((string) multipartField($albums[0], 'media'), true))->toHaveCount(2);
+});
+
+test('a file missing from storage is left out without failing the mirror', function () {
+    $post = telegramMediaPost([['type' => 'image'], ['type' => 'image']]);
+    Storage::delete('medias/item-0.jpg');
+
+    SendPostToTelegram::dispatchSync($post);
+
+    $photos = telegramMediaRequests('sendPhoto');
+    expect($photos)->toHaveCount(1)
+        ->and($photos[0]->hasFile('photo', null, 'item-1.jpg'))->toBeTrue()
+        ->and($post->fresh()->telegram_sent_at)->not->toBeNull();
+});
+
+test('the caption limit counts emoji the way Telegram does', function () {
+    $content = Str::repeat('😀', 600);
+    $post = telegramMediaPost([['type' => 'image']], $content);
+
+    SendPostToTelegram::dispatchSync($post);
+
+    expect(multipartField(telegramMediaRequests('sendPhoto')[0], 'caption'))->toBeNull()
+        ->and(data_get(telegramMediaRequests('sendMessage')[0]->data(), 'text'))->toContain($content);
+});

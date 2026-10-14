@@ -6,58 +6,66 @@ namespace App\Services\Telegram;
 
 use App\Dto\MediaItem;
 use App\Models\Post;
-use Illuminate\Http\Client\RequestException;
+use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Sends one Post's Telegram mirror: its photos and videos within the Bot API
- * upload limits (one at a time, or as albums of up to ten), with the text as
- * the caption when it fits and as following messages when it does not.
+ * Plans one Post's Telegram mirror as an ordered list of Bot API calls: its
+ * photos and videos within the upload limits (one at a time, or as albums of
+ * up to ten), with the text as the caption when it fits and as following
+ * messages when it does not. SendPostToTelegram runs the steps and remembers
+ * how many went out, so a retry resumes instead of posting an album twice.
  */
 class PostMirror
 {
     public function __construct(private TelegramClient $telegram) {}
 
     /**
-     * @throws RequestException
+     * @return list<Closure(): void>
      */
-    public function send(Post $post): void
+    public function steps(Post $post): array
     {
         $text = PostMirrorText::for($post);
         $uploads = $this->uploads($post);
 
         if ($uploads->isEmpty()) {
-            $this->telegram->sendMessage($text);
-
-            return;
+            return $this->messages($text);
         }
 
-        $caption = mb_strlen($text) <= TelegramClient::CAPTION_LIMIT ? $text : null;
+        $caption = TelegramClient::length($text) <= TelegramClient::CAPTION_LIMIT ? $text : null;
+        $steps = [];
 
-        foreach ($uploads->chunk(TelegramClient::ALBUM_LIMIT)->values() as $index => $album) {
-            $this->sendAlbum($album->values(), $index === 0 ? $caption : null);
+        foreach ($this->albums($uploads) as $index => $album) {
+            $steps[] = fn () => $this->sendAlbum($album, $index === 0 ? $caption : null);
         }
 
-        if ($caption === null) {
-            $this->telegram->sendMessage($text);
-        }
+        return $caption === null ? [...$steps, ...$this->messages($text)] : $steps;
     }
 
     /**
-     * @param  Collection<int, MediaItem>  $album
-     *
-     * @throws RequestException
+     * @return list<Closure(): void>
      */
-    private function sendAlbum(Collection $album, ?string $caption): void
+    private function messages(string $text): array
     {
-        if ($album->count() > 1) {
-            $this->telegram->sendMediaGroup($album->all(), $caption);
+        return array_map(
+            fn (string $chunk): Closure => fn () => $this->telegram->sendMessage($chunk),
+            TelegramClient::split($text),
+        );
+    }
+
+    /**
+     * @param  list<MediaItem>  $album
+     */
+    private function sendAlbum(array $album, ?string $caption): void
+    {
+        if (count($album) > 1) {
+            $this->telegram->sendMediaGroup($album, $caption);
 
             return;
         }
 
-        $item = $album->first();
+        $item = $album[0];
 
         if ($item->isVideo()) {
             $this->telegram->sendVideo($item, $caption);
@@ -67,7 +75,37 @@ class PostMirror
     }
 
     /**
-     * The photos and videos small enough to upload, in the Post's order.
+     * Groups the uploads in order into albums of at most ALBUM_LIMIT items and
+     * ALBUM_BYTES_LIMIT bytes, so one request never carries hundreds of MB.
+     *
+     * @param  Collection<int, MediaItem>  $uploads
+     * @return list<list<MediaItem>>
+     */
+    private function albums(Collection $uploads): array
+    {
+        $albums = [];
+        $album = [];
+        $bytes = 0;
+
+        foreach ($uploads as $item) {
+            $size = $this->size($item);
+
+            if ($album !== [] && (count($album) === TelegramClient::ALBUM_LIMIT || $bytes + $size > TelegramClient::ALBUM_BYTES_LIMIT)) {
+                $albums[] = $album;
+                $album = [];
+                $bytes = 0;
+            }
+
+            $album[] = $item;
+            $bytes += $size;
+        }
+
+        return [...$albums, $album];
+    }
+
+    /**
+     * The photos and videos still in storage and small enough to upload, in
+     * the Post's order. A missing or oversized file is left out, never fatal.
      *
      * @return Collection<int, MediaItem>
      */
@@ -81,7 +119,7 @@ class PostMirror
                     default => null,
                 };
 
-                return $limit !== null && $this->size($item) <= $limit;
+                return $limit !== null && Storage::exists($item->path) && $this->size($item) <= $limit;
             })
             ->values();
     }

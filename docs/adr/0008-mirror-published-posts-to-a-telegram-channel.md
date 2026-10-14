@@ -17,4 +17,4 @@ The Bot API takes uploads up to 50 MB (10 MB for photos), and Posts may carry vi
 - The Platform enum, the three publish queues and the `tests/Feature/Removed` guards stay as they are. The mirror sends on the `default` queue and adds no route with "telegram" in its name.
 - A Post records when it was mirrored, so a second settle never sends it twice.
 - A mirror that still fails after its retries leaves an in-app Notification; it never changes the Post's status.
-- Download links are signed with `APP_KEY`; rotating it revokes every link already posted in the channel.
+- Download links are signed with `APP_KEY` and carry `APP_URL`; rotating the key or moving the domain breaks every link already posted in the channel.

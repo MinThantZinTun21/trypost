@@ -29,11 +29,12 @@ class PostMirrorText
         $links = $published
             ->map(fn (PostPlatform $target): string => "{$target->notificationLabel()}: {$target->platform_url}")
             ->implode("\n");
+        $liveOn = __('telegram.live_on');
 
         return collect([
             self::body($post),
             self::downloads($post),
-            $links === '' ? null : __('telegram.live_on')."\n{$links}",
+            $links === '' ? null : "{$liveOn}\n{$links}",
         ])->filter(fn (?string $part): bool => filled($part))->implode("\n\n");
     }
 
@@ -54,7 +55,7 @@ class PostMirrorText
         return $videos
             ->filter(fn (MediaItem $item): bool => $existing->contains($item->id))
             ->map(function (MediaItem $item): string {
-                $label = __('telegram.download', ['name' => $item->original_filename ?: basename($item->path)]);
+                $label = __('telegram.download', ['name' => $item->filename()]);
                 $url = URL::signedRoute('media.download', ['media' => $item->id]);
 
                 return "{$label}: {$url}";

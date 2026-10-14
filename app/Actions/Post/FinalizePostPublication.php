@@ -86,8 +86,10 @@ class FinalizePostPublication
             return;
         }
 
-        if ($outcome['post']->status->isLive() && $this->telegram->isConfigured()) {
-            SendPostToTelegram::dispatch($outcome['post']);
+        $settled = data_get($outcome, 'post');
+
+        if ($settled->status->isLive() && $this->telegram->isConfigured()) {
+            SendPostToTelegram::dispatch($settled);
         }
 
         if ($outcome['successful']) {
