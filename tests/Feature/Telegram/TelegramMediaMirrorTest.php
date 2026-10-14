@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
 use App\Enums\Post\Status as PostStatus;
 use App\Jobs\SendPostToTelegram;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -13,6 +15,7 @@ use App\Services\Telegram\TelegramClient;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -36,20 +39,19 @@ function telegramMediaPost(array $items, string $content = 'Fresh from the shoot
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
 
-    $media = collect($items)->map(function (array $item, int $index): array {
-        $extension = $item['type'] === 'video' ? 'mp4' : 'jpg';
+    $media = collect($items)->map(function (array $item, int $index) use ($workspace): array {
+        $isVideo = $item['type'] === 'video';
+        $extension = $isVideo ? 'mp4' : 'jpg';
         $path = "medias/item-{$index}.{$extension}";
         Storage::put($path, "bytes-{$index}");
 
-        return [
-            'id' => (string) Str::uuid(),
+        $model = ($isVideo ? Media::factory()->video() : Media::factory())->for($workspace, 'mediable')->create([
             'path' => $path,
-            'url' => Storage::url($path),
-            'type' => $item['type'],
-            'mime_type' => $item['type'] === 'video' ? 'video/mp4' : 'image/jpeg',
             'original_filename' => "item-{$index}.{$extension}",
             'size' => $item['size'] ?? 1024,
-        ];
+        ]);
+
+        return MediaItem::fromMedia($model)->toArray();
     })->all();
 
     $post = Post::factory()->create([
@@ -176,4 +178,33 @@ test('a post whose only image is too big is sent as text', function () {
 
     expect(telegramMediaRequests('sendPhoto'))->toBeEmpty()
         ->and(telegramMediaRequests('sendMessage'))->toHaveCount(1);
+});
+
+test('a video over the upload limit is sent as text with its download link', function () {
+    $post = telegramMediaPost([['type' => 'video', 'size' => TelegramClient::FILE_UPLOAD_LIMIT + 1]]);
+    $link = URL::signedRoute('media.download', ['media' => $post->media_items->first()->id]);
+
+    SendPostToTelegram::dispatchSync($post);
+
+    expect(telegramMediaRequests('sendVideo'))->toBeEmpty();
+    expect(data_get(telegramMediaRequests('sendMessage')[0]->data(), 'text'))
+        ->toContain(__('telegram.download', ['name' => 'item-0.mp4']))
+        ->toContain($link);
+});
+
+test('an uploaded video also carries its download link', function () {
+    $post = telegramMediaPost([['type' => 'video']]);
+    $link = URL::signedRoute('media.download', ['media' => $post->media_items->first()->id]);
+
+    SendPostToTelegram::dispatchSync($post);
+
+    expect(multipartField(telegramMediaRequests('sendVideo')[0], 'caption'))->toContain($link);
+});
+
+test('images get no download link', function () {
+    $post = telegramMediaPost([['type' => 'image']]);
+
+    SendPostToTelegram::dispatchSync($post);
+
+    expect(multipartField(telegramMediaRequests('sendPhoto')[0], 'caption'))->not->toContain('/download');
 });
