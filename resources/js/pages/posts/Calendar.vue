@@ -4,6 +4,7 @@ import { IconChevronLeft, IconChevronRight, IconPlus } from '@tabler/icons-vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import DatePicker from '@/components/DatePicker.vue';
+import CalendarPostAccounts from '@/components/posts/CalendarPostAccounts.vue';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -22,27 +23,15 @@ import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar } from '@/routes/app';
 import { edit as editPost, show as showPost } from '@/routes/app/posts';
+import type { CalendarPostPlatform } from '@/types/calendar';
 import { PostStatus } from '@/types/post';
-
-interface PostPlatform {
-    id: string;
-    platform: string;
-    status: string;
-    social_account: {
-        id: string;
-        platform: string;
-        display_name: string;
-        username: string | null;
-        display_label: string;
-    } | null;
-}
 
 interface Post {
     id: string;
     status: string;
     content: string | null;
     scheduled_at: string;
-    post_platforms: PostPlatform[];
+    post_platforms: CalendarPostPlatform[];
 }
 
 interface Workspace {
@@ -418,86 +407,15 @@ const formatTime = (scheduledAt: string): string => {
                                             {{ formatTime(post.scheduled_at) }}
                                         </div>
 
-                                        <!-- Platforms -->
-                                        <div class="mb-2 flex -space-x-1.5">
-                                            <TooltipProvider
-                                                v-for="pp in post.post_platforms.slice(
-                                                    0,
-                                                    5,
-                                                )"
-                                                :key="pp.id"
-                                                :delay-duration="200"
-                                            >
-                                                <Tooltip>
-                                                    <TooltipTrigger as-child>
-                                                        <span
-                                                            class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
-                                                        >
-                                                            <img
-                                                                :src="
-                                                                    getPlatformLogo(
-                                                                        pp.platform,
-                                                                    )
-                                                                "
-                                                                :alt="
-                                                                    pp.platform
-                                                                "
-                                                                class="size-full object-cover"
-                                                            />
-                                                        </span>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <div
-                                                            class="space-y-0.5 text-xs"
-                                                        >
-                                                            <p
-                                                                class="font-semibold"
-                                                            >
-                                                                {{
-                                                                    pp
-                                                                        .social_account
-                                                                        ?.display_label ??
-                                                                    pp.platform
-                                                                }}<span
-                                                                    v-if="
-                                                                        pp
-                                                                            .social_account
-                                                                            ?.username
-                                                                    "
-                                                                    class="font-normal opacity-80"
-                                                                    >&nbsp;·&nbsp;@{{
-                                                                        pp
-                                                                            .social_account
-                                                                            .username
-                                                                    }}</span
-                                                                >
-                                                            </p>
-                                                            <p
-                                                                class="opacity-70"
-                                                            >
-                                                                {{
-                                                                    getPlatformLabel(
-                                                                        pp.platform,
-                                                                    )
-                                                                }}
-                                                            </p>
-                                                        </div>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                            <span
-                                                v-if="
-                                                    post.post_platforms.length >
-                                                    5
-                                                "
-                                                class="inline-flex size-6 items-center justify-center rounded-full border border-border bg-card text-xs font-bold shadow-2xs"
-                                            >
-                                                +{{
-                                                    post.post_platforms.length -
-                                                    5
-                                                }}
-                                            </span>
-                                        </div>
+                                        <!-- Social accounts -->
+                                        <CalendarPostAccounts
+                                            :post-platforms="
+                                                post.post_platforms
+                                            "
+                                            :limit="5"
+                                            show-handle
+                                            class="mb-2 text-sm"
+                                        />
 
                                         <!-- Content Preview -->
                                         <p
@@ -583,73 +501,12 @@ const formatTime = (scheduledAt: string): string => {
                                     {{ formatTime(post.scheduled_at) }}
                                 </div>
 
-                                <!-- Platforms -->
-                                <div class="mb-1.5 flex -space-x-1.5">
-                                    <TooltipProvider
-                                        v-for="pp in post.post_platforms.slice(
-                                            0,
-                                            4,
-                                        )"
-                                        :key="pp.id"
-                                        :delay-duration="200"
-                                    >
-                                        <Tooltip>
-                                            <TooltipTrigger as-child>
-                                                <span
-                                                    class="inline-flex size-5 items-center justify-center overflow-hidden rounded-full border border-border bg-card"
-                                                >
-                                                    <img
-                                                        :src="
-                                                            getPlatformLogo(
-                                                                pp.platform,
-                                                            )
-                                                        "
-                                                        :alt="pp.platform"
-                                                        class="size-full object-cover"
-                                                    />
-                                                </span>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <div
-                                                    class="space-y-0.5 text-xs"
-                                                >
-                                                    <p class="font-semibold">
-                                                        {{
-                                                            pp.social_account
-                                                                ?.display_label ??
-                                                            pp.platform
-                                                        }}<span
-                                                            v-if="
-                                                                pp
-                                                                    .social_account
-                                                                    ?.username
-                                                            "
-                                                            class="font-normal opacity-80"
-                                                            >&nbsp;·&nbsp;@{{
-                                                                pp
-                                                                    .social_account
-                                                                    .username
-                                                            }}</span
-                                                        >
-                                                    </p>
-                                                    <p class="opacity-70">
-                                                        {{
-                                                            getPlatformLabel(
-                                                                pp.platform,
-                                                            )
-                                                        }}
-                                                    </p>
-                                                </div>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                    <span
-                                        v-if="post.post_platforms.length > 4"
-                                        class="inline-flex size-5 items-center justify-center rounded-full border border-border bg-card text-[10px] font-bold"
-                                    >
-                                        +{{ post.post_platforms.length - 4 }}
-                                    </span>
-                                </div>
+                                <!-- Social accounts -->
+                                <CalendarPostAccounts
+                                    :post-platforms="post.post_platforms"
+                                    :limit="4"
+                                    class="mb-1.5 text-xs"
+                                />
 
                                 <!-- Content Preview -->
                                 <p
