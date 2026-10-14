@@ -87,3 +87,83 @@ test('the day view names each social account with its handle', function () {
         ->assertSeeIn('@calendar-post-accounts', 'Lucky Clips')
         ->assertNoJavaScriptErrors();
 });
+
+/**
+ * The Owner from calendarOwnerWithScheduledPost() with a second post today that
+ * publishes only to the TikTok account.
+ */
+function calendarOwnerWithTikTokOnlyPost(): User
+{
+    $user = calendarOwnerWithScheduledPost();
+    $tiktok = $user->currentWorkspace->socialAccounts()->where('username', 'luckyclips')->firstOrFail();
+
+    $post = Post::factory()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'user_id' => $user->id,
+        'content' => 'Clips only',
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now('UTC')->setTime(15, 0),
+    ]);
+    PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktok->id,
+        'enabled' => true,
+    ]);
+
+    return $user;
+}
+
+test('the account filter shows only the posts for the chosen social account', function () {
+    $user = calendarOwnerWithTikTokOnlyPost();
+    $facebook = $user->currentWorkspace->socialAccounts()->where('username', 'luckystudio')->firstOrFail();
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'day']));
+
+    waitForCalendarTestId($page, 'calendar-account-filter');
+    $page->assertSee('Clips only');
+
+    $page->click('@calendar-account-filter');
+    waitForCalendarTestId($page, "calendar-account-option-{$facebook->id}");
+    $page->click("@calendar-account-option-{$facebook->id}");
+
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (location.search.includes('account=')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+    waitForCalendarTestId($page, 'calendar-post-accounts');
+
+    $page->assertSeeIn('@calendar-account-filter', 'Lucky Studio')
+        ->assertSee('Launch day')
+        ->assertDontSee('Clips only')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the account filter stays on when moving to the next day', function () {
+    $user = calendarOwnerWithTikTokOnlyPost();
+    $tiktok = $user->currentWorkspace->socialAccounts()->where('username', 'luckyclips')->firstOrFail();
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'day', 'account' => $tiktok->id]));
+
+    waitForCalendarTestId($page, 'calendar-account-filter');
+    $page->assertSeeIn('@calendar-account-filter', 'Lucky Clips')
+        ->assertSee('Clips only');
+
+    $page->click('@calendar-next');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (location.search.includes('day=')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+
+    expect($page->script('location.search'))->toContain("account={$tiktok->id}");
+    $page->assertNoJavaScriptErrors();
+});

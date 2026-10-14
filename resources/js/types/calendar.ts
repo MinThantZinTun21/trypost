@@ -12,3 +12,9 @@ export interface CalendarPostPlatform {
     status: string;
     social_account: CalendarSocialAccount | null;
 }
+
+export interface CalendarAccountOption {
+    id: string;
+    platform: string;
+    display_label: string;
+}

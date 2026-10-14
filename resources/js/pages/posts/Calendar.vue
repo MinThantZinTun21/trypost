@@ -4,6 +4,7 @@ import { IconChevronLeft, IconChevronRight, IconPlus } from '@tabler/icons-vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import DatePicker from '@/components/DatePicker.vue';
+import CalendarAccountFilter from '@/components/posts/CalendarAccountFilter.vue';
 import CalendarPostAccounts from '@/components/posts/CalendarPostAccounts.vue';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,7 +24,10 @@ import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar } from '@/routes/app';
 import { edit as editPost, show as showPost } from '@/routes/app/posts';
-import type { CalendarPostPlatform } from '@/types/calendar';
+import type {
+    CalendarAccountOption,
+    CalendarPostPlatform,
+} from '@/types/calendar';
 import { PostStatus } from '@/types/post';
 
 interface Post {
@@ -46,6 +50,8 @@ interface Props {
     currentWeekStart: string;
     currentMonth: string;
     view: 'day' | 'week' | 'month';
+    socialAccounts: CalendarAccountOption[];
+    filters: { account: string | null };
 }
 
 const props = defineProps<Props>();
@@ -165,11 +171,45 @@ const getPostsForDay = (day: dayjs.Dayjs): Post[] => {
     return props.posts[dateKey] || [];
 };
 
+type CalendarQuery = Record<string, string | number>;
+
+/** Keeps the Social account filter on every calendar link. */
+const withAccount = (
+    query: CalendarQuery,
+    account: string | null = props.filters.account,
+): CalendarQuery => (account ? { ...query, account } : query);
+
+/** The period on screen now, so changing the filter stays on it. */
+const currentPeriod = (): CalendarQuery => {
+    if (effectiveView.value === 'day') {
+        return { view: 'day', day: props.currentDay };
+    }
+
+    if (effectiveView.value === 'month') {
+        return { view: 'month', month: props.currentMonth };
+    }
+
+    return { view: 'week', week: props.currentWeekStart };
+};
+
+const filterByAccount = (account: string | null) => {
+    router.get(
+        calendar.url({ query: withAccount(currentPeriod(), account) }),
+        {},
+        {
+            preserveState: true,
+        },
+    );
+};
+
 const navigateDay = (direction: number) => {
     const newDay = currentDay.value.add(direction, 'day');
     router.get(
         calendar.url({
-            query: { view: 'day', day: newDay.format('YYYY-MM-DD') },
+            query: withAccount({
+                view: 'day',
+                day: newDay.format('YYYY-MM-DD'),
+            }),
         }),
         {},
         {
@@ -182,7 +222,10 @@ const navigateWeek = (direction: number) => {
     const newStart = weekStart.value.add(direction * 7, 'day');
     router.get(
         calendar.url({
-            query: { view: 'week', week: newStart.format('YYYY-MM-DD') },
+            query: withAccount({
+                view: 'week',
+                week: newStart.format('YYYY-MM-DD'),
+            }),
         }),
         {},
         {
@@ -195,7 +238,10 @@ const navigateMonth = (direction: number) => {
     const newMonth = monthDate.value.add(direction, 'month');
     router.get(
         calendar.url({
-            query: { view: 'month', month: newMonth.format('YYYY-MM-DD') },
+            query: withAccount({
+                view: 'month',
+                month: newMonth.format('YYYY-MM-DD'),
+            }),
         }),
         {},
         {
@@ -216,7 +262,7 @@ const navigate = (direction: number) => {
 
 const goToToday = () => {
     router.get(
-        calendar.url({ query: { view: effectiveView.value } }),
+        calendar.url({ query: withAccount({ view: effectiveView.value }) }),
         {},
         {
             preserveState: true,
@@ -227,7 +273,9 @@ const goToToday = () => {
 const goToDate = (dateStr: string) => {
     if (!dateStr) return;
     router.get(
-        calendar.url({ query: { view: 'day', day: dateStr } }),
+        calendar.url({
+            query: withAccount({ view: 'day', day: dateStr }),
+        }),
         {},
         {
             preserveState: true,
@@ -237,7 +285,7 @@ const goToDate = (dateStr: string) => {
 
 const switchView = (view: string | number) => {
     router.get(
-        calendar.url({ query: { view } }),
+        calendar.url({ query: withAccount({ view }) }),
         {},
         {
             preserveState: true,
@@ -326,6 +374,12 @@ const formatTime = (scheduledAt: string): string => {
                         >{{ $t('calendar.new_post') }}</Button
                     >
                 </div>
+                <CalendarAccountFilter
+                    :accounts="socialAccounts"
+                    :model-value="filters.account"
+                    test-id="calendar-account-filter-mobile"
+                    @update:model-value="filterByAccount"
+                />
             </header>
 
             <!-- Desktop header: nav · title · view switcher + new post -->
@@ -339,7 +393,12 @@ const formatTime = (scheduledAt: string): string => {
                     <Button variant="outline" @click="goToToday">
                         {{ $t('calendar.today') }}
                     </Button>
-                    <Button variant="outline" size="icon" @click="navigate(1)">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        data-testid="calendar-next"
+                        @click="navigate(1)"
+                    >
                         <IconChevronRight class="size-4" />
                     </Button>
                 </div>
@@ -351,6 +410,11 @@ const formatTime = (scheduledAt: string): string => {
                     </span>
                 </div>
                 <div class="flex items-center justify-end gap-2">
+                    <CalendarAccountFilter
+                        :accounts="socialAccounts"
+                        :model-value="filters.account"
+                        @update:model-value="filterByAccount"
+                    />
                     <Tabs
                         :default-value="view"
                         @update:model-value="switchView"
