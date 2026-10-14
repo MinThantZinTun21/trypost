@@ -31,6 +31,15 @@ test('settled statuses are the ones finalize must not rewrite', function () {
     expect(Status::Failed->isSettled())->toBeTrue();
 });
 
+test('live statuses are the ones published on at least one platform', function () {
+    expect(Status::Draft->isLive())->toBeFalse();
+    expect(Status::Scheduled->isLive())->toBeFalse();
+    expect(Status::Publishing->isLive())->toBeFalse();
+    expect(Status::Published->isLive())->toBeTrue();
+    expect(Status::PartiallyPublished->isLive())->toBeTrue();
+    expect(Status::Failed->isLive())->toBeFalse();
+});
+
 test('post status has colors', function () {
     expect(Status::Draft->color())->toBe('gray');
     expect(Status::Scheduled->color())->toBe('blue');

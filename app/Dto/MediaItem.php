@@ -71,6 +71,14 @@ class MediaItem
         ];
     }
 
+    /**
+     * The name the Owner uploaded the file under, else the stored one.
+     */
+    public function filename(): string
+    {
+        return $this->original_filename ?: basename($this->path);
+    }
+
     public function isVideo(): bool
     {
         return $this->kind() === Type::Video;

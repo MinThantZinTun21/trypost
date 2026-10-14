@@ -213,7 +213,9 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0002-postgres-only-no-redis.md`; where it runs is
 `docs/adr/0005-self-host-on-a-vultr-vps.md` and
 `docs/adr/0006-share-the-chord-book-server.md`; the Content library is
-`docs/adr/0007-content-library-of-ready-posts.md`. Read them before adding anything.
+`docs/adr/0007-content-library-of-ready-posts.md`; the Telegram mirror is
+`docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`. Read them
+before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
   workspace UI, the REST API and MCP server, webhooks, signatures, labels,
@@ -255,6 +257,35 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
   counts the Posts made from it. Deleting an item keeps its Posts and media.
 - MCP tools: `list_library_items`, `get_library_item`, `create_library_item`,
   `schedule_library_item`.
+
+## Telegram mirror (ADR 0008)
+
+- Telegram is **not** a Platform: no Social account, no content type, no
+  connect flow (`PlatformsRemovedTest` still forbids `telegram` routes). It is
+  one channel from `.env`: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHANNEL_ID`
+  (`config('trypost.telegram')`); either empty turns the mirror off.
+- `FinalizePostPublication` dispatches `SendPostToTelegram` once a Post settles
+  Published or PartiallyPublished. `posts.telegram_sent_at` makes the send
+  happen once. The mirror never changes the Post's status.
+- `PostMirror` plans the mirror as ordered steps: photos up to 10 MB and
+  videos up to 50 MB (the Bot API's upload limits; a missing file is left out)
+  as albums of up to 10 items and 50 MB, the text as the first caption when it
+  fits in 1024 UTF-16 units (`TelegramClient::length()`), else as messages
+  after, split between lines (`TelegramClient::split()`). Each step is keyed
+  by what it sends and the job caches the keys that went out, so a retry
+  never posts an album twice. `PostMirrorText` builds the
+  text: content (or the YouTube title), a Download link per video, then the
+  live links.
+- The Download link is `media.download` (`routes/media.php`): a permanent
+  signed URL that needs no sign-in, so a video over 50 MB is still reachable
+  from the channel. On R2 it redirects to a 30-minute presigned URL that forces
+  a download; a local disk streams the file.
+- `TelegramClient` waits out a 429 of up to 10 s in place (`Sleep`, fake it in
+  tests) and resends the same call; a longer one releases the job, because the
+  wait holds the one worker that also publishes Posts. Any other
+  4xx fails at once; the final
+  failure stores a `TelegramFailed` Notification. `php artisan telegram:test`
+  sends a test message and explains a refusal.
 
 ## Single Owner
 
@@ -332,8 +363,9 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
   notification preferences, and `MAIL_MAILER` stays `log`. Do not add a mail
   provider.
 - `App\Jobs\SendNotification` stores an in-app `Notification` row. There are
-  three types: `PostFailed` (full or partial failure; a fully published post
-  sends nothing), `AccountDisconnected` and `PostAtRisk`. Titles and bodies
+  four types: `PostFailed` (full or partial failure; a fully published post
+  sends nothing), `AccountDisconnected`, `PostAtRisk` and `TelegramFailed` (the
+  Telegram mirror gave up). Titles and bodies
   resolve through `lang/en/notifications.php`.
 
 ## Language (English only)

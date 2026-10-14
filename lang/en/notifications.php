@@ -18,4 +18,8 @@ return [
         'title' => 'Post failed to publish',
         'body' => 'Failed on: :platforms',
     ],
+    'telegram_failed' => [
+        'title' => 'Telegram mirror failed',
+        'body' => 'The post published, but Telegram did not take it: :reason',
+    ],
 ];

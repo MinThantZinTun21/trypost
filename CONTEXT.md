@@ -86,3 +86,11 @@ _Avoid_: Post analytics, post stats
 **Insights snapshot**:
 The Page insights the app stored for one day, so the dashboard shows history without asking Facebook each time.
 _Avoid_: Cache, sync
+
+**Telegram mirror**:
+A copy of each published Post that the app sends to the Owner's one Telegram channel: its text, its media and links to where it went live. Telegram is not a Platform; the Owner never picks it per Post.
+_Avoid_: Telegram platform, Telegram account, cross-post
+
+**Download link**:
+A permanent link in a Telegram mirror that downloads a Post's video file without signing in.
+_Avoid_: Share link, public link

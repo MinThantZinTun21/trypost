@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             Route::group([], __DIR__.'/../routes/cron.php');
+            Route::group([], __DIR__.'/../routes/media.php');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
