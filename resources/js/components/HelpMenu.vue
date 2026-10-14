@@ -59,7 +59,7 @@ const communityLinks = computed<HelpLink[]>(() => [
                 <Button
                     type="button"
                     size="icon"
-                    class="group size-12 rounded-full border border-border shadow-md"
+                    class="group size-12 rounded-none border border-border shadow-sm"
                     data-testid="help-menu-trigger"
                     :aria-label="$t('sidebar.help')"
                 >

@@ -128,7 +128,7 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                                         :src="user.photo_url"
                                         :name="user.name"
                                         class="h-8 w-8 shrink-0 rounded-md border border-border"
-                                        fallback-class="bg-violet-100 text-violet-700 font-bold"
+                                        fallback-class="bg-primary text-primary-foreground font-bold"
                                     />
                                     <div
                                         class="grid min-w-0 flex-1 text-left text-sm leading-tight"

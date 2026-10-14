@@ -121,7 +121,7 @@ const handleDelete = (item: LibraryItem) => {
                         v-for="item in items.data"
                         :key="item.id"
                         :data-testid="`library-item-${item.id}`"
-                        class="group gap-0 overflow-hidden py-0 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                        class="group gap-0 overflow-hidden py-0 transition-all hover:shadow-sm"
                     >
                         <button
                             type="button"
@@ -141,7 +141,7 @@ const handleDelete = (item: LibraryItem) => {
                             </span>
                             <span
                                 v-if="item.media.length > 1"
-                                class="absolute right-2 bottom-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm"
+                                class="absolute right-2 bottom-2 rounded-none bg-black/60 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm"
                             >
                                 {{
                                     transChoice(

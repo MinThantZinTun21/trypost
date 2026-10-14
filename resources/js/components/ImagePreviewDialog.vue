@@ -92,7 +92,7 @@ defineExpose({ open, openCollection, close });
                     v-if="currentItem && isImage(currentItem)"
                     :src="currentItem.url"
                     alt="Preview"
-                    class="max-h-[85vh] max-w-full cursor-pointer rounded-2xl object-contain"
+                    class="max-h-[85vh] max-w-full cursor-pointer rounded-none object-contain"
                     @click="close"
                 />
 
@@ -101,7 +101,7 @@ defineExpose({ open, openCollection, close });
                     :key="currentItem.url"
                     :src="currentItem.url"
                     data-testid="lightbox-video"
-                    class="max-h-[85vh] max-w-full rounded-2xl bg-black"
+                    class="max-h-[85vh] max-w-full rounded-none bg-black"
                     controls
                     autoplay
                     preload="metadata"
@@ -114,7 +114,7 @@ defineExpose({ open, openCollection, close });
                     :key="currentItem.url"
                     :src="currentItem.url"
                     title="PDF preview"
-                    class="h-[85vh] w-full rounded-2xl bg-white"
+                    class="h-[85vh] w-full rounded-none bg-white"
                     @click.stop
                 />
 
@@ -122,7 +122,7 @@ defineExpose({ open, openCollection, close });
                     v-if="showNav && hasPrev"
                     type="button"
                     aria-label="Previous"
-                    class="absolute top-1/2 left-2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition hover:bg-black/70"
+                    class="absolute top-1/2 left-2 -translate-y-1/2 bg-black/50 p-2 text-white transition hover:bg-black/70"
                     @click.stop="goPrev"
                 >
                     <IconChevronLeft class="size-6" />
@@ -132,7 +132,7 @@ defineExpose({ open, openCollection, close });
                     v-if="showNav && hasNext"
                     type="button"
                     aria-label="Next"
-                    class="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition hover:bg-black/70"
+                    class="absolute top-1/2 right-2 -translate-y-1/2 bg-black/50 p-2 text-white transition hover:bg-black/70"
                     @click.stop="goNext"
                 >
                     <IconChevronRight class="size-6" />
@@ -149,7 +149,7 @@ defineExpose({ open, openCollection, close });
 
                 <div
                     v-if="showNav"
-                    class="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white tabular-nums"
+                    class="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-none bg-black/60 px-3 py-1 text-xs text-white tabular-nums"
                 >
                     {{ safeIndex + 1 }} / {{ items.length }}
                 </div>

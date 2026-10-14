@@ -152,9 +152,9 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
             class="flex flex-1 flex-col items-center justify-center gap-4 p-6"
         >
             <div
-                class="inline-flex size-14 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
+                class="inline-flex size-14 items-center justify-center rounded-none bg-primary text-primary-foreground"
             >
-                <Spinner class="size-7 text-white" />
+                <Spinner class="size-7" />
             </div>
             <p
                 class="text-2xl leading-tight font-semibold text-foreground"
@@ -169,7 +169,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
 
         <div v-else class="flex min-h-0 flex-1 flex-col">
             <header
-                class="flex shrink-0 flex-col gap-3 border-b-2 border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6"
+                class="flex shrink-0 flex-col gap-3 border-b border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6"
             >
                 <div class="pl-12 md:pl-0">
                     <Link :href="postsIndex.url()">
@@ -216,7 +216,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
             >
                 <!-- LEFT: post preview (mirrors PostEditorComposer layout) -->
                 <div
-                    class="border-b-2 border-foreground/10 lg:overflow-y-auto lg:border-r-2 lg:border-b-0 lg:border-border"
+                    class="border-b border-border lg:overflow-y-auto lg:border-r lg:border-b-0 lg:border-border"
                 >
                     <div class="mx-auto max-w-2xl px-6 py-10">
                         <!-- Media grid (top) — separate rounded tiles, 4-col -->
@@ -226,7 +226,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                     v-for="(item, i) in post.media"
                                     :key="item.id"
                                     type="button"
-                                    class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border border-border bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
+                                    class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-none border border-border bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
                                     @click="openLightbox(i)"
                                 >
                                     <video
@@ -273,7 +273,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                 <!-- RIGHT: platforms breakdown -->
                 <div class="flex flex-col gap-4 p-6 lg:overflow-y-auto">
                     <h2
-                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                        class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                     >
                         {{ $t('posts.show.platforms') }}
                         <span class="ml-1 text-foreground/40"
@@ -384,7 +384,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                                         :href="pp.platform_url"
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-transform hover:rotate-3 hover:bg-violet-100"
+                                                        class="inline-flex size-8 cursor-pointer items-center justify-center rounded-none border border-border bg-card text-foreground transition-colors hover:bg-muted"
                                                     >
                                                         <IconExternalLink
                                                             class="size-4"
@@ -408,7 +408,7 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                             PostPlatformStatus.Failed &&
                                         pp.error_message
                                     "
-                                    class="border-t-2 border-foreground/10 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700"
+                                    class="border-t border-border bg-destructive/10 px-4 py-3 text-xs font-semibold text-destructive"
                                 >
                                     {{ pp.error_message }}
                                 </div>

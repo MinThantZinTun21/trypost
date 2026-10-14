@@ -28,10 +28,10 @@ const theme = computed(() => getPlatformTheme(props.platform));
 const boxClass = computed(
     () =>
         ({
-            xs: 'size-6 rounded-md',
-            sm: 'size-10 rounded-xl',
-            md: 'size-12 rounded-xl',
-            lg: 'size-16 rounded-2xl',
+            xs: 'size-6 rounded-none',
+            sm: 'size-10 rounded-none',
+            md: 'size-12 rounded-none',
+            lg: 'size-16 rounded-none',
         })[props.size],
 );
 
@@ -72,7 +72,7 @@ const plainImageClass = computed(
                 theme.bg,
                 tilt ? theme.rotate : '',
                 boxClass,
-                'inline-flex items-center justify-center border border-border shadow-sm transition-transform group-hover:!rotate-0',
+                'inline-flex items-center justify-center border border-border transition-transform group-hover:!rotate-0',
             ]"
             :title="nativeTitle"
         >

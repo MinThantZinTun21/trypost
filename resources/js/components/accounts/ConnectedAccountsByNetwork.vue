@@ -57,7 +57,7 @@ const groups = computed<NetworkGroup[]>(() =>
                     :tilt="false"
                 />
                 <h2
-                    class="truncate text-lg leading-tight font-semibold text-foreground"
+                    class="truncate font-display text-lg leading-tight font-semibold text-foreground"
                 >
                     {{ group.platform.label }}
                 </h2>
@@ -88,7 +88,7 @@ const groups = computed<NetworkGroup[]>(() =>
 
                 <button
                     type="button"
-                    class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-foreground/40 px-3 py-2.5 text-left text-foreground/60 transition-colors hover:border-primary/40 hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    class="flex cursor-pointer items-center gap-3 rounded-none border border-dashed border-foreground/40 px-3 py-2.5 text-left text-foreground/60 transition-colors hover:border-primary/40 hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                     :data-testid="
                         group.accounts.length > 0
                             ? `connect-another-${group.platform.value}`
@@ -97,7 +97,7 @@ const groups = computed<NetworkGroup[]>(() =>
                     @click="emit('connect', group.platform.value)"
                 >
                     <span
-                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-current"
+                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-dashed border-current"
                     >
                         <IconPlus class="size-4" stroke-width="2.5" />
                     </span>

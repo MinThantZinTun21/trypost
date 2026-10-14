@@ -85,7 +85,7 @@ const activeContentType = computed((): string | undefined => {
     <div class="flex h-full flex-col">
         <div
             v-if="platforms.length > 1"
-            class="border-b-2 border-foreground/10 px-4 py-3"
+            class="border-b border-border px-4 py-3"
         >
             <div class="flex flex-wrap gap-3">
                 <TooltipProvider
@@ -166,12 +166,9 @@ const activeContentType = computed((): string | undefined => {
             <Empty v-else class="flex-none gap-3 p-0 md:p-0">
                 <EmptyHeader class="gap-3">
                     <EmptyMedia
-                        class="mb-0 size-12 rounded-2xl bg-brand text-white shadow-md shadow-primary/25"
+                        class="mb-0 size-12 rounded-none bg-primary text-primary-foreground"
                     >
-                        <IconDeviceMobile
-                            class="size-6 text-white"
-                            stroke-width="2"
-                        />
+                        <IconDeviceMobile class="size-6" stroke-width="2" />
                     </EmptyMedia>
                     <EmptyTitle
                         class="text-base font-bold tracking-normal text-foreground"

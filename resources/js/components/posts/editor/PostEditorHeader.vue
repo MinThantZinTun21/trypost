@@ -55,8 +55,8 @@ const isPublished = computed(() =>
 <template>
     <header
         :class="[
-            'flex shrink-0 items-center gap-3 border-b-2 border-border px-4 py-3 md:px-6',
-            isScheduled ? 'bg-violet-100' : 'bg-card',
+            'flex shrink-0 items-center gap-3 border-b border-border px-4 py-3 md:px-6',
+            isScheduled ? 'bg-primary/10' : 'bg-card',
         ]"
     >
         <!-- Left: the scheduled banner, or the editable-state status.
@@ -66,9 +66,9 @@ const isPublished = computed(() =>
                 class="flex min-w-0 flex-1 items-start gap-3 pl-12 md:items-center md:pl-0"
             >
                 <div
-                    class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand text-white shadow-sm shadow-primary/25 md:size-9"
+                    class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground md:size-9"
                 >
-                    <IconCalendar class="size-4 text-white" stroke-width="2" />
+                    <IconCalendar class="size-4" stroke-width="2" />
                 </div>
                 <div class="min-w-0 flex-1 leading-tight">
                     <p class="text-sm font-semibold text-foreground">

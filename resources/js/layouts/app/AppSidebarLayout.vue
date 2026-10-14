@@ -16,10 +16,13 @@ const isOpen = page.props.sidebarOpen;
 
 type Props = {
     fullWidth?: boolean;
+    /** The page pins an action bar to the bottom below `lg`. */
+    mobileActionBar?: boolean;
 };
 
 withDefaults(defineProps<Props>(), {
     fullWidth: false,
+    mobileActionBar: false,
 });
 </script>
 
@@ -63,6 +66,7 @@ withDefaults(defineProps<Props>(), {
             </div>
         </SidebarInset>
     </SidebarProvider>
-    <HelpMenu />
+    <!-- Lifted above a page's sticky mobile action bar so it never covers it. -->
+    <HelpMenu :class="{ 'max-lg:bottom-24': mobileActionBar }" />
     <Toast />
 </template>

@@ -372,6 +372,15 @@ one-per-network rule — do not reintroduce one.
     - Exceptions: custom widgets the components can't express (the composer's caption textarea with its overflow mirror) and the platform previews, which imitate each network's own UI.
     - `tests/Unit/ShadcnComponentsTest.php` fails on a raw `<table>`, `<select>`, `<textarea>`, `<hr>`, `<progress>` or non-file `<input>` outside `components/ui`; list a deliberate exception there with its reason.
 
+## Design (shadcn Sera preset)
+
+- The look is the shadcn **Sera** preset (`b5VuIW3jXk`), ported by hand: tokens in `resources/css/app.css`, component styles in `resources/js/components/ui`. Change the look there, not page by page.
+- Square corners (`--radius: 0`), hairline borders, `shadow-sm` on surfaces; overlays (dialogs, popovers, menus) keep the preset's `shadow-md`. Buttons, badges, labels and table heads are uppercase, tracked `text-xs font-semibold`; inputs are underlined. Roboto for text, Roboto Slab (`font-display`) for headings.
+- Lime `bg-primary` always pairs with `text-primary-foreground`. For lime **text** on white use `text-primary-text` (or `text-brand`); plain `text-primary` is unreadable. No violet, fuchsia or pink, and no coloured shadows.
+- `rounded-full` stays only for avatars (with an avatar stack's `+N` chip and an empty avatar slot), dots and spinners. Tabler icons stay; the preset's icon library is not used.
+- The platform previews (`components/posts/previews`) imitate each network and keep their own styling.
+- A floating control must not cover a page's sticky mobile action bar: pass `mobile-action-bar` to `AppLayout` so the help button lifts above it. `tests/Browser/MobileOverflowTest.php` checks overflow and that overlap on a phone and a desktop.
+
 ## Dialogs
 
 - In `<DialogFooter>`, put the **primary action button first** in the markup, then secondary/cancel (e.g. Save → Cancel). `DialogFooter` uses `flex-col` on mobile (primary on top, cancel at the bottom) and `sm:flex-row sm:justify-start` on desktop, so the first child is the leftmost action on larger screens.

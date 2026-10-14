@@ -19,7 +19,10 @@ defineProps<{
             <div class="w-full max-w-lg">
                 <div class="flex flex-col gap-6">
                     <div class="flex flex-col items-center gap-2 text-center">
-                        <h1 v-if="title" class="text-2xl font-bold">
+                        <h1
+                            v-if="title"
+                            class="font-display text-2xl font-semibold"
+                        >
                             {{ title }}
                         </h1>
                         <p

@@ -2,7 +2,6 @@
 import type { RadioGroupItemProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
-import { IconCircleFilled } from "@tabler/icons-vue"
 import {
   RadioGroupIndicator,
   RadioGroupItem,
@@ -23,17 +22,17 @@ const forwardedProps = useForwardProps(delegatedProps)
     v-bind="forwardedProps"
     :class="
       cn(
-        'border-input text-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 aspect-square size-4 shrink-0 rounded-full border shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+        'peer group/radio-group-item relative flex aspect-square size-4.5 shrink-0 rounded-full border border-input bg-transparent outline-none data-[state=checked]:border-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-foreground dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-[state=checked]:border-input group-has-[:focus-visible]/field-label:data-[state=checked]:border-foreground disabled:cursor-not-allowed disabled:opacity-50',
         props.class,
       )
     "
   >
     <RadioGroupIndicator
       data-slot="radio-group-indicator"
-      class="relative flex items-center justify-center"
+      class="flex size-4.5 items-center justify-center"
     >
       <slot>
-        <IconCircleFilled class="text-primary absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2" />
+        <span class="bg-foreground absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full" />
       </slot>
     </RadioGroupIndicator>
   </RadioGroupItem>

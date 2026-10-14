@@ -47,11 +47,11 @@ const excerpt = (post: TopPost): string =>
                 {{ $t('insights.top_posts.empty') }}
             </p>
 
-            <ol v-else class="divide-y-2 divide-foreground/10">
+            <ol v-else class="divide-y divide-border">
                 <li v-for="post in posts" :key="post.post_id">
                     <Link
                         :href="showPost.url(post.post_id)"
-                        class="flex items-center justify-between gap-4 py-3 hover:text-primary"
+                        class="flex items-center justify-between gap-4 py-3 hover:text-primary-text"
                         :data-testid="`insights-top-post-${post.post_id}`"
                     >
                         <span class="min-w-0">

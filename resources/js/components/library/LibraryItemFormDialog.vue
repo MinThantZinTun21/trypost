@@ -165,13 +165,13 @@ const submit = () => {
                         <div
                             v-for="file in media"
                             :key="file.id"
-                            class="group relative aspect-square overflow-hidden rounded-xl border border-border bg-muted"
+                            class="group relative aspect-square overflow-hidden rounded-none border border-border bg-muted"
                             :data-testid="`library-media-${file.id}`"
                         >
                             <LibraryMediaThumbnail :media="file" />
                             <button
                                 type="button"
-                                class="absolute top-1 right-1 inline-flex size-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+                                class="absolute top-1 right-1 inline-flex size-6 cursor-pointer items-center justify-center bg-black/60 text-white transition-colors hover:bg-black/80"
                                 :aria-label="trans('library.form.remove_media')"
                                 :data-testid="`library-media-remove-${file.id}`"
                                 @click="removeMedia(file.id)"
@@ -184,7 +184,7 @@ const submit = () => {
                             type="button"
                             data-testid="library-media-upload"
                             :disabled="uploading"
-                            class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-foreground/25 text-foreground/60 transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary disabled:cursor-wait"
+                            class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-none border border-dashed border-foreground/25 text-foreground/60 transition-colors hover:border-primary hover:bg-muted hover:text-primary-text disabled:cursor-wait"
                             @click="fileInput?.click()"
                         >
                             <template v-if="uploading">
@@ -220,7 +220,9 @@ const submit = () => {
                     <FieldError :errors="[errorFor('media_ids')]" />
                 </Field>
 
-                <section class="grid gap-2 rounded-xl border border-border p-4">
+                <section
+                    class="grid gap-2 rounded-none border border-border p-4"
+                >
                     <h3 class="flex items-center gap-2 text-sm font-semibold">
                         <IconBrandFacebook class="size-4 text-[#1877f2]" />
                         {{ $t('library.texts.facebook') }}
@@ -240,7 +242,9 @@ const submit = () => {
                     <FieldError :errors="[form.errors.facebook_text]" />
                 </section>
 
-                <section class="grid gap-2 rounded-xl border border-border p-4">
+                <section
+                    class="grid gap-2 rounded-none border border-border p-4"
+                >
                     <h3 class="flex items-center gap-2 text-sm font-semibold">
                         <IconBrandTiktok class="size-4" />
                         {{ $t('library.texts.tiktok') }}
@@ -260,7 +264,9 @@ const submit = () => {
                     <FieldError :errors="[form.errors.tiktok_caption]" />
                 </section>
 
-                <section class="grid gap-3 rounded-xl border border-border p-4">
+                <section
+                    class="grid gap-3 rounded-none border border-border p-4"
+                >
                     <h3 class="flex items-center gap-2 text-sm font-semibold">
                         <IconBrandYoutube class="size-4 text-[#ff0000]" />
                         {{ $t('library.texts.youtube') }}

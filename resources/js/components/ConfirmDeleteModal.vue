@@ -123,7 +123,7 @@ defineExpose({
             <DialogHeader class="items-start text-left">
                 <div class="flex items-start gap-3">
                     <div
-                        class="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600"
+                        class="inline-flex size-12 shrink-0 items-center justify-center rounded-none bg-destructive/10 text-destructive"
                     >
                         <IconAlertTriangle
                             class="size-6 text-rose-700"

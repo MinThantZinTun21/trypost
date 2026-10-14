@@ -254,7 +254,7 @@ const onAltTextSave = (alt: string): void => {
                             }
                         "
                         data-testid="media-thumbnail"
-                        class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border border-border bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
+                        class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-none border border-border bg-muted shadow-2xs transition-all focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:outline-none"
                         :class="[
                             dragMediaIndex === index ? 'opacity-40' : '',
                             dragOverIndex === index && dragMediaIndex !== index
@@ -325,7 +325,7 @@ const onAltTextSave = (alt: string): void => {
                             <Tooltip>
                                 <TooltipTrigger as-child>
                                     <span
-                                        class="absolute right-1.5 bottom-1.5 inline-flex h-5 items-center gap-0.5 rounded-full border border-border bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700 shadow-2xs"
+                                        class="absolute right-1.5 bottom-1.5 inline-flex h-5 items-center gap-0.5 rounded-none border border-border bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700"
                                     >
                                         <IconAlertTriangle class="size-2.5" />
                                         {{ mediaIssues[item.id].length }}
@@ -399,7 +399,7 @@ const onAltTextSave = (alt: string): void => {
                             type="button"
                             :title="$t('posts.edit.alt_text.edit')"
                             :aria-label="$t('posts.edit.alt_text.edit')"
-                            class="absolute top-1.5 right-9 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-violet-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            class="absolute top-1.5 right-9 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-muted lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                             data-testid="alt-text-button"
                             @click.stop="openAltText(index)"
                         >
@@ -409,7 +409,7 @@ const onAltTextSave = (alt: string): void => {
                         <button
                             v-if="!readOnly"
                             type="button"
-                            class="absolute top-1.5 right-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-rose-100 hover:text-rose-700 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            class="absolute top-1.5 right-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-foreground opacity-100 shadow-2xs transition-all hover:bg-destructive/10 hover:text-destructive lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                             data-testid="media-remove"
                             @click.stop="removeMedia(item.id)"
                         >
@@ -422,7 +422,7 @@ const onAltTextSave = (alt: string): void => {
                         type="button"
                         data-testid="media-upload"
                         :disabled="uploading"
-                        class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-foreground/25 text-foreground/60 transition-colors hover:border-primary/40 hover:bg-foreground/5 hover:text-foreground disabled:cursor-wait"
+                        class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-none border border-dashed border-foreground/25 text-foreground/60 transition-colors hover:border-primary/40 hover:bg-foreground/5 hover:text-foreground disabled:cursor-wait"
                         @click="fileInput?.click()"
                     >
                         <template v-if="uploading">
@@ -463,7 +463,7 @@ const onAltTextSave = (alt: string): void => {
                                     <Button
                                         variant="outline"
                                         size="icon-sm"
-                                        class="rounded-lg shadow-2xs hover:-translate-y-0.5 hover:shadow-sm"
+                                        class="rounded-none"
                                         :aria-label="
                                             $t('posts.edit.emoji_picker.search')
                                         "

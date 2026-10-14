@@ -84,7 +84,7 @@ const selectMetric = (value: string | number) => {
                         metric: $t(`insights.metrics.${metric}`),
                     })
                 "
-                class="text-primary"
+                class="text-primary-text"
             >
                 <VisXYContainer
                     :data="points"

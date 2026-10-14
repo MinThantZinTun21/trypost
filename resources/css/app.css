@@ -13,87 +13,74 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-    /* TryPost design system — soft glass. Cool lavender canvas, white
-     surfaces with hairline borders and layered violet-tinted shadows, and
-     a violet → pink brand gradient for primary actions and highlights. */
-    --background: #f6f5fb;
-    --foreground: #15121f;
-    --card: #ffffff;
-    --card-foreground: #15121f;
-    --popover: #ffffff;
-    --popover-foreground: #15121f;
-    --primary: #7c3aed;
-    --primary-foreground: #ffffff;
-    --secondary: #f1eff8;
-    --secondary-foreground: #15121f;
-    --muted: #f3f1f9;
-    --muted-foreground: #5b5675;
-    --accent: #f1ebff;
-    --accent-foreground: #5b21b6;
-    --destructive: #dc2626;
-    --destructive-foreground: #ffffff;
-    --success: #16a34a;
-    --error: #dc2626;
-    --warning: #d97706;
-    --info: #2563eb;
-    --border: #e6e3f0;
-    --input: #dcd8ea;
-    --ring: #8b5cf6;
-    --chart-1: #7c3aed;
-    --chart-2: #db2777;
-    --chart-3: #a78bfa;
-    --chart-4: #f472b6;
-    --chart-5: #4c1d95;
-    --sidebar: rgb(255 255 255 / 0.72);
-    --sidebar-foreground: #15121f;
-    --sidebar-primary: #7c3aed;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #f1ebff;
-    --sidebar-accent-foreground: #5b21b6;
-    --sidebar-border: #e6e3f0;
-    --sidebar-ring: #8b5cf6;
-    --gradient-brand: linear-gradient(
-        135deg,
-        #7c3aed 0%,
-        #c026d3 55%,
-        #db2777 100%
-    );
+    /* TryPost design system — shadcn "Sera" preset (b5VuIW3jXk), light only:
+     neutral surfaces, a lime primary, emerald charts, square corners, Roboto
+     text and Roboto Slab headings. Values come from the preset's preview. */
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.841 0.238 128.85);
+    --primary-foreground: oklch(0.405 0.101 131.063);
+    --secondary: oklch(0.967 0.001 286.375);
+    --secondary-foreground: oklch(0.21 0.006 285.885);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.841 0.238 128.85);
+    --accent-foreground: oklch(0.405 0.101 131.063);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(1 0 0);
+    --success: oklch(0.596 0.145 163.225);
+    --error: oklch(0.577 0.245 27.325);
+    --warning: oklch(0.666 0.179 58.318);
+    --info: oklch(0.546 0.245 262.881);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.845 0.143 164.978);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.596 0.145 163.225);
+    --chart-4: oklch(0.508 0.118 165.612);
+    --chart-5: oklch(0.432 0.095 166.913);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.648 0.2 131.684);
+    --sidebar-primary-foreground: oklch(0.986 0.031 120.757);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+    /* Readable lime for text and icons on white (the primary is a fill). */
+    --primary-text: oklch(0.532 0.157 131.589);
     --font-sans:
-        Figtree, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-        'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif,
+        Roboto, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
     --font-serif:
-        'Instrument Serif', ui-serif, Georgia, Cambria, 'Times New Roman',
-        Times, serif;
+        'Roboto Slab', ui-serif, Georgia, Cambria, 'Times New Roman', Times,
+        serif;
     --font-display:
-        Figtree, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-        'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        'Roboto Slab', ui-serif, Georgia, Cambria, 'Times New Roman', Times,
+        serif;
     --font-mono:
         'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
         'Liberation Mono', 'Courier New', monospace;
-    --radius: 1rem;
-    /* Soft, layered shadows tinted with the brand violet. */
-    --shadow-2xs: 0 1px 2px 0 rgb(21 18 31 / 0.04);
-    --shadow-xs:
-        0 1px 2px 0 rgb(21 18 31 / 0.05), 0 1px 3px 0 rgb(76 29 149 / 0.04);
-    --shadow-sm:
-        0 1px 3px 0 rgb(21 18 31 / 0.06), 0 4px 10px -2px rgb(76 29 149 / 0.06);
-    --shadow:
-        0 2px 4px -1px rgb(21 18 31 / 0.06),
-        0 8px 18px -4px rgb(76 29 149 / 0.1);
+    --radius: 0;
+    /* Plain neutral shadows; Sera surfaces lean on hairline rings instead. */
+    --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     --shadow-md:
-        0 4px 8px -2px rgb(21 18 31 / 0.06),
-        0 14px 28px -8px rgb(76 29 149 / 0.16);
+        0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-lg:
-        0 6px 12px -4px rgb(21 18 31 / 0.08),
-        0 22px 44px -12px rgb(76 29 149 / 0.2);
+        0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     --shadow-xl:
-        0 10px 20px -6px rgb(21 18 31 / 0.08),
-        0 32px 64px -16px rgb(76 29 149 / 0.24);
-    --shadow-2xl:
-        0 16px 32px -8px rgb(21 18 31 / 0.1),
-        0 44px 88px -20px rgb(76 29 149 / 0.3);
+        0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
     --tracking-normal: 0em;
     --spacing: 0.25rem;
 }
@@ -118,6 +105,7 @@
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
+    --color-primary-text: var(--primary-text);
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
@@ -137,10 +125,10 @@
     --font-serif: var(--font-serif);
     --font-display: var(--font-display);
 
-    --radius-sm: calc(var(--radius) - 4px);
-    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: var(--radius);
+    --radius-md: var(--radius);
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) + 4px);
+    --radius-xl: var(--radius);
 
     --shadow-2xs: var(--shadow-2xs);
     --shadow-xs: var(--shadow-xs);
@@ -160,18 +148,6 @@
     body {
         @apply bg-background text-foreground;
         font-family: var(--font-sans);
-        background-image:
-            radial-gradient(
-                56rem 36rem at 100% -8%,
-                rgb(219 39 119 / 0.07),
-                transparent 62%
-            ),
-            radial-gradient(
-                52rem 38rem at -8% -4%,
-                rgb(124 58 237 / 0.1),
-                transparent 60%
-            );
-        background-attachment: fixed;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -184,28 +160,24 @@
     }
 }
 
-/* The brand gradient for primary actions, active states and highlights. */
+/* The brand fill for primary actions, active states and highlights. */
 @utility bg-brand {
-    background-image: var(--gradient-brand);
+    background-color: var(--primary);
+    color: var(--primary-foreground);
 }
 
 @utility text-brand {
-    background-image: var(--gradient-brand);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
+    color: var(--primary-text);
 }
 
-/* Frosted surface for sticky chrome (sidebar, headers). */
+/* Surface for sticky chrome (sidebar, headers). */
 @utility glass {
-    background-color: rgb(255 255 255 / 0.72);
-    backdrop-filter: blur(16px) saturate(160%);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    background-color: var(--background);
 }
 
 /* Site headline + container utility classes — mirrors trypost-site's
    `assets/css/utility-patterns.css`. Use `.h1`/.h2`/.h3` for serif
-   display headlines (Instrument Serif) instead of stacking Tailwind
+   display headlines (Roboto Slab) instead of stacking Tailwind
    text-* utilities. */
 .h1 {
     font-family: var(--font-display);

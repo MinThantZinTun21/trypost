@@ -20,9 +20,9 @@ const forwardedProps = useForwardProps(delegatedProps)
     data-slot="range-calendar-trigger"
     :class="cn(
       buttonVariants({ variant: 'ghost' }),
-      'size-8 cursor-pointer p-0 font-medium hover:bg-foreground/5 data-[selected]:opacity-100',
-      // Today (not selected): violet pastel pill
-      '[&[data-today]:not([data-selected])]:bg-violet-100 [&[data-today]:not([data-selected])]:text-foreground [&[data-today]:not([data-selected])]:font-bold',
+      'size-8 rounded-none cursor-pointer p-0 font-medium hover:bg-muted data-[selected]:opacity-100',
+      // Today (not selected): muted square
+      '[&[data-today]:not([data-selected])]:bg-muted [&[data-today]:not([data-selected])]:text-foreground [&[data-today]:not([data-selected])]:font-bold',
       // Selection start: ink primary pill
       'data-[selection-start]:bg-primary data-[selection-start]:text-primary-foreground data-[selection-start]:font-bold data-[selection-start]:hover:bg-primary data-[selection-start]:hover:text-primary-foreground data-[selection-start]:focus:bg-primary data-[selection-start]:focus:text-primary-foreground',
       // Selection end

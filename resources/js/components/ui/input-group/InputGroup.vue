@@ -12,8 +12,8 @@ const props = defineProps<{
     data-slot="input-group"
     role="group"
     :class="cn(
-      'group/input-group border-input dark:bg-input/30 relative flex w-full items-center rounded-md border shadow-xs transition-[color,box-shadow] outline-none',
-      'h-9 min-w-0 has-[>textarea]:h-auto',
+      'group/input-group relative flex w-full items-center rounded-none border border-transparent border-b-input bg-transparent transition-[color,border-color] outline-none',
+      'h-10 min-w-0 has-[>textarea]:h-auto in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0',
 
       // Variants based on alignment.
       'has-[>[data-align=inline-start]]:[&>input]:pl-2',
@@ -22,10 +22,10 @@ const props = defineProps<{
       'has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:[&>input]:pt-3',
 
       // Focus state.
-      'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot=input-group-control]:focus-visible]:ring-[3px]',
+      'has-[[data-slot=input-group-control]:focus-visible]:border-b-ring',
 
       // Error state.
-      'has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[[data-slot][aria-invalid=true]]:border-destructive dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40',
+      'has-[[data-slot][aria-invalid=true]]:border-b-destructive dark:has-[[data-slot][aria-invalid=true]]:border-b-destructive/50',
 
       props.class,
     )"
