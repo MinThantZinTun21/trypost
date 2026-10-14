@@ -13,11 +13,13 @@ use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Http\Requests\App\Post\ShowCalendarRequest;
 use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\PostResource;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Services\Social\TikTokCreatorInfo;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
@@ -60,7 +62,7 @@ class PostController extends Controller
         ]);
     }
 
-    public function calendar(Request $request): Response
+    public function calendar(ShowCalendarRequest $request): Response
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -95,8 +97,14 @@ class PostController extends Controller
             default => $weekEnd,
         };
 
+        $accountId = $request->accountId();
+
         $posts = $workspace->posts()
             ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount')])
+            ->when($accountId, fn ($query) => $query->whereHas(
+                'postPlatforms',
+                fn ($target) => $target->enabled()->where('social_account_id', $accountId),
+            ))
             ->whereBetween('scheduled_at', [$rangeStart->copy()->utc(), $rangeEnd->copy()->utc()])
             ->orderBy('scheduled_at')
             ->get()
@@ -109,6 +117,18 @@ class PostController extends Controller
             'currentWeekStart' => $weekStart->format('Y-m-d'),
             'currentMonth' => $monthDate->format('Y-m-d'),
             'view' => $view,
+            'socialAccounts' => $workspace->socialAccounts()
+                ->orderBy('platform')
+                ->orderBy('display_name')
+                ->get()
+                ->map(fn (SocialAccount $account): array => [
+                    'id' => $account->id,
+                    'platform' => $account->platform->value,
+                    'display_label' => $account->display_label,
+                ]),
+            'filters' => [
+                'account' => $accountId,
+            ],
         ]);
     }
 

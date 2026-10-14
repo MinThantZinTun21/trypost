@@ -136,6 +136,69 @@ test('calendar payload names the social account of each target', function () {
         );
 });
 
+test('calendar filtered to a social account shows only the posts that publish to it', function () {
+    $scheduledAt = now('UTC')->startOfWeek()->addDays(2)->setTime(12, 0);
+    $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
+
+    $schedule = function (string $content, SocialAccount $account, bool $enabled = true) use ($scheduledAt): Post {
+        $post = Post::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'user_id' => $this->user->id,
+            'content' => $content,
+            'status' => PostStatus::Scheduled,
+            'scheduled_at' => $scheduledAt,
+        ]);
+        PostPlatform::factory()->{$account->platform->value}()->create([
+            'post_id' => $post->id,
+            'social_account_id' => $account->id,
+            'enabled' => $enabled,
+        ]);
+
+        return $post;
+    };
+
+    $facebookPost = $schedule('Facebook post', $this->socialAccount);
+    $schedule('TikTok post', $tiktok);
+    $schedule('Facebook target switched off', $this->socialAccount, enabled: false);
+
+    $dateKey = $scheduledAt->format('Y-m-d');
+
+    $this->actingAs($this->user)->get(route('app.calendar', ['account' => $this->socialAccount->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has("posts.{$dateKey}", 1)
+            ->where("posts.{$dateKey}.0.id", $facebookPost->id)
+            ->where('filters.account', $this->socialAccount->id)
+        );
+});
+
+test('calendar lists the workspace social accounts to filter by', function () {
+    $tiktok = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'display_name' => 'Lucky Clips',
+    ]);
+    SocialAccount::factory()->tiktok()->create();
+
+    $this->actingAs($this->user)->get(route('app.calendar'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('socialAccounts', 2)
+            ->where('socialAccounts.1.id', $tiktok->id)
+            ->where('socialAccounts.1.platform', 'tiktok')
+            ->where('socialAccounts.1.display_label', $tiktok->display_label)
+            ->where('filters.account', null)
+        );
+});
+
+test('calendar rejects a social account filter outside the workspace', function (Closure $makeAccountId) {
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['account' => $makeAccountId()]))
+        ->assertSessionHasErrors('account');
+})->with([
+    'another workspace' => [fn () => SocialAccount::factory()->create()->id],
+    'not a uuid' => [fn () => 'facebook'],
+]);
+
 test('calendar does not include unscheduled drafts', function () {
     $scheduledAt = now('UTC')->startOfWeek()->addDays(2)->setTime(12, 0);
 
