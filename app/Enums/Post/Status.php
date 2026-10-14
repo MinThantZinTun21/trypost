@@ -45,4 +45,13 @@ enum Status: string
             default => false,
         };
     }
+
+    /** Published on at least one platform: fully or partially published. */
+    public function isLive(): bool
+    {
+        return match ($this) {
+            self::Published, self::PartiallyPublished => true,
+            default => false,
+        };
+    }
 }

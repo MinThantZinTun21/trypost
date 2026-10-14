@@ -69,6 +69,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Telegram mirror
+    |--------------------------------------------------------------------------
+    |
+    | Every Post that publishes (fully or partly) is copied once to the
+    | Owner's Telegram channel by a bot that is an admin there (ADR 0008).
+    | Telegram is not a Platform. Empty token or channel = mirror off.
+    |
+    */
+
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'channel_id' => env('TELEGRAM_CHANNEL_ID'),
+        'api' => env('TELEGRAM_API', 'https://api.telegram.org'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Media Size Limits
     |--------------------------------------------------------------------------
     |

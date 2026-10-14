@@ -35,6 +35,7 @@ class Post extends Model
         'created_via',
         'scheduled_at',
         'published_at',
+        'telegram_sent_at',
     ];
 
     protected function casts(): array
@@ -45,6 +46,7 @@ class Post extends Model
             'media' => 'array',
             'scheduled_at' => 'datetime',
             'published_at' => 'datetime',
+            'telegram_sent_at' => 'datetime',
         ];
     }
 
