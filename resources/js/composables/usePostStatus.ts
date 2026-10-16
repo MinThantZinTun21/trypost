@@ -64,7 +64,7 @@ export const getPostStatusConfig = (status: string): StatusConfig => {
 
 export const getPlatformStatusConfig = (status: string): StatusConfig => {
     const map: Record<string, string> = {
-        pending: 'draft',
+        pending: 'scheduled',
         publishing: 'publishing',
         retrying: 'retrying',
         published: 'published',
