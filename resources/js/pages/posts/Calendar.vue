@@ -6,6 +6,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import DatePicker from '@/components/DatePicker.vue';
 import CalendarAccountFilter from '@/components/posts/CalendarAccountFilter.vue';
 import CalendarPostAccounts from '@/components/posts/CalendarPostAccounts.vue';
+import PostStatusBadge from '@/components/posts/PostStatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -19,6 +20,7 @@ import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
+import { usePollWhile } from '@/composables/usePollWhile';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -324,6 +326,15 @@ const getPostUrl = (post: Post): string => {
         : showPost.url(post.id);
 };
 
+// Refresh the badges while a post is publishing; stop once it settles.
+usePollWhile(
+    () =>
+        Object.values(props.posts)
+            .flat()
+            .some((post) => post.status === PostStatus.Publishing),
+    { only: ['posts'] },
+);
+
 const formatTime = (scheduledAt: string): string => {
     return date.formatTime(scheduledAt) || '';
 };
@@ -466,9 +477,17 @@ const formatTime = (scheduledAt: string): string => {
                                     class="flex items-start justify-between gap-3"
                                 >
                                     <div class="min-w-0 flex-1">
-                                        <!-- Time -->
-                                        <div class="mb-2 text-sm font-bold">
-                                            {{ formatTime(post.scheduled_at) }}
+                                        <!-- Time and status -->
+                                        <div
+                                            class="mb-2 flex items-center justify-between gap-2"
+                                        >
+                                            <span class="text-sm font-bold">{{
+                                                formatTime(post.scheduled_at)
+                                            }}</span>
+                                            <PostStatusBadge
+                                                :status="post.status"
+                                                data-testid="calendar-post-status"
+                                            />
                                         </div>
 
                                         <!-- Social accounts -->
@@ -478,6 +497,7 @@ const formatTime = (scheduledAt: string): string => {
                                             "
                                             :limit="5"
                                             show-handle
+                                            show-status
                                             class="mb-2 text-sm"
                                         />
 
@@ -560,15 +580,25 @@ const formatTime = (scheduledAt: string): string => {
                                 class="rounded-lg border border-border p-2 text-sm shadow-2xs transition-all hover:shadow-sm"
                                 :class="getStatusColor(post.status)"
                             >
-                                <!-- Time -->
-                                <div class="mb-1 text-xs font-bold">
-                                    {{ formatTime(post.scheduled_at) }}
+                                <!-- Time and status -->
+                                <div
+                                    class="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5"
+                                >
+                                    <span class="text-xs font-bold">{{
+                                        formatTime(post.scheduled_at)
+                                    }}</span>
+                                    <PostStatusBadge
+                                        :status="post.status"
+                                        class="max-w-full justify-start text-left whitespace-normal"
+                                        data-testid="calendar-post-status"
+                                    />
                                 </div>
 
                                 <!-- Social accounts -->
                                 <CalendarPostAccounts
                                     :post-platforms="post.post_platforms"
                                     :limit="4"
+                                    show-status
                                     class="mb-1.5 text-xs"
                                 />
 
@@ -674,9 +704,19 @@ const formatTime = (scheduledAt: string): string => {
                                         <div
                                             class="flex items-center justify-between gap-1.5"
                                         >
-                                            <span class="shrink-0 font-bold">{{
-                                                formatTime(post.scheduled_at)
-                                            }}</span>
+                                            <span
+                                                class="flex shrink-0 items-center gap-1 font-bold"
+                                                >{{
+                                                    formatTime(
+                                                        post.scheduled_at,
+                                                    )
+                                                }}
+                                                <PostStatusBadge
+                                                    :status="post.status"
+                                                    icon-only
+                                                    data-testid="calendar-post-status"
+                                                />
+                                            </span>
                                             <div
                                                 class="flex shrink-0 -space-x-1"
                                             >

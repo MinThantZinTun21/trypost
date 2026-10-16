@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
+import PostStatusBadge from '@/components/posts/PostStatusBadge.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { CalendarPostPlatform } from '@/types/calendar';
 
@@ -10,8 +11,10 @@ const props = withDefaults(
         postPlatforms: CalendarPostPlatform[];
         limit?: number;
         showHandle?: boolean;
+        /** Each account's own status: pending, published, failed, … */
+        showStatus?: boolean;
     }>(),
-    { limit: 4, showHandle: false },
+    { limit: 4, showHandle: false, showStatus: false },
 );
 
 const visiblePlatforms = computed(() =>
@@ -45,6 +48,14 @@ const accountName = (postPlatform: CalendarPostPlatform): string =>
             >
                 @{{ postPlatform.social_account.username }}
             </span>
+            <PostStatusBadge
+                v-if="showStatus"
+                :status="postPlatform.status"
+                kind="platform"
+                icon-only
+                class="ml-auto"
+                data-testid="calendar-post-account-status"
+            />
         </li>
         <li v-if="hiddenCount > 0" class="text-muted-foreground">
             {{ $t('calendar.more', { count: String(hiddenCount) }) }}
