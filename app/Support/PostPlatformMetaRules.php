@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\Delivery;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -252,7 +253,7 @@ class PostPlatformMetaRules
     {
         return match ($platform) {
             Platform::YouTube => self::youtubeDescriptionViolation($meta),
-            Platform::TikTok => self::tiktokPrivacyViolation($meta),
+            Platform::TikTok => Delivery::viaTelegram() ? null : self::tiktokPrivacyViolation($meta),
             default => null,
         };
     }

@@ -213,8 +213,9 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0002-postgres-only-no-redis.md`; where it runs is
 `docs/adr/0005-self-host-on-a-vultr-vps.md` and
 `docs/adr/0006-share-the-chord-book-server.md`; the Content library is
-`docs/adr/0007-content-library-of-ready-posts.md`; the Telegram mirror is
-`docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`. Read them
+`docs/adr/0007-content-library-of-ready-posts.md`; the TikTok handoff through Telegram is
+`docs/adr/0009-hand-tiktok-posts-off-through-telegram.md` (it supersedes
+`docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`). Read them
 before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
@@ -258,34 +259,43 @@ before adding anything.
 - MCP tools: `list_library_items`, `get_library_item`, `create_library_item`,
   `schedule_library_item`.
 
-## Telegram mirror (ADR 0008)
+## TikTok handoff through Telegram (ADR 0009)
 
+- `TIKTOK_DELIVERY` (`config('trypost.platforms.tiktok.delivery')`,
+  `App\Enums\TikTok\Delivery`) is `api` (the default, upload through the
+  Content Posting API) or `telegram`. With `telegram`, `PublishToSocialPlatform`
+  hands every TikTok target to `TikTokHandoff` instead of `TikTokPublisher`, at
+  the same scheduled time, on the same queue. Web and MCP Posts go the same
+  way.
 - Telegram is **not** a Platform: no Social account, no content type, no
   connect flow (`PlatformsRemovedTest` still forbids `telegram` routes). It is
   one channel from `.env`: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHANNEL_ID`
-  (`config('trypost.telegram')`); either empty turns the mirror off.
-- `FinalizePostPublication` dispatches `SendPostToTelegram` once a Post settles
-  Published or PartiallyPublished. `posts.telegram_sent_at` makes the send
-  happen once. The mirror never changes the Post's status.
-- `PostMirror` plans the mirror as ordered steps: photos up to 10 MB and
-  videos up to 50 MB (the Bot API's upload limits; a missing file is left out)
-  as albums of up to 10 items and 50 MB, the text as the first caption when it
-  fits in 1024 UTF-16 units (`TelegramClient::length()`), else as messages
-  after, split between lines (`TelegramClient::split()`). Each step is keyed
-  by what it sends and the job caches the keys that went out, so a retry
-  never posts an album twice. `PostMirrorText` builds the
-  text: content (or the YouTube title), a Download link per video, then the
-  live links.
+  (`config('trypost.telegram')`); a handoff without them fails the target.
+- Only TikTok targets go to Telegram. The old mirror of every published Post
+  (`SendPostToTelegram`, `posts.telegram_sent_at`, the `TelegramFailed`
+  Notification) was removed; do not bring it back.
+- The handoff sends, in order: each video with its Download link as the
+  caption (the link alone over the Bot API's 50 MB limit), or the photos as
+  albums of up to 10 items and 50 MB; then the TikTok caption as its own
+  message (a video's `caption` meta, a photo post's title and description,
+  else the Post content), split between lines (`TelegramClient::split()`).
+  Each step is keyed by what it sends and the keys that went out are cached,
+  so a retry never sends the video twice.
+- A handed-off target is **Published** with no `platform_url`. It skips the
+  TikTok account's token and connection state. Privacy level, interaction
+  flags and creator info are not required or fetched (`PostPlatformMetaRules`,
+  the MCP `create_post` tool, `PostController::edit`); the composer shows a
+  Telegram note instead (`tiktokViaTelegram` shared prop).
 - The Download link is `media.download` (`routes/media.php`): a permanent
   signed URL that needs no sign-in, so a video over 50 MB is still reachable
   from the channel. On R2 it redirects to a 30-minute presigned URL that forces
   a download; a local disk streams the file.
 - `TelegramClient` waits out a 429 of up to 10 s in place (`Sleep`, fake it in
-  tests) and resends the same call; a longer one releases the job, because the
-  wait holds the one worker that also publishes Posts. Any other
-  4xx fails at once; the final
-  failure stores a `TelegramFailed` Notification. `php artisan telegram:test`
-  sends a test message and explains a refusal.
+  tests) and resends the same call; a longer one, a 5xx or a lost connection
+  retries the target (`PlatformUnavailableException`), because the wait holds
+  the one worker that also publishes Posts. Any other 4xx fails the target
+  with Telegram's reason, and the usual `PostFailed` Notification follows.
+  `php artisan telegram:test` sends a test message and explains a refusal.
 
 ## Single Owner
 
@@ -363,9 +373,8 @@ before adding anything.
   notification preferences, and `MAIL_MAILER` stays `log`. Do not add a mail
   provider.
 - `App\Jobs\SendNotification` stores an in-app `Notification` row. There are
-  four types: `PostFailed` (full or partial failure; a fully published post
-  sends nothing), `AccountDisconnected`, `PostAtRisk` and `TelegramFailed` (the
-  Telegram mirror gave up). Titles and bodies
+  three types: `PostFailed` (full or partial failure; a fully published post
+  sends nothing), `AccountDisconnected` and `PostAtRisk`. Titles and bodies
   resolve through `lang/en/notifications.php`.
 
 ## Language (English only)

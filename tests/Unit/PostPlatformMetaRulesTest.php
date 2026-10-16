@@ -113,6 +113,12 @@ test('tiktok required meta accepts every privacy level enum value', function (Pr
     ]))->toBeNull();
 })->with(PrivacyLevel::cases());
 
+test('tiktok needs no privacy level when it is delivered through Telegram', function () {
+    config(['trypost.platforms.tiktok.delivery' => 'telegram']);
+
+    expect(PostPlatformMetaRules::requiredMetaViolation(Platform::TikTok, []))->toBeNull();
+});
+
 test('tiktok required meta rejects self only branded content', function () {
     expect(PostPlatformMetaRules::requiredMetaViolation(Platform::TikTok, [
         'privacy_level' => PrivacyLevel::SelfOnly->value,

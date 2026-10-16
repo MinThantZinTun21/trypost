@@ -9,6 +9,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Enums\TikTok\Delivery;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
@@ -18,6 +19,7 @@ use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\FacebookPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Services\Telegram\TikTokHandoff;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -78,6 +80,14 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         if (! $this->postPlatform->socialAccount->is_active) {
             $this->failAndFinalize(__('posts.errors.account_inactive'));
+
+            return;
+        }
+
+        if ($this->sendsToTelegram()) {
+            $this->postPlatform->markAsPublishing();
+            $this->publishThroughTelegram();
+            $this->updatePostStatus();
 
             return;
         }
@@ -154,6 +164,35 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         $this->updatePostStatus();
+    }
+
+    /**
+     * A TikTok target with Telegram delivery (ADR 0009) never calls TikTok,
+     * so the account's token, connection and scopes do not matter.
+     */
+    private function sendsToTelegram(): bool
+    {
+        return $this->postPlatform->platform === SocialPlatform::TikTok && Delivery::viaTelegram();
+    }
+
+    private function publishThroughTelegram(): void
+    {
+        try {
+            $this->recordPublishResult(app(TikTokHandoff::class)->publish($this->postPlatform));
+        } catch (PlatformUnavailableException $e) {
+            $this->rescheduleForRetry($e);
+        } catch (SocialPublishException $e) {
+            $this->reportCaughtPublishFailure($e);
+            $this->markPlatformAsFailed($e->userMessage, $this->failureContext([
+                'category' => $e->category->value,
+                'raw_response' => $e->context()['raw_response'],
+            ]));
+        } catch (Throwable $e) {
+            $this->reportCaughtPublishFailure($e);
+            $this->markPlatformAsFailed($this->safeFailureMessage($e), $this->failureContext([
+                'category' => ErrorCategory::Unknown->value,
+            ]));
+        }
     }
 
     /**

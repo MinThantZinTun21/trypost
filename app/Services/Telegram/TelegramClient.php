@@ -35,7 +35,7 @@ class TelegramClient
     /** Most items in one media group (album). */
     public const int ALBUM_LIMIT = 10;
 
-    /** Most bytes the mirror puts in one album request, so it uploads in time. */
+    /** Most bytes one album request carries, so it uploads in time. */
     public const int ALBUM_BYTES_LIMIT = 50 * 1024 * 1024;
 
     /**
@@ -247,7 +247,7 @@ class TelegramClient
 
     /**
      * Runs one Bot API call, waiting out a short 429 and trying the same call
-     * again, so a rate limit never sends earlier parts of a mirror twice.
+     * again, so a rate limit never sends earlier parts of a handoff twice.
      *
      * @param  Closure(): mixed  $send
      *

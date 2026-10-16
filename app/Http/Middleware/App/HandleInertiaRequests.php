@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware\App;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\TikTok\Delivery;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
@@ -52,6 +53,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::shareOnce($request),
             'contentTypeMediaRules' => fn (): array => ContentType::mediaRulesForFrontend(),
+            'tiktokViaTelegram' => fn (): bool => Delivery::viaTelegram(),
         ];
     }
 }

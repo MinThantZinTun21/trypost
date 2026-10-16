@@ -244,3 +244,20 @@ test('create_post returns the composer\'s errors and rolls the post back', funct
         fn () => __('posts.form.youtube.description_max'),
     ],
 ]);
+
+test('with Telegram delivery a TikTok post is scheduled without a privacy level', function () {
+    config(['trypost.platforms.tiktok.delivery' => 'telegram']);
+
+    createPostWith([
+        'content' => 'For the channel',
+        'media_ids' => [ownerAsset('video')->id],
+        'mode' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'social_accounts' => [['id' => $this->tiktok->id, 'caption' => 'Post me by hand']],
+    ])->assertOk();
+
+    $tiktok = onlyPost()->postPlatforms()->enabled()->sole();
+    expect(onlyPost()->status)->toBe(Status::Scheduled)
+        ->and($tiktok->content_type)->toBe(ContentType::TikTokVideo)
+        ->and(data_get($tiktok->meta, 'caption'))->toBe('Post me by hand');
+});

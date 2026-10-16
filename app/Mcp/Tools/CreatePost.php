@@ -11,6 +11,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\Delivery;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\LibraryItem;
@@ -40,7 +41,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('create_post')]
-#[Description('Creates a Post for one or more Social accounts from list_social_accounts. mode "draft" saves it, "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. Content types default to Reel, TikTok Video and YouTube Short for a video, and Facebook Post and TikTok Photo for images. Every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
+#[Description('Creates a Post for one or more Social accounts from list_social_accounts. mode "draft" saves it, "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. Content types default to Reel, TikTok Video and YouTube Short for a video, and Facebook Post and TikTok Photo for images. When TikTok delivery is Telegram, a TikTok Post is not uploaded to TikTok: its video (with a Download link) or photos and then its TikTok caption are sent to the Owner\'s Telegram channel to post by hand, and privacy_level is not needed. Otherwise every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
 class CreatePost extends Tool
 {
     public const MODE_STATUSES = [
@@ -173,7 +174,7 @@ class CreatePost extends Tool
                 'description' => $schema->string()->description("YouTube Short description (max {$youtubeDescriptionMax} bytes, defaults to the content), Facebook Reel description, or TikTok Photo description (max {$photoDescriptionMax}). Not used by other Content types."),
                 'caption' => $schema->string()->description("TikTok Video caption (max {$captionMax}). Defaults to the content. Not used by other Content types."),
                 'tags' => $schema->array()->items($schema->string())->description("YouTube Short tags, without #. At most {$tagsMax} characters in total, counting the commas between tags and the quotes YouTube adds around a tag with a space. Not used by other Content types."),
-                'privacy_level' => $schema->string()->enum(PrivacyLevel::values())->description('TikTok only, required. Only SELF_ONLY works until the TikTok app is audited.'),
+                'privacy_level' => $schema->string()->enum(PrivacyLevel::values())->description('TikTok only. Required unless TikTok delivery is Telegram; only SELF_ONLY works until the TikTok app is audited.'),
                 'allow_comments' => $schema->boolean()->description('TikTok only.'),
                 'allow_duet' => $schema->boolean()->description('TikTok Video only.'),
                 'allow_stitch' => $schema->boolean()->description('TikTok Video only.'),
@@ -230,7 +231,7 @@ class CreatePost extends Tool
                     ]));
                 }
 
-                if ($account->platform === Platform::TikTok && blank(data_get($entry, 'privacy_level'))) {
+                if ($account->platform === Platform::TikTok && ! Delivery::viaTelegram() && blank(data_get($entry, 'privacy_level'))) {
                     $validator->errors()->add("social_accounts.{$index}.privacy_level", __('mcp.post.tiktok_privacy_required', [
                         'account' => $account->accountDisplayName(),
                     ]));

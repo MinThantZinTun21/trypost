@@ -24,7 +24,7 @@ test('notification preferences are not stored', function () {
 
 test('only the four in-app notification types remain', function () {
     expect(array_map(fn (Type $type): string => $type->value, Type::cases()))
-        ->toBe(['post_failed', 'account_disconnected', 'post_at_risk', 'telegram_failed']);
+        ->toBe(['post_failed', 'account_disconnected', 'post_at_risk']);
 });
 
 test('no mail provider package is installed and mail defaults to the log mailer', function () {

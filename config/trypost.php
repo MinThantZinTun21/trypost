@@ -69,12 +69,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Telegram mirror
+    | Telegram channel
     |--------------------------------------------------------------------------
     |
-    | Every Post that publishes (fully or partly) is copied once to the
-    | Owner's Telegram channel by a bot that is an admin there (ADR 0008).
-    | Telegram is not a Platform. Empty token or channel = mirror off.
+    | With TikTok delivery set to "telegram", TikTok posts are handed off to
+    | the Owner's channel by a bot that is an admin there (ADR 0009).
+    | Telegram is not a Platform. Empty token or channel = handoff fails.
     |
     */
 
@@ -134,6 +134,9 @@ return [
         'tiktok' => [
             'enabled' => env('TIKTOK_ENABLED', true),
             'api' => env('TIKTOK_API', 'https://open.tiktokapis.com/v2'),
+            // "api" uploads to TikTok; "telegram" sends the media and caption
+            // to the Telegram channel instead, to post by hand (ADR 0009).
+            'delivery' => env('TIKTOK_DELIVERY', 'api'),
             // OAuth scopes to request. Trim when the TikTok app lacks a product
             // (e.g. no Display API => drop user.info.profile, user.info.stats,
             // video.list; analytics degrade gracefully, username stays empty).

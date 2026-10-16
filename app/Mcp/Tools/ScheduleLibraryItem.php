@@ -20,7 +20,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('schedule_library_item')]
-#[Description('Makes a Post from a Library item for one or more Social accounts from list_social_accounts, with the item\'s media and each Platform\'s text: the Facebook text as the content, the TikTok caption, and the YouTube title, description and tags. mode "draft" saves it, "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. It checks and creates the Post exactly like create_post. Every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
+#[Description('Makes a Post from a Library item for one or more Social accounts from list_social_accounts, with the item\'s media and each Platform\'s text: the Facebook text as the content, the TikTok caption, and the YouTube title, description and tags. mode "draft" saves it, "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. It checks and creates the Post exactly like create_post. When TikTok delivery is Telegram, a TikTok Post is not uploaded to TikTok: its video (with a Download link) or photos and then its TikTok caption are sent to the Owner\'s Telegram channel to post by hand, and privacy_level is not needed. Otherwise every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
 class ScheduleLibraryItem extends Tool
 {
     use HandlesLibraryItems;
@@ -66,7 +66,7 @@ class ScheduleLibraryItem extends Tool
             'social_accounts' => $schema->array()->items($schema->object([
                 'id' => $schema->string()->description('The Social account\'s id from list_social_accounts.')->required(),
                 'content_type' => $schema->string()->enum(array_column(ContentType::cases(), 'value'))->description('One of the account\'s content_types. Defaults from the item\'s media.'),
-                'privacy_level' => $schema->string()->enum(PrivacyLevel::values())->description('TikTok only, required. Only SELF_ONLY works until the TikTok app is audited.'),
+                'privacy_level' => $schema->string()->enum(PrivacyLevel::values())->description('TikTok only. Required unless TikTok delivery is Telegram; only SELF_ONLY works until the TikTok app is audited.'),
                 'allow_comments' => $schema->boolean()->description('TikTok only.'),
                 'allow_duet' => $schema->boolean()->description('TikTok Video only.'),
                 'allow_stitch' => $schema->boolean()->description('TikTok Video only.'),

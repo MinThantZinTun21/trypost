@@ -10,20 +10,20 @@ use Illuminate\Http\Client\RequestException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Sends one message to the Telegram mirror's channel (ADR 0008), so the Owner
- * can check the bot token, the channel id and the bot's admin rights before
- * a Post depends on them.
+ * Sends one message to the Telegram channel that TikTok posts go to
+ * (ADR 0009), so the Owner can check the bot token, the channel id and the
+ * bot's admin rights before a Post depends on them.
  */
-class TestTelegramMirror extends Command
+class TestTelegramChannel extends Command
 {
     protected $signature = 'telegram:test';
 
-    protected $description = 'Send a test message to the Telegram mirror channel';
+    protected $description = 'Send a test message to the Telegram channel';
 
     public function handle(TelegramClient $telegram): int
     {
         if (! $telegram->isConfigured()) {
-            $this->error('The Telegram mirror is off. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in .env.');
+            $this->error('Telegram is not set up. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in .env.');
 
             return self::FAILURE;
         }
