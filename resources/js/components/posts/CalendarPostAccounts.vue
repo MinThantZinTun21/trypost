@@ -13,8 +13,10 @@ const props = withDefaults(
         showHandle?: boolean;
         /** Each account's own status: pending, published, failed, … */
         showStatus?: boolean;
+        /** The status as an icon only, for narrow cards. */
+        compactStatus?: boolean;
     }>(),
-    { limit: 4, showHandle: false, showStatus: false },
+    { limit: 4, showHandle: false, showStatus: false, compactStatus: false },
 );
 
 const visiblePlatforms = computed(() =>
@@ -52,8 +54,8 @@ const accountName = (postPlatform: CalendarPostPlatform): string =>
                 v-if="showStatus"
                 :status="postPlatform.status"
                 kind="platform"
-                icon-only
-                class="ml-auto"
+                :icon-only="compactStatus"
+                class="ml-auto shrink-0"
                 data-testid="calendar-post-account-status"
             />
         </li>

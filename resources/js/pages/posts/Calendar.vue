@@ -599,6 +599,7 @@ const formatTime = (scheduledAt: string): string => {
                                     :post-platforms="post.post_platforms"
                                     :limit="4"
                                     show-status
+                                    compact-status
                                     class="mb-1.5 text-xs"
                                 />
 

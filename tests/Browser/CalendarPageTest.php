@@ -197,7 +197,9 @@ test('a scheduled post shows its accounts as pending', function () {
     waitForCalendarTestId($page, 'calendar-post-account-status');
 
     expect($page->script('[...document.querySelectorAll("[data-testid=calendar-post-account-status]")].map((el) => el.dataset.status)'))
-        ->toBe(['pending', 'pending']);
+        ->toBe(['pending', 'pending'])
+        ->and($page->script('[...document.querySelectorAll("[data-testid=calendar-post-account-status]")].map((el) => el.textContent.trim())'))
+        ->toBe([__('posts.edit.status.pending'), __('posts.edit.status.pending')]);
     $page->assertSeeIn('@calendar-post-status', __('posts.status.scheduled'))
         ->assertNoJavaScriptErrors();
 });
