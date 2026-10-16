@@ -9,6 +9,7 @@ import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { contentLimitApplies } from '@/lib/contentLimit';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
+import { tiktokViaTelegram } from '@/lib/tiktokDelivery';
 import { getYouTubeDescriptionIssue } from '@/lib/youtubeDescription';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -68,6 +69,10 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
         return { valid: tooltipKey === null, tooltipKey };
     },
     [Platform.TikTok]: (meta) => {
+        if (tiktokViaTelegram()) {
+            return { valid: true, tooltipKey: null };
+        }
+
         const disclosureIncomplete =
             Boolean(meta.disclose) &&
             !meta.brand_organic_toggle &&

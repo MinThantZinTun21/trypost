@@ -49,6 +49,7 @@ export interface SharedData {
     flash: FlashData;
     sidebarOpen: boolean;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
+    tiktokViaTelegram?: boolean;
     [key: string]: unknown;
 }
 

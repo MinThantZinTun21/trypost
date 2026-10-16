@@ -44,6 +44,7 @@ return [
         'write_caption' => 'Write your caption...',
         'content_exceeds_platform' => ':platform: too long by :over chars (max :limit).',
         'tiktok' => [
+            'via_telegram' => 'This goes to your Telegram channel, not to TikTok: the media, then the caption as its own message. Post it on TikTok yourself.',
             'settings' => 'TikTok Settings',
             'variant_label' => 'Post type',
             'variant' => [

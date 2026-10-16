@@ -1,5 +1,7 @@
 # Mirror published posts to a Telegram channel
 
+Superseded by ADR 0009: only TikTok posts go to Telegram now, as a TikTok handoff.
+
 ADR 0001 removed Telegram as a Platform. The Owner now wants every Post that goes live to also land in their own Telegram channel, with its text, its video or images, and the links to the live Facebook, TikTok and YouTube posts. Picking Telegram per Post is not wanted; the channel is a running record of what was published.
 
 So Telegram comes back as a **Telegram mirror**, not a Platform. One bot token and one channel id in the server's environment turn it on. When a Post settles as Published or Partially published, a queued job sends it to the channel once. Failed Posts are not sent.

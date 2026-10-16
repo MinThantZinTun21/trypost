@@ -13,6 +13,7 @@ use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\Delivery;
 use App\Http\Requests\App\Post\ShowCalendarRequest;
 use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
@@ -197,6 +198,7 @@ class PostController extends Controller
 
         $tiktokCreatorInfos = $socialAccounts
             ->where('platform', Platform::TikTok)
+            ->reject(fn () => Delivery::viaTelegram())
             ->mapWithKeys(fn ($account) => [
                 $account->id => rescue(
                     fn () => app(TikTokCreatorInfo::class)->fetch($account),

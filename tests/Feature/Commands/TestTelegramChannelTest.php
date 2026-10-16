@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 beforeEach(function () {
     config([
         'trypost.telegram.bot_token' => 'test-bot-token',
-        'trypost.telegram.channel_id' => '@trypost_mirror',
+        'trypost.telegram.channel_id' => '@trypost_channel',
     ]);
 });
 
@@ -18,11 +18,11 @@ test('it sends a test message to the channel', function () {
     Http::fake(["{$api}/*" => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
 
     $this->artisan('telegram:test')
-        ->expectsOutput('Test message sent to @trypost_mirror.')
+        ->expectsOutput('Test message sent to @trypost_channel.')
         ->assertSuccessful();
 
     Http::assertSent(fn (Request $request): bool => $request->url() === "{$api}/bottest-bot-token/sendMessage"
-        && $request['chat_id'] === '@trypost_mirror'
+        && $request['chat_id'] === '@trypost_channel'
         && $request['text'] === __('telegram.test_message', ['app' => config('app.name')]));
 });
 
@@ -40,7 +40,7 @@ test('it explains why Telegram refused the message', function (int $status, stri
     'wrong token' => [Response::HTTP_UNAUTHORIZED, 'Unauthorized', 'TELEGRAM_BOT_TOKEN'],
 ]);
 
-test('it says how to turn the mirror on when it is off', function () {
+test('it says how to set Telegram up when it is off', function () {
     config(['trypost.telegram.bot_token' => null]);
     Http::fake();
 

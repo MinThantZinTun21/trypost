@@ -8,7 +8,7 @@ use Illuminate\Routing\Middleware\ValidateSignature;
 use Illuminate\Support\Facades\Route;
 
 /*
- * The Download link in a Telegram mirror (ADR 0008). Signed and permanent,
+ * The Download link in a TikTok post sent to Telegram (ADR 0009). Signed and permanent,
  * with no sign-in, so anyone in the channel can download the video. Outside
  * the web middleware group: no session or cookies for a plain file download.
  */

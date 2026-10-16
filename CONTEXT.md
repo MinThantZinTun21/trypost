@@ -87,10 +87,10 @@ _Avoid_: Post analytics, post stats
 The Page insights the app stored for one day, so the dashboard shows history without asking Facebook each time.
 _Avoid_: Cache, sync
 
-**Telegram mirror**:
-A copy of each published Post that the app sends to the Owner's one Telegram channel: its text, its media and links to where it went live. Telegram is not a Platform; the Owner never picks it per Post.
-_Avoid_: Telegram platform, Telegram account, cross-post
+**TikTok handoff**:
+How a TikTok Post platform publishes when TikTok delivery is Telegram: at its scheduled time the app sends its video (or photos) and then its TikTok caption to the Owner's one Telegram channel, and the Owner posts it on TikTok by hand. The Post platform then counts as Published, with no live link. Telegram is not a Platform; nothing else is sent there.
+_Avoid_: Telegram mirror, Telegram platform, Telegram account, cross-post
 
 **Download link**:
-A permanent link in a Telegram mirror that downloads a Post's video file without signing in.
+A permanent link in a TikTok handoff that downloads a Post's video file without signing in.
 _Avoid_: Share link, public link

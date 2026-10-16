@@ -9,5 +9,4 @@ enum Type: string
     case PostFailed = 'post_failed';
     case AccountDisconnected = 'account_disconnected';
     case PostAtRisk = 'post_at_risk';
-    case TelegramFailed = 'telegram_failed';
 }

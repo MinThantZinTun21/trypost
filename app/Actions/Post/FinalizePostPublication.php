@@ -8,23 +8,18 @@ use App\Enums\Notification\Type;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Jobs\SendNotification;
-use App\Jobs\SendPostToTelegram;
 use App\Models\Post;
 use App\Models\PostPlatform;
-use App\Services\Telegram\TelegramClient;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Settles a post once every enabled target has reached a terminal state, and
  * notifies the owner once when it failed fully or partly. Shared by PublishToSocialPlatform, PublishPost::failed,
- * and RecoverStuckPosts. A post that went live is queued once for the
- * Telegram mirror (ADR 0008) when it is configured.
+ * and RecoverStuckPosts.
  */
 class FinalizePostPublication
 {
-    public function __construct(private TelegramClient $telegram) {}
-
     public function handle(Post $post): void
     {
         /** @var array{post: Post, successful: bool, platforms: Collection<int, PostPlatform>}|null $outcome */
@@ -86,17 +81,11 @@ class FinalizePostPublication
             return;
         }
 
-        $settled = data_get($outcome, 'post');
-
-        if ($settled->status->isLive() && $this->telegram->isConfigured()) {
-            SendPostToTelegram::dispatch($settled);
-        }
-
         if (data_get($outcome, 'successful')) {
             return;
         }
 
-        $this->notifyFailure($settled, data_get($outcome, 'platforms'));
+        $this->notifyFailure(data_get($outcome, 'post'), data_get($outcome, 'platforms'));
     }
 
     /**

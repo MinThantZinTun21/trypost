@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * The Download link in a Telegram mirror (ADR 0008): a permanent signed URL
+ * The Download link in a TikTok post sent to Telegram (ADR 0009): a permanent signed URL
  * that downloads a Post's video without signing in. Remote storage that can
  * presign (R2) serves the file itself through a short-lived URL; a local disk
  * streams it, because its own temporary URLs cannot force a download.
