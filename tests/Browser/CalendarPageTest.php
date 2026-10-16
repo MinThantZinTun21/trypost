@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -165,5 +166,52 @@ test('the account filter stays on when moving to the next day', function () {
     JS);
 
     expect($page->script('location.search'))->toContain("account={$tiktok->id}");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('each post shows its status and each social account its own', function (string $view) {
+    $user = calendarOwnerWithScheduledPost();
+    $post = Post::query()->sole();
+    $post->update(['status' => PostStatus::PartiallyPublished]);
+    $post->postPlatforms()->where('platform', 'facebook')->update(['status' => PlatformStatus::Published]);
+    $post->postPlatforms()->where('platform', 'tiktok')->update(['status' => PlatformStatus::Failed]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => $view]));
+
+    waitForCalendarTestId($page, 'calendar-post-status');
+
+    expect($page->script('document.querySelector("[data-testid=calendar-post-status]").dataset.status'))
+        ->toBe('partially_published')
+        ->and($page->script('[...document.querySelectorAll("[data-testid=calendar-post-account-status]")].map((el) => el.dataset.status).sort()'))
+        ->toBe(['failed', 'published']);
+    $page->assertSeeIn('@calendar-post-status', __('posts.status.partially_published'))
+        ->assertNoJavaScriptErrors();
+})->with(['day', 'week']);
+
+test('a scheduled post shows its accounts as pending', function () {
+    $this->actingAs(calendarOwnerWithScheduledPost());
+
+    $page = visit(route('app.calendar', ['view' => 'day']));
+
+    waitForCalendarTestId($page, 'calendar-post-account-status');
+
+    expect($page->script('[...document.querySelectorAll("[data-testid=calendar-post-account-status]")].map((el) => el.dataset.status)'))
+        ->toBe(['pending', 'pending']);
+    $page->assertSeeIn('@calendar-post-status', __('posts.status.scheduled'))
+        ->assertNoJavaScriptErrors();
+});
+
+test('the month view marks each post with its status', function () {
+    $user = calendarOwnerWithScheduledPost();
+    Post::query()->sole()->update(['status' => PostStatus::Failed]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month']));
+
+    waitForCalendarTestId($page, 'calendar-post-status');
+
+    expect($page->script('document.querySelector("[data-testid=calendar-post-status]").dataset.status'))->toBe('failed')
+        ->and($page->script('document.querySelector("[data-testid=calendar-post-status]").getAttribute("title")'))->toBe(__('posts.status.failed'));
     $page->assertNoJavaScriptErrors();
 });

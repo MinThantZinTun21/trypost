@@ -29,6 +29,14 @@ const emit = defineEmits<{
 
 const selected = computed(() => props.modelValue ?? ALL_ACCOUNTS);
 
+/**
+ * Rendered here rather than copied from the chosen item, which reka-ui does
+ * once on mount, before the translations have loaded.
+ */
+const selectedAccount = computed(() =>
+    props.accounts.find((account) => account.id === props.modelValue),
+);
+
 const select = (value: unknown) => {
     const accountId =
         typeof value === 'string' && value !== ALL_ACCOUNTS ? value : null;
@@ -46,7 +54,19 @@ const select = (value: unknown) => {
             :aria-label="$t('calendar.filter_label')"
             :data-testid="testId"
         >
-            <SelectValue />
+            <SelectValue>
+                <template v-if="selectedAccount">
+                    <PlatformLogo
+                        :platform="selectedAccount.platform"
+                        size="xs"
+                        plain
+                    />
+                    <span class="truncate">{{
+                        selectedAccount.display_label
+                    }}</span>
+                </template>
+                <template v-else>{{ $t('calendar.all_accounts') }}</template>
+            </SelectValue>
         </SelectTrigger>
         <SelectContent>
             <SelectItem
