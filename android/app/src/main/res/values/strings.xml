@@ -31,6 +31,7 @@
     <string name="sign_out_confirm_title">Sign out?</string>
     <string name="sign_out_confirm_body">The token is removed from this phone. You\'ll need it again to sign back in.</string>
     <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
     <string name="tab_scheduled">Scheduled</string>
     <string name="tab_published">Published</string>
     <string name="tab_failed">Failed</string>
@@ -54,6 +55,25 @@
         <item quantity="one">%1$d media file</item>
         <item quantity="other">%1$d media files</item>
     </plurals>
+
+    <!-- Navigation -->
+    <string name="nav_posts">Posts</string>
+    <string name="nav_videos">Videos</string>
+
+    <!-- Videos -->
+    <string name="videos_title">Videos</string>
+    <string name="videos_upload">Upload</string>
+    <string name="videos_error_title">Couldn\'t load videos</string>
+    <string name="videos_empty_title">No videos yet</string>
+    <string name="videos_empty_body">Upload a video from this phone to keep it here.</string>
+    <string name="videos_name">Name</string>
+    <string name="videos_name_title">Upload a video</string>
+    <string name="videos_uploading">Uploading… %1$d%%</string>
+    <string name="videos_upload_failed">The upload failed.</string>
+    <string name="videos_delete">Delete</string>
+    <string name="videos_delete_confirm_title">Delete this video?</string>
+    <string name="videos_delete_confirm_body">“%1$s” and its file are removed from the server.</string>
+    <string name="videos_delete_failed">Couldn\'t delete the video.</string>
 
     <!-- Post detail -->
     <string name="detail_title">Post</string>

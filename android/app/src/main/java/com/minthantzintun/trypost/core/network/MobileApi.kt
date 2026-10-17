@@ -1,6 +1,7 @@
 package com.minthantzintun.trypost.core.network
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -36,4 +37,16 @@ interface MobileApi {
 
     @POST("mobile/v1/posts/{post}/telegram")
     suspend fun sendToTelegram(@Path("post") id: String): MessageDto
+
+    @GET("mobile/v1/videos")
+    suspend fun videos(@Query("page") page: Int): PageDto<VideoDto>
+
+    @POST("mobile/v1/videos/uploads")
+    suspend fun startVideoUpload(@Body body: StartVideoUploadBody): VideoUploadDto
+
+    @POST("mobile/v1/videos")
+    suspend fun storeVideo(@Body body: StoreVideoBody): VideoDto
+
+    @DELETE("mobile/v1/videos/{video}")
+    suspend fun deleteVideo(@Path("video") id: String)
 }

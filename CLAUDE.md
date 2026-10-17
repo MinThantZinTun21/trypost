@@ -299,7 +299,10 @@ before adding anything.
   upload with a name (`CreateVideo`), and `DELETE videos/{video}` removes the
   Video with its file. The file is a Media row attached to the Video
   (collection `file`), never a workspace asset, so the composer and
-  `create_post` cannot use it. There is no web page for Videos.
+  `create_post` cannot use it. There is no web page for Videos; the Android
+  app's Videos tab (bottom navigation) lists, uploads and deletes them. Its
+  upload PUTs the file straight to the presigned URL without the bearer token,
+  while the app is open (no WorkManager).
 
 ## TikTok handoff through Telegram (ADR 0009)
 
