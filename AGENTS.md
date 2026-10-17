@@ -242,6 +242,9 @@ before adding anything.
   publish through a separate path.
 - `delete_post` reuses the web delete action and refuses what the web refuses
   (`PostStatusRules::blocksDeletion()`: publishing or published Posts).
+- `list_videos`, `get_video` and `delete_video` reach the Owner's Videos
+  (ADR 0013). `get_video`'s Download link is the permanent signed
+  `media.download` URL of the Video's file.
 
 ## Mobile app API (ADR 0010)
 
@@ -280,6 +283,14 @@ before adding anything.
   fields freely, but rename or remove one only in a new `/mobile/v2`.
 - The list tabs are `App\Enums\Mobile\PostTab`, not Post statuses: Scheduled
   includes Publishing, Failed includes Partially published.
+- **Videos** (ADR 0013) are a name and a video file, not Posts and not the
+  removed Content library. `/mobile/v1/videos` lists them newest first,
+  `POST videos/uploads` hands out a presigned PUT through
+  `DirectAssetReceiver` (object storage only), `POST videos` registers the
+  upload with a name (`CreateVideo`), and `DELETE videos/{video}` removes the
+  Video with its file. The file is a Media row attached to the Video
+  (collection `file`), never a workspace asset, so the composer and
+  `create_post` cannot use it. There is no web page for Videos.
 
 ## TikTok handoff through Telegram (ADR 0009)
 

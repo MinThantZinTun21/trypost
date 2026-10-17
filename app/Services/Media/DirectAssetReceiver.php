@@ -7,6 +7,7 @@ namespace App\Services\Media;
 use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\User;
+use App\Models\Video;
 use App\Models\Workspace;
 use App\Support\VideoDurationProbe;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -57,6 +58,26 @@ final class DirectAssetReceiver
 
     public function complete(Workspace $workspace, User $user, string $uploadId, ?float $duration = null): ChunkReceipt
     {
+        return ChunkReceipt::completed($this->register($workspace, 'assets', $user, $uploadId, $duration));
+    }
+
+    /**
+     * Registers a finished upload as a Video's file (ADR 0013). Anything but a
+     * video is refused and removed from storage.
+     */
+    public function completeVideo(Video $video, User $user, string $uploadId): Media
+    {
+        return $this->register($video, Video::FILE_COLLECTION, $user, $uploadId, null, MediaType::Video);
+    }
+
+    private function register(
+        Workspace|Video $owner,
+        string $collection,
+        User $user,
+        string $uploadId,
+        ?float $duration,
+        ?MediaType $onlyType = null,
+    ): Media {
         $upload = $this->cache->pull($this->cacheKey($user, $uploadId));
         $key = (string) data_get($upload, 'key', '');
         $size = $key === '' ? null : $this->cloud->storedSize($key);
@@ -69,6 +90,10 @@ final class DirectAssetReceiver
         $mimeType = $this->cloud->storedMimeType($key, $size);
         $type = MediaType::classify($mimeType);
 
+        if ($onlyType !== null && $type !== $onlyType) {
+            $this->reject($key, __('videos.not_a_video'));
+        }
+
         if ($type === null) {
             $this->reject($key, __('assets.upload.unsupported'));
         }
@@ -77,25 +102,23 @@ final class DirectAssetReceiver
             $this->reject($key, __('assets.upload.file_too_large', ['max' => $type->maxSizeInMb()]));
         }
 
-        $media = $type === MediaType::Image
-            ? $this->registerImage($workspace, $key, $fileName, $mimeType)
-            : $this->registerStored($workspace, $key, $fileName, $mimeType, $size, $type, $duration);
-
-        return ChunkReceipt::completed($media);
+        return $type === MediaType::Image
+            ? $this->registerImage($owner, $collection, $key, $fileName, $mimeType)
+            : $this->registerStored($owner, $collection, $key, $fileName, $mimeType, $size, $type, $duration);
     }
 
     /**
      * Images are resized and re-encoded, so the uploaded original is pulled
      * down, stored through the image pipeline, and then discarded.
      */
-    private function registerImage(Workspace $workspace, string $key, string $fileName, string $mimeType): Media
+    private function registerImage(Workspace|Video $owner, string $collection, string $key, string $fileName, string $mimeType): Media
     {
         $localPath = (string) tempnam(sys_get_temp_dir(), 'direct-upload-');
 
         try {
             $this->cloud->download($key, $localPath);
 
-            return $workspace->addMediaFromPath($localPath, $fileName, 'assets', [], null, $mimeType);
+            return $owner->addMediaFromPath($localPath, $fileName, $collection, [], null, $mimeType);
         } finally {
             @unlink($localPath);
             Storage::delete($key);
@@ -103,7 +126,8 @@ final class DirectAssetReceiver
     }
 
     private function registerStored(
-        Workspace $workspace,
+        Workspace|Video $owner,
+        string $collection,
         string $key,
         string $fileName,
         string $mimeType,
@@ -116,7 +140,7 @@ final class DirectAssetReceiver
             : [];
 
         try {
-            return $workspace->addMediaFromStoredPath($key, $fileName, $mimeType, $size, 'assets', $meta);
+            return $owner->addMediaFromStoredPath($key, $fileName, $mimeType, $size, $collection, $meta);
         } catch (Throwable $exception) {
             Storage::delete($key);
 

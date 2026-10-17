@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Mobile\V1\MeController;
 use App\Http\Controllers\Mobile\V1\PostController;
+use App\Http\Controllers\Mobile\V1\VideoController;
 use App\Http\Middleware\AuthenticateMobileToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
@@ -22,4 +23,8 @@ Route::prefix('mobile/v1')
         Route::put('posts/{post}', [PostController::class, 'update'])->name('posts.update');
         Route::put('posts/{post}/schedule', [PostController::class, 'reschedule'])->name('posts.reschedule');
         Route::post('posts/{post}/telegram', [PostController::class, 'sendToTelegram'])->name('posts.send');
+        Route::get('videos', [VideoController::class, 'index'])->name('videos.index');
+        Route::post('videos/uploads', [VideoController::class, 'startUpload'])->name('videos.uploads.store');
+        Route::post('videos', [VideoController::class, 'store'])->name('videos.store');
+        Route::delete('videos/{video}', [VideoController::class, 'destroy'])->name('videos.destroy');
     });

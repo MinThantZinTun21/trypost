@@ -12,6 +12,7 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Models\Video;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\Fluent\AssertableJson;
@@ -202,6 +203,10 @@ test('create_post rejects input before saving anything', function (Closure $argu
     ],
     'unknown media' => [
         fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [Media::factory()->assets()->for(Workspace::factory(), 'mediable')->create()->id], 'social_accounts' => [['id' => test()->facebook->id]]],
+        fn () => __('mcp.post.media_not_found'),
+    ],
+    'a Video\'s file' => [
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [Video::factory()->for(test()->workspace)->withFile()->create()->file->id], 'social_accounts' => [['id' => test()->facebook->id]]],
         fn () => __('mcp.post.media_not_found'),
     ],
     'title on a Facebook Post' => [

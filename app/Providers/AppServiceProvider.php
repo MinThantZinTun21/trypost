@@ -13,6 +13,7 @@ use App\Models\PostInsight;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Models\Video;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -51,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,
             'user' => User::class,
+            'video' => Video::class,
             'workspace' => Workspace::class,
         ]);
     }
