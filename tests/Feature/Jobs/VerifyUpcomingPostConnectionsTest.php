@@ -203,6 +203,36 @@ test('verifies a distinct account only once even with multiple at-risk posts', f
     assertPostAtRiskNotified(fn ($notification) => count($notification->postPlatformIds) === 3);
 });
 
+test('ignores TikTok posts when TikTok delivery is Telegram, but still checks the others', function () {
+    Mail::fake();
+    config(['trypost.platforms.tiktok.delivery' => 'telegram']);
+
+    $workspace = Workspace::factory()->create();
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(20),
+    ]);
+    $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
+    foreach ([$tiktok, $facebook] as $account) {
+        PostPlatform::factory()->create([
+            'post_id' => $post->id,
+            'social_account_id' => $account->id,
+            'platform' => $account->platform,
+            'status' => PostPlatformStatus::Pending,
+        ]);
+    }
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->withArgs(fn (SocialAccount $account): bool => $account->is($facebook));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect(postAtRiskNotificationCount())->toBe(0)
+        ->and($tiktok->fresh()->status)->toBe(SocialAccountStatus::Connected);
+});
+
 test('ignores posts outside the 1-hour window', function () {
     Mail::fake();
 

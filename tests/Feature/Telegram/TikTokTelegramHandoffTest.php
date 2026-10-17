@@ -7,6 +7,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Jobs\PublishPost;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Media;
 use App\Models\Post;
@@ -15,6 +16,8 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\FacebookPublisher;
+use App\Services\Social\TikTokPublisher;
+use App\Support\Social\PublishCheckpoint;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -299,4 +302,47 @@ test('a published Facebook post is no longer copied to Telegram', function () {
 
     expect($post->fresh()->status)->toBe(PostStatus::Published)
         ->and(handoffRequests())->toBeEmpty();
+});
+
+test('a scheduled post never reaches the TikTok publisher: TikTok goes to Telegram and Facebook publishes as usual', function () {
+    $target = tiktokHandoffTarget([['type' => 'video']], ['caption' => 'Hand me off']);
+    $post = $target->post;
+    $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->subMinute()]);
+    $facebookTarget = PostPlatform::factory()->facebook()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id])->id,
+        'enabled' => true,
+    ]);
+    $tiktokPublisher = Mockery::mock(TikTokPublisher::class);
+    $tiktokPublisher->shouldNotReceive('publish');
+    $this->app->instance(TikTokPublisher::class, $tiktokPublisher);
+    $facebookPublisher = Mockery::mock(FacebookPublisher::class);
+    $facebookPublisher->shouldReceive('publish')->once()->andReturn(['id' => 'fb-1', 'url' => 'https://facebook.com/fb-1']);
+    $this->app->instance(FacebookPublisher::class, $facebookPublisher);
+
+    (new PublishPost($post->fresh()))->handle();
+
+    Http::assertNotSent(fn (Request $request): bool => str_starts_with($request->url(), config('trypost.platforms.tiktok.api')));
+    expect(handoffRequests('sendVideo'))->toHaveCount(1)
+        ->and(handoffField(handoffRequests('sendMessage')[0], 'text'))->toBe('Hand me off')
+        ->and($target->fresh()->status)->toBe(PlatformStatus::Published)
+        ->and($facebookTarget->fresh()->status)->toBe(PlatformStatus::Published)
+        ->and($post->fresh()->status)->toBe(PostStatus::Published);
+});
+
+test('a TikTok target left retrying by the API goes to Telegram, not back to TikTok', function () {
+    $target = tiktokHandoffTarget([['type' => 'video']], ['caption' => 'From before the switch']);
+    $target->update([
+        'status' => PlatformStatus::Retrying,
+        'error_context' => [PublishCheckpoint::TIKTOK_PUBLISH_ID => 'v_pub_123'],
+    ]);
+    $tiktokPublisher = Mockery::mock(TikTokPublisher::class);
+    $tiktokPublisher->shouldNotReceive('publish');
+    $this->app->instance(TikTokPublisher::class, $tiktokPublisher);
+
+    runHandoff($target->fresh());
+
+    Http::assertNotSent(fn (Request $request): bool => str_starts_with($request->url(), config('trypost.platforms.tiktok.api')));
+    expect($target->fresh()->status)->toBe(PlatformStatus::Published)
+        ->and(handoffRequests())->toHaveCount(2);
 });

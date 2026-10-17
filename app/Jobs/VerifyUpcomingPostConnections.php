@@ -6,7 +6,9 @@ namespace App\Jobs;
 
 use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
+use App\Enums\TikTok\Delivery;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
@@ -321,6 +323,9 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             // purpose. whereHas() already excludes a null social_account_id
             // (nothing to join to).
             ->whereHas('socialAccount', fn ($query) => $query->where('is_active', true))
+            // A TikTok target handed off through Telegram (ADR 0009) never
+            // calls TikTok, so a broken TikTok token puts it at no risk.
+            ->when(Delivery::viaTelegram(), fn ($query) => $query->where('platform', '!=', Platform::TikTok))
             ->where(function ($query) {
                 $query->whereNull('connection_warning_sent_at')
                     ->orWhere('connection_warning_sent_at', '<', now()->subDay());
