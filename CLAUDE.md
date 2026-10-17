@@ -215,7 +215,8 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0006-share-the-chord-book-server.md`; the Content library is
 `docs/adr/0007-content-library-of-ready-posts.md`; the TikTok handoff through Telegram is
 `docs/adr/0009-hand-tiktok-posts-off-through-telegram.md` (it supersedes
-`docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`). Read them
+`docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`); the Android app is
+`docs/adr/0010-android-app-on-a-token-guarded-mobile-api.md`. Read them
 before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
@@ -240,6 +241,25 @@ before adding anything.
 - Tools say "Social account", never "channel". Tool names are snake_case.
   Tools reuse the same actions and validation as the composer; they never
   publish through a separate path.
+
+## Mobile app API (ADR 0010)
+
+- `/mobile/v1` (`routes/mobile.php`, controllers in `App\Http\Controllers\Mobile\V1`)
+  is the Owner's Android app (`android/`) way in. It sits outside the web
+  group: no session, cookies or CSRF.
+- `AuthenticateMobileToken` guards it with one bearer secret, `MOBILE_TOKEN`
+  (`config('trypost.mobile.token')`; empty = 404, wrong = 401), and acts as the
+  Owner. It shares `AuthenticatesWithOwnerToken` with `AuthenticateMcpToken`;
+  the two secrets stay separate so each can be rotated alone.
+- The app views Posts, edits their texts, and Reschedules or Unschedules them.
+  It never creates Posts, changes media, Social accounts or Content types, or
+  publishes now. Every change goes through `UpdatePost` and the shared rules
+  (`PostStatusRules`, `PostPlatformMetaRules`); a finalized Post is 409.
+- Responses are the `App\Http\Resources\Mobile\V1` resources, with times in
+  ISO 8601 UTC. Treat their fields as a contract with an installed app: add
+  fields freely, but rename or remove one only in a new `/mobile/v2`.
+- The list tabs are `App\Enums\Mobile\PostTab`, not Post statuses: Scheduled
+  includes Publishing, Failed includes Partially published.
 
 ## Content library (ADR 0007)
 

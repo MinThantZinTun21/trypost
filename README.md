@@ -20,6 +20,7 @@ This is a hard fork of [trypostit/trypost](https://github.com/trypostit/trypost)
 - **Calendar.** Month, week and day views, with drag and drop to reschedule, plus lists of scheduled, draft and posted posts.
 - **Publishing you can see.** Each platform's result shows a link or a failure reason, and the post page refreshes while it publishes.
 - **Works with Claude Code.** An MCP server at `/mcp` lets an Assistant list your Social accounts and schedule posts for you.
+- **Android app.** View your posts, fix their texts, and Reschedule or Unschedule them from your phone (`android/`).
 - **In-app notifications** when a post fails, when an account disconnects, or when an upcoming post's account needs reconnecting. Expiring tokens are refreshed automatically.
 
 ## Requirements
@@ -174,6 +175,18 @@ claude mcp add --transport http trypost https://your-app.example/mcp --header "A
 ```
 
 Every tool acts as the Owner. Start by asking Claude to list your Social accounts.
+
+## Android app
+
+The app in `android/` talks to `/mobile/v1` with one bearer secret. Set `MOBILE_TOKEN` to a long random string (`openssl rand -hex 32`) in the server's `.env`; an empty token turns the mobile API off. Install the app, enter the server address (prefilled with production) and the token. Changing `MOBILE_TOKEN` signs the phone out.
+
+Build and test it with JDK 17 or newer and the Android SDK:
+
+```bash
+cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug
+```
+
+The debug APK lands in `android/app/build/outputs/apk/debug/`. A debug build may also reach a local server over plain HTTP at `http://10.0.2.2:<port>` from the emulator.
 
 ## Tests
 

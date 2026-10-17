@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function (): void {
             Route::group([], __DIR__.'/../routes/cron.php');
             Route::group([], __DIR__.'/../routes/media.php');
+            Route::group([], __DIR__.'/../routes/mobile.php');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
