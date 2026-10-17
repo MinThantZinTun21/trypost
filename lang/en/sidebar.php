@@ -21,8 +21,6 @@ return [
         'scheduled' => 'Scheduled',
         'posted' => 'Posted',
         'drafts' => 'Drafts',
-        'ideas' => 'Content ideas',
-        'library' => 'Content library',
     ],
     'insights' => 'Insights',
     'notifications' => 'Notifications',

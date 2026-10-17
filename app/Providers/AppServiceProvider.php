@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\Account;
-use App\Models\ContentIdea;
-use App\Models\LibraryItem;
 use App\Models\Media;
 use App\Models\Notification;
 use App\Models\PageInsightSnapshot;
@@ -45,8 +43,6 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'account' => Account::class,
-            'contentIdea' => ContentIdea::class,
-            'libraryItem' => LibraryItem::class,
             'media' => Media::class,
             'notification' => Notification::class,
             'pageInsightSnapshot' => PageInsightSnapshot::class,

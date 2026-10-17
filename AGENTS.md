@@ -212,8 +212,7 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0001-hard-fork-to-minimal-three-platform-scheduler.md` and
 `docs/adr/0002-postgres-only-no-redis.md`; where it runs is
 `docs/adr/0005-self-host-on-a-vultr-vps.md` and
-`docs/adr/0006-share-the-chord-book-server.md`; the Content library is
-`docs/adr/0007-content-library-of-ready-posts.md`; the TikTok handoff through Telegram is
+`docs/adr/0006-share-the-chord-book-server.md`; the TikTok handoff through Telegram is
 `docs/adr/0009-hand-tiktok-posts-off-through-telegram.md` (it supersedes
 `docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`); the Android app is
 `docs/adr/0010-android-app-on-a-token-guarded-mobile-api.md`. Read them
@@ -221,7 +220,7 @@ before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
   workspace UI, the REST API and MCP server, webhooks, signatures, labels,
-  comments, the asset library, email, live websockets, Horizon/Redis and the 15
+  comments, the asset library, Content ideas, the Content library, email, live websockets, Horizon/Redis and the 15
   non-English locales were deleted on purpose, along with their packages and
   tables. Do not reintroduce any of them as part of an unrelated change.
 - `tests/Feature/Removed/*` guard those removals (routes 404, packages absent,
@@ -241,8 +240,7 @@ before adding anything.
 - Tools say "Social account", never "channel". Tool names are snake_case.
   Tools reuse the same actions and validation as the composer; they never
   publish through a separate path.
-- `delete_post`, `delete_content_idea` and `delete_library_item` reuse the web
-  delete actions. `delete_post` refuses what the web refuses
+- `delete_post` reuses the web delete action and refuses what the web refuses
   (`PostStatusRules::blocksDeletion()`: publishing or published Posts).
 
 ## Mobile app API (ADR 0010)
@@ -281,24 +279,6 @@ before adding anything.
   fields freely, but rename or remove one only in a new `/mobile/v2`.
 - The list tabs are `App\Enums\Mobile\PostTab`, not Post statuses: Scheduled
   includes Publishing, Failed includes Partially published.
-
-## Content library (ADR 0007)
-
-- A Library item is ready-made content: a name, media (one video or up to 10
-  images), the Facebook text, the TikTok caption and the YouTube title,
-  description and tags. It is not TryPost's removed asset library and not a
-  Content idea; keep the three apart.
-- All Library item validation lives in `App\Support\LibraryItemRules`, shared
-  by the web requests and the `create_library_item` MCP tool. Never add a rule
-  to one of them alone.
-- Scheduling never publishes from the library. On the web it creates a Draft
-  through `CreatePostFromLibraryItem` and opens the composer; the MCP tool
-  `schedule_library_item` goes through `create_post`. `LibraryItem::textsFor()`
-  is the one map from an item's texts to each content type's meta.
-- The Post keeps `library_item_id` (null on delete), which is how an item
-  counts the Posts made from it. Deleting an item keeps its Posts and media.
-- MCP tools: `list_library_items`, `get_library_item`, `create_library_item`,
-  `schedule_library_item`, `delete_library_item`.
 
 ## TikTok handoff through Telegram (ADR 0009)
 

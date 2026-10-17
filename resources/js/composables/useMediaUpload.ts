@@ -10,8 +10,7 @@ import { uploadDirect } from '@/utils/directUpload';
 /**
  * Uploads files as workspace assets and appends each one to `media` as it
  * finishes. Uploads go straight to object storage when the server offers it
- * (no request body limit), otherwise through the chunked endpoint. Shared by
- * the post composer and the Content library.
+ * (no request body limit), otherwise through the chunked endpoint.
  */
 export const useMediaUpload = (media: Ref<MediaItem[]>) => {
     const uploading = ref(false);
