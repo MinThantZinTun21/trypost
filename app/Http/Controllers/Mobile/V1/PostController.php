@@ -15,6 +15,7 @@ use App\Http\Resources\Mobile\V1\PostResource;
 use App\Models\Post;
 use App\Support\PostStatusRules;
 use Closure;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -44,44 +45,22 @@ class PostController extends Controller
 
     public function update(UpdatePostTextsRequest $request, Post $post): PostResource|JsonResponse
     {
-        $this->authorize('update', $post);
-
-        if (PostStatusRules::blocksEditing($post)) {
-            return $this->finalized();
-        }
-
-        $post = UpdatePostTexts::execute($request->user()->resolveCurrentWorkspace(), $post, [
+        return $this->editRefusal($post) ?? $this->show(UpdatePostTexts::execute($request->user()->resolveCurrentWorkspace(), $post, [
             ...$request->safe()->only('content'),
             'platforms' => $request->platformTexts(),
-        ]);
-
-        return $this->show($post->refresh());
+        ])->refresh());
     }
 
     public function reschedule(ReschedulePostRequest $request, Post $post): PostResource|JsonResponse
     {
-        $this->authorize('update', $post);
-
-        if (PostStatusRules::blocksEditing($post)) {
-            return $this->finalized();
-        }
-
-        $post = ReschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post, $request->scheduledAt());
-
-        return $this->show($post->refresh());
+        return $this->editRefusal($post)
+            ?? $this->show(ReschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post, $request->scheduledAt())->refresh());
     }
 
     public function unschedule(Request $request, Post $post): PostResource|JsonResponse
     {
-        $this->authorize('update', $post);
-
-        if (PostStatusRules::blocksEditing($post)) {
-            return $this->finalized();
-        }
-
-        $post = UnschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post);
-
-        return $this->show($post->refresh());
+        return $this->editRefusal($post)
+            ?? $this->show(UnschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post)->refresh());
     }
 
     /**
@@ -92,14 +71,21 @@ class PostController extends Controller
      */
     private static function enabledPlatforms(): array
     {
-        return ['postPlatforms' => fn ($query) => $query->enabled()->orderBy('created_at')->orderBy('id')->with('socialAccount')];
+        return ['postPlatforms' => fn (HasMany $query): HasMany => $query->enabled()->inComposerOrder()->with('socialAccount')];
     }
 
     /**
-     * A publishing or finished Post can no longer change.
+     * Authorizes a change, then refuses it with a 409 when the Post is
+     * publishing or finished and can no longer change; null lets it through.
      */
-    private function finalized(): JsonResponse
+    private function editRefusal(Post $post): ?JsonResponse
     {
+        $this->authorize('update', $post);
+
+        if (! PostStatusRules::blocksEditing($post)) {
+            return null;
+        }
+
         return response()->json(['message' => PostStatusRules::editBlockedMessage()], Response::HTTP_CONFLICT);
     }
 }

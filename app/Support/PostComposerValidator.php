@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\Post;
+use App\Models\PostPlatform;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Validator as ValidationValidator;
@@ -36,8 +37,9 @@ class PostComposerValidator
     /**
      * The composer payload that keeps a Post as it is stored: its status,
      * content, media, time and every enabled Post platform with its Content
-     * type and meta (the publish checks read the submitted meta). Callers override only what they change; UpdatePost disables any
-     * Post platform the payload leaves out, so none may be dropped.
+     * type and meta (the publish checks read the submitted meta). Callers
+     * override only what they change; UpdatePost disables any Post platform
+     * the payload leaves out, so none may be dropped.
      *
      * @return array{status: string, content: string|null, media: array<int, mixed>, scheduled_at: string|null, platforms: array<int, array{id: string, content_type: string|null, meta: array<string, mixed>}>}
      */
@@ -50,10 +52,9 @@ class PostComposerValidator
             'scheduled_at' => $post->scheduled_at?->toIso8601String(),
             'platforms' => $post->postPlatforms()
                 ->enabled()
-                ->orderBy('created_at')
-                ->orderBy('id')
+                ->inComposerOrder()
                 ->get(['id', 'content_type', 'meta'])
-                ->map(fn ($postPlatform): array => [
+                ->map(fn (PostPlatform $postPlatform): array => [
                     'id' => $postPlatform->id,
                     'content_type' => $postPlatform->content_type?->value,
                     'meta' => $postPlatform->meta ?? [],

@@ -32,10 +32,10 @@ class UpdatePostTexts
 
         $texts = (array) data_get($data, 'platforms', []);
 
-        $payload['platforms'] = collect($payload['platforms'])
+        $payload['platforms'] = collect(data_get($payload, 'platforms'))
             ->map(fn (array $platform): array => [
                 ...$platform,
-                'meta' => [...$platform['meta'], ...(array) data_get($texts, $platform['id'], [])],
+                'meta' => [...(array) data_get($platform, 'meta', []), ...(array) data_get($texts, data_get($platform, 'id'), [])],
             ])
             ->all();
 

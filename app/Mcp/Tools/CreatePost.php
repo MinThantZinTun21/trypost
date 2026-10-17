@@ -19,6 +19,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Support\PostComposerValidator;
+use App\Support\PostPlatformMetaRules;
 use App\Support\TikTokText;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeTags;
@@ -48,12 +49,6 @@ class CreatePost extends Tool
         'scheduled' => PostStatus::Scheduled,
         'now' => PostStatus::Publishing,
     ];
-
-    /**
-     * The per-account text and YouTube Tags an Assistant may set;
-     * ContentType::textFields() says which of them a Content type publishes.
-     */
-    private const TEXT_FIELDS = ['title', 'description', 'caption', 'tags'];
 
     /**
      * The TikTok settings an Assistant may set, copied onto the Social account's meta.
@@ -205,7 +200,7 @@ class CreatePost extends Tool
             'social_accounts' => ['required', 'array', 'min:1'],
             'social_accounts.*.id' => ['required', 'string', 'distinct', Rule::in($accounts->keys()->all())],
             'social_accounts.*.content_type' => ['sometimes', 'nullable', 'string', Rule::enum(ContentType::class)],
-            ...collect([...self::TEXT_FIELDS, ...self::TIKTOK_SETTINGS])
+            ...collect([...PostPlatformMetaRules::TEXT_FIELDS, ...self::TIKTOK_SETTINGS])
                 ->mapWithKeys(fn (string $key): array => ["social_accounts.*.{$key}" => ['sometimes']])
                 ->all(),
         ], [
@@ -284,7 +279,7 @@ class CreatePost extends Tool
         foreach ((array) data_get($validated, 'social_accounts', []) as $index => $entry) {
             $contentType = $this->contentType($entry, $accounts->get(data_get($entry, 'id')), $mediaItems);
 
-            foreach (self::TEXT_FIELDS as $field) {
+            foreach (PostPlatformMetaRules::TEXT_FIELDS as $field) {
                 if (filled(data_get($entry, $field)) && ! in_array($field, $contentType->textFields(), true)) {
                     $errors["social_accounts.{$index}.{$field}"] = __('mcp.post.text_field_unused', [
                         'field' => $field,

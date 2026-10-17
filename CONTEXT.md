@@ -36,7 +36,7 @@ Give a Post a new publish time: move a Scheduled post, or schedule a Draft. The 
 _Avoid_: Move, postpone, edit time
 
 **Unschedule**:
-Take a Scheduled post's publish time away so it becomes a Draft again.
+Turn a Scheduled post back into a Draft, so it no longer publishes. The time it was planned for is kept only as the starting point for a later Reschedule.
 _Avoid_: Cancel, unpublish
 
 **Content type**:

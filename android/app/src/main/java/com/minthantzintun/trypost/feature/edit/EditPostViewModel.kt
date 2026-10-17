@@ -7,6 +7,8 @@ import com.minthantzintun.trypost.core.data.PostsRepository
 import com.minthantzintun.trypost.core.model.PlatformText
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.text
+import com.minthantzintun.trypost.core.model.platformForErrorKey
+import com.minthantzintun.trypost.core.model.platformTextForErrorKey
 import com.minthantzintun.trypost.core.model.toPlainText
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
@@ -136,14 +138,9 @@ class EditPostViewModel @Inject constructor(
             return EditField.Content
         }
 
-        val match = platformMetaKey.matchEntire(this) ?: return null
-        val platform = post.platforms.getOrNull(match.groupValues[1].toInt()) ?: return null
-        val text = PlatformText.fromMetaKey(match.groupValues[2]) ?: return null
+        val platform = post.platformForErrorKey(this) ?: return null
+        val text = platformTextForErrorKey(this) ?: return null
 
         return EditField.Text(platform.id, text)
-    }
-
-    private companion object {
-        val platformMetaKey = Regex("""^platforms\.(\d+)\.meta\.([a-z_]+)(?:\.\d+)?$""")
     }
 }

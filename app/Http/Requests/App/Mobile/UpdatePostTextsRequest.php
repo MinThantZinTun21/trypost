@@ -6,6 +6,7 @@ namespace App\Http\Requests\App\Mobile;
 
 use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Support\PostPlatformMetaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -13,13 +14,12 @@ use Illuminate\Validation\Validator;
 
 /**
  * The texts the Android app edits: the Post content and each enabled Post
- * platform's Title, Description, caption and Tags. Lengths and the publish
- * checks are the composer's, run by UpdatePostTexts.
+ * platform's Title, Description, caption and Tags. Their rules are
+ * PostPlatformMetaRules'; the platform limits and publish checks are the
+ * composer's, run by UpdatePostTexts.
  */
 class UpdatePostTextsRequest extends FormRequest
 {
-    public const TEXT_FIELDS = ['title', 'description', 'caption', 'tags'];
-
     /**
      * @var Collection<string, PostPlatform>|null
      */
@@ -39,12 +39,7 @@ class UpdatePostTextsRequest extends FormRequest
             'content' => ['sometimes', 'nullable', 'string'],
             'platforms' => ['sometimes', 'array'],
             'platforms.*.id' => ['required', 'string', 'distinct', Rule::in($this->enabledPlatforms()->keys()->all())],
-            'platforms.*.meta' => ['sometimes', 'array'],
-            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.caption' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.tags' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.tags.*' => ['string'],
+            ...PostPlatformMetaRules::textRules(),
         ];
     }
 
@@ -63,7 +58,7 @@ class UpdatePostTextsRequest extends FormRequest
                 }
 
                 foreach (array_keys((array) data_get($platform, 'meta', [])) as $field) {
-                    if (in_array($field, self::TEXT_FIELDS, true) && ! in_array($field, $contentType->textFields(), true)) {
+                    if (in_array($field, PostPlatformMetaRules::TEXT_FIELDS, true) && ! in_array($field, $contentType->textFields(), true)) {
                         $validator->errors()->add("platforms.{$index}.meta.{$field}", __('mobile.text_field_unused', [
                             'type' => $contentType->label(),
                             'field' => $field,
@@ -81,7 +76,7 @@ class UpdatePostTextsRequest extends FormRequest
     {
         return collect($this->validated('platforms', []))
             ->mapWithKeys(fn (array $platform): array => [
-                (string) data_get($platform, 'id') => array_intersect_key((array) data_get($platform, 'meta', []), array_flip(self::TEXT_FIELDS)),
+                (string) data_get($platform, 'id') => array_intersect_key((array) data_get($platform, 'meta', []), array_flip(PostPlatformMetaRules::TEXT_FIELDS)),
             ])
             ->all();
     }

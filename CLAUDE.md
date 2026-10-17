@@ -261,7 +261,9 @@ before adding anything.
   left out) and run the composer's own checks
   (`PostComposerValidator::make()`, shared with the MCP `create_post` tool)
   before `UpdatePost`. The resources list enabled Post platforms in the same
-  order, so a `platforms.N.*` error names the app's Nth Social account.
+  order (`PostPlatform::inComposerOrder()`), so a `platforms.N.*` error names
+  the app's Nth Social account. A new `scheduled_at` must carry its UTC offset;
+  Unschedule keeps the planned time only as the next Reschedule's start.
 - `PUT /mobile/v1/posts/{post}` (`UpdatePostTexts`) edits only the content and
   each Post platform's Title, Description, caption and Tags, through the same
   stored payload and composer checks. A text the Content type does not publish

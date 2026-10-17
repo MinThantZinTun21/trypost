@@ -88,6 +88,18 @@ test('a time in another timezone is stored in utc', function () {
         ->assertJsonPath('scheduled_at', '2030-03-04T06:06:00+00:00');
 });
 
+test('a time without its utc offset is refused', function () {
+    $post = ($this->makePost)(['status' => PostStatus::Draft]);
+
+    $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => '2030-03-04T12:36:00'], $this->headers)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['scheduled_at' => __('mobile.scheduled_at_offset')]);
+
+    $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => '2030-03-04T12:36:00Z'], $this->headers)
+        ->assertOk()
+        ->assertJsonPath('scheduled_at', '2030-03-04T12:36:00+00:00');
+});
+
 test('rescheduling a draft schedules it', function () {
     $post = ($this->makePost)(['status' => PostStatus::Draft]);
     $platformsBefore = ($this->platformsOf)($post);
