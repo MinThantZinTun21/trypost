@@ -13,7 +13,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\Delivery;
 use App\Enums\TikTok\PrivacyLevel;
-use App\Models\LibraryItem;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -68,14 +67,12 @@ class CreatePost extends Tool
      * Creates the Post through the composer's create and update actions, and
      * checks it with the composer's update rules, so an Assistant gets the
      * same errors the composer would show. A rejected Post is rolled back.
-     * schedule_library_item comes through here too, linking the Post to its
-     * Library item.
      *
      * @param  array<string, mixed>  $input
      *
      * @throws ValidationException
      */
-    public function createPost(User $user, array $input, ?LibraryItem $libraryItem = null): Post
+    public function createPost(User $user, array $input): Post
     {
         $workspace = $user->resolveCurrentWorkspace();
         $accounts = $workspace->socialAccounts()->active()->get()->keyBy('id');
@@ -90,15 +87,11 @@ class CreatePost extends Tool
         $status = self::MODE_STATUSES[data_get($validated, 'mode')];
         $scheduledAt = data_get($validated, 'scheduled_at');
 
-        $post = DB::transaction(function () use ($workspace, $user, $validated, $accounts, $mediaItems, $status, $scheduledAt, $libraryItem): Post {
+        $post = DB::transaction(function () use ($workspace, $user, $validated, $accounts, $mediaItems, $status, $scheduledAt): Post {
             $post = CreatePostAction::execute($workspace, $user, [
                 'content' => data_get($validated, 'content') ?? '',
                 'created_via' => CreatedVia::Mcp,
             ]);
-
-            if ($libraryItem !== null) {
-                $post->update(['library_item_id' => $libraryItem->id]);
-            }
 
             $postPlatformIds = $post->postPlatforms()->pluck('id', 'social_account_id');
 
@@ -126,7 +119,7 @@ class CreatePost extends Tool
     }
 
     /**
-     * The `post` object create_post and schedule_library_item return.
+     * The `post` object create_post returns.
      *
      * @return array{id: string, status: string, scheduled_at: ?string, goes_out: string}
      */

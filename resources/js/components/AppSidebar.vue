@@ -2,8 +2,6 @@
 import { usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
-    IconBooks,
-    IconBulb,
     IconCalendar,
     IconChartLine,
     IconChevronRight,
@@ -16,9 +14,7 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
-import { index as ideasIndex } from '@/actions/App/Http/Controllers/App/ContentIdeaController';
 import { index as insightsIndex } from '@/actions/App/Http/Controllers/App/InsightsController';
-import { index as libraryIndex } from '@/actions/App/Http/Controllers/App/LibraryItemController';
 import { index as postsIndex } from '@/actions/App/Http/Controllers/App/PostController';
 import NavMain from '@/components/NavMain.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
@@ -88,16 +84,6 @@ const postsNavItems = computed<NavItem[]>(() => [
         title: trans('sidebar.posts.drafts'),
         href: postsIndex.url('draft'),
         icon: IconPencil,
-    },
-    {
-        title: trans('sidebar.posts.ideas'),
-        href: ideasIndex.url(),
-        icon: IconBulb,
-    },
-    {
-        title: trans('sidebar.posts.library'),
-        href: libraryIndex.url(),
-        icon: IconBooks,
     },
 ]);
 

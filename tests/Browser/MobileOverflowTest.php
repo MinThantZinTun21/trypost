@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
-use App\Models\ContentIdea;
-use App\Models\LibraryItem;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -80,8 +78,6 @@ function createMobileOverflowOwner(int $platforms = 1): array
 test('key pages do not overflow horizontally', function (int $width, int $height) {
     [$user, $workspace, $post] = createMobileOverflowOwner(platforms: 2);
     SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
-    LibraryItem::factory()->count(2)->create(['workspace_id' => $workspace->id]);
-    ContentIdea::factory()->create(['workspace_id' => $workspace->id]);
 
     $this->actingAs($user);
 
@@ -90,8 +86,6 @@ test('key pages do not overflow horizontally', function (int $width, int $height
         'post-show' => route('app.posts.show', $post),
         'post-editor' => route('app.posts.edit', $post),
         'calendar' => route('app.calendar'),
-        'library' => route('app.library.index'),
-        'ideas' => route('app.ideas.index'),
         'insights' => route('app.insights.index'),
         'accounts' => route('app.accounts'),
         'settings' => route('app.settings'),

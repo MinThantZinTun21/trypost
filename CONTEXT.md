@@ -59,20 +59,8 @@ _Avoid_: Body, summary
 Text that replaces the Post's content for one TikTok account's Video, so a single Post can say something different on TikTok.
 _Avoid_: TikTok title
 
-**Content idea**:
-A note about something the Owner might post later: a title and Markdown details such as a brief, script or prompt. The Owner or the Assistant writes it, and its status moves from New to In progress to Done.
-_Avoid_: Idea backlog item, draft (a Draft is a Post)
-
-**Content library**:
-Where the Owner keeps Library items until they schedule them.
-_Avoid_: Asset library, media library, content storage
-
-**Library item**:
-Ready-made content kept in the Content library: a name, its media, the Facebook text, the TikTok caption, and the YouTube title, description and tags. Scheduling it creates a Post from it; the item stays and can be scheduled again.
-_Avoid_: Content idea (an idea is a note), draft (a Draft is a Post), asset
-
 **Tags**:
-Keywords a YouTube Short carries to help people find it. Set per Post platform, and kept on a Library item.
+Keywords a YouTube Short carries to help people find it. Set per Post platform.
 _Avoid_: Hashtags, keywords
 
 **Assistant**:
