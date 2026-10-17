@@ -6,6 +6,7 @@ use App\Enums\ContentIdea\Status;
 use App\Enums\Post\CreatedVia;
 use App\Mcp\Servers\SchedulerServer;
 use App\Mcp\Tools\CreateContentIdea;
+use App\Mcp\Tools\DeleteContentIdea;
 use App\Mcp\Tools\GetContentIdea;
 use App\Mcp\Tools\ListContentIdeas;
 use App\Mcp\Tools\UpdateContentIdeaStatus;
@@ -250,6 +251,32 @@ test('update_content_idea_status does not find an idea outside the owner\'s work
     expect(ContentIdea::query()->where('status', Status::Done)->count())->toBe(0);
 })->with([
     'other workspace' => [fn () => ContentIdea::factory()->create()->id],
+    'unknown' => [fn () => fake()->uuid()],
+    'not a uuid' => [fn () => '42'],
+]);
+
+// delete_content_idea
+test('delete_content_idea deletes the idea', function () {
+    $contentIdea = ownerContentIdea();
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeleteContentIdea::class, ['id' => $contentIdea->id])
+        ->assertOk()
+        ->assertStructuredContent(['deleted' => true, 'id' => $contentIdea->id]);
+
+    $this->assertModelMissing($contentIdea);
+});
+
+test('delete_content_idea does not find an idea outside the owner\'s workspace', function (Closure $id) {
+    $other = ContentIdea::factory()->create();
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeleteContentIdea::class, ['id' => $id($other)])
+        ->assertHasErrors();
+
+    $this->assertModelExists($other);
+})->with([
+    'other workspace' => [fn (ContentIdea $other) => $other->id],
     'unknown' => [fn () => fake()->uuid()],
     'not a uuid' => [fn () => '42'],
 ]);

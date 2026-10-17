@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status;
 use App\Mcp\Servers\SchedulerServer;
+use App\Mcp\Tools\DeletePost;
 use App\Mcp\Tools\GetPost;
 use App\Mcp\Tools\ListPosts;
 use App\Models\Post;
@@ -133,6 +134,46 @@ test('get_post does not find a post outside the owner\'s workspace', function (C
         ->assertHasErrors();
 })->with([
     'other workspace' => [fn () => Post::factory()->create(['workspace_id' => Workspace::factory()->create()->id])->id],
+    'unknown' => [fn () => fake()->uuid()],
+    'not a uuid' => [fn () => '42'],
+]);
+
+// delete_post
+test('delete_post deletes a post that has not gone out', function (string $state) {
+    $post = ownerPost([], $state);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeletePost::class, ['id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(['deleted' => true, 'id' => $post->id]);
+
+    $this->assertModelMissing($post);
+})->with(['draft', 'scheduled', 'failed']);
+
+test('delete_post refuses a post that is publishing or published, as the web does', function (Status $status) {
+    $post = ownerPost(['status' => $status], 'published');
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeletePost::class, ['id' => $post->id])
+        ->assertHasErrors([__('mcp.post.cannot_delete', ['status' => $status->value])]);
+
+    $this->assertModelExists($post);
+})->with([
+    'publishing' => [Status::Publishing],
+    'published' => [Status::Published],
+    'partially published' => [Status::PartiallyPublished],
+]);
+
+test('delete_post does not find a post outside the owner\'s workspace', function (Closure $id) {
+    $other = Post::factory()->draft()->create(['workspace_id' => Workspace::factory()->create()->id]);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeletePost::class, ['id' => $id($other)])
+        ->assertHasErrors();
+
+    $this->assertModelExists($other);
+})->with([
+    'other workspace' => [fn (Post $other) => $other->id],
     'unknown' => [fn () => fake()->uuid()],
     'not a uuid' => [fn () => '42'],
 ]);

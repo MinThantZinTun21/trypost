@@ -11,6 +11,7 @@ return [
         'text_field_unused' => 'A :type post does not use a :field. Leave it out, or pick a Content type that publishes one.',
         'goes_out_now' => 'It is publishing now. Check its result with get_post.',
         'goes_out_at' => 'It will publish at :time.',
+        'cannot_delete' => 'This Post is :status and already on its Social accounts, so it cannot be deleted. Remove it on each platform instead.',
         'goes_out_never' => 'It is a draft and will not publish until it is scheduled in the composer.',
     ],
     'content_idea' => [

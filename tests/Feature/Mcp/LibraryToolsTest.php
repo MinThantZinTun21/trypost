@@ -7,6 +7,7 @@ use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Mcp\Servers\SchedulerServer;
 use App\Mcp\Tools\CreateLibraryItem;
+use App\Mcp\Tools\DeleteLibraryItem;
 use App\Mcp\Tools\GetLibraryItem;
 use App\Mcp\Tools\ListLibraryItems;
 use App\Mcp\Tools\ScheduleLibraryItem;
@@ -205,4 +206,33 @@ test('schedule_library_item hides another workspace item', function () {
         ->assertHasErrors([__('mcp.library_item.not_found')]);
 
     expect(Post::query()->count())->toBe(0);
+});
+
+// delete_library_item
+test('delete_library_item deletes the item and keeps its posts and media', function () {
+    $item = libraryToolVideoItem();
+    $mediaId = data_get($item->media, '0.id');
+    $post = Post::factory()->draft()->create([
+        'workspace_id' => $this->workspace->id,
+        'library_item_id' => $item->id,
+    ]);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeleteLibraryItem::class, ['id' => $item->id])
+        ->assertOk()
+        ->assertStructuredContent(['deleted' => true, 'id' => $item->id, 'posts_kept' => 1]);
+
+    $this->assertModelMissing($item);
+    expect($post->fresh()->library_item_id)->toBeNull()
+        ->and(Media::query()->whereKey($mediaId)->exists())->toBeTrue();
+});
+
+test('delete_library_item hides another workspace item', function () {
+    $other = LibraryItem::factory()->create();
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeleteLibraryItem::class, ['id' => $other->id])
+        ->assertHasErrors([__('mcp.library_item.not_found')]);
+
+    $this->assertModelExists($other);
 });
