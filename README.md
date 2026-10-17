@@ -188,6 +188,30 @@ cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug
 
 The debug APK lands in `android/app/build/outputs/apk/debug/`. A debug build may also reach a local server over plain HTTP at `http://10.0.2.2:<port>` from the emulator.
 
+### Install a signed release
+
+1. Generate the release keystore once and keep it (and its password) safe; every later release must be signed with it, or the phone refuses the update:
+
+   ```bash
+   keytool -genkeypair -keystore trypost-release.jks -alias trypost -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+2. Add four repository secrets (Settings → Secrets and variables → Actions): `ANDROID_KEYSTORE_BASE64` (the output of `base64 -i trypost-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`trypost`) and `ANDROID_KEY_PASSWORD`.
+3. Run **Android release** from the Actions tab. It tests, builds, signs and verifies the APK, and attaches it to the run as `trypost-android-<run number>`.
+4. Set `MOBILE_TOKEN` in the server's `.env` and restart the app container.
+5. On the phone, download the artifact, unzip it, open `app-release.apk` and allow installs from that app when Android asks. Sign in with the server address and the token.
+
+To sign a release locally instead, put the same settings in `android/keystore.properties` (git-ignored):
+
+```properties
+storeFile=/path/to/trypost-release.jks
+storePassword=…
+keyAlias=trypost
+keyPassword=…
+```
+
+then run `./gradlew :app:assembleRelease`; the APK lands in `android/app/build/outputs/apk/release/`. CI sets the same values through `TRYPOST_KEYSTORE_FILE`, `TRYPOST_KEYSTORE_PASSWORD`, `TRYPOST_KEY_ALIAS` and `TRYPOST_KEY_PASSWORD`.
+
 ## Tests
 
 ```bash

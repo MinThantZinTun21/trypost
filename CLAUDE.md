@@ -267,6 +267,10 @@ before adding anything.
   stored payload and composer checks. A text the Content type does not publish
   is refused (`ContentType::textFields()`, which the resource sends as
   `text_fields`, so the app keeps no copy of that map); a null text clears it.
+- The release APK is signed only by the manual **Android release** workflow
+  (`.github/workflows/android-release.yml`) or locally from
+  `android/keystore.properties`; `AndroidReleaseTest` checks both. Never commit
+  a keystore or its passwords.
 - Responses are the `App\Http\Resources\Mobile\V1` resources, with times in
   ISO 8601 UTC. Treat their fields as a contract with an installed app: add
   fields freely, but rename or remove one only in a new `/mobile/v2`.

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,6 +7,24 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
+
+/*
+ * Release signing (ADR 0010): environment variables in CI, else
+ * android/keystore.properties on the Owner's machine (git-ignored). Without
+ * either, a release build is unsigned.
+ */
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun signingSetting(environmentVariable: String, property: String): String? =
+    providers.environmentVariable(environmentVariable).orNull?.takeIf { it.isNotBlank() }
+        ?: keystoreProperties.getProperty(property)?.takeIf { it.isNotBlank() }
+
+val releaseKeystore = signingSetting("TRYPOST_KEYSTORE_FILE", "storeFile")
 
 android {
     namespace = "com.minthantzintun.trypost"
@@ -14,10 +34,22 @@ android {
         applicationId = "com.minthantzintun.trypost"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        // CI passes the run number so every release installs over the last one.
+        versionCode = providers.environmentVariable("TRYPOST_VERSION_CODE").orNull?.toIntOrNull() ?: 1
         versionName = "1.0.0"
 
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://trypost21.duckdns.org\"")
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseKeystore)
+                storePassword = signingSetting("TRYPOST_KEYSTORE_PASSWORD", "storePassword")
+                keyAlias = signingSetting("TRYPOST_KEY_ALIAS", "keyAlias")
+                keyPassword = signingSetting("TRYPOST_KEY_PASSWORD", "keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -27,6 +59,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
