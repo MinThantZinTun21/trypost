@@ -54,6 +54,31 @@
         <item quantity="other">%1$d media files</item>
     </plurals>
 
+    <!-- Post detail -->
+    <string name="detail_title">Post</string>
+    <string name="back">Back</string>
+    <string name="detail_error_title">Couldn\'t load this post</string>
+    <string name="detail_scheduled_for">Scheduled for %1$s</string>
+    <string name="detail_published_at">Published %1$s</string>
+    <string name="detail_not_scheduled">Not scheduled</string>
+    <string name="detail_content">Content</string>
+    <string name="detail_media">Media</string>
+    <string name="detail_accounts">Social accounts</string>
+    <string name="detail_video">Video</string>
+    <string name="detail_document">PDF</string>
+    <string name="detail_view_on">View on %1$s</string>
+    <string name="detail_publishing_note">Publishing now. This page refreshes until it\'s done.</string>
+    <string name="text_title">Title</string>
+    <string name="text_description">Description</string>
+    <string name="text_caption">Caption</string>
+    <string name="text_tags">Tags</string>
+    <string name="content_type_facebook_post">Post</string>
+    <string name="content_type_facebook_reel">Reel</string>
+    <string name="content_type_facebook_story">Story</string>
+    <string name="content_type_tiktok_video">Video</string>
+    <string name="content_type_tiktok_photo">Photo</string>
+    <string name="content_type_youtube_short">Short</string>
+
     <!-- Statuses -->
     <string name="status_draft">Draft</string>
     <string name="status_scheduled">Scheduled</string>

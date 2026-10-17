@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Mobile\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Mobile\ListPostsRequest;
 use App\Http\Resources\Mobile\V1\PostResource;
+use App\Models\Post;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PostController extends Controller
@@ -22,5 +23,12 @@ class PostController extends Controller
             ->withQueryString();
 
         return PostResource::collection($posts);
+    }
+
+    public function show(Post $post): PostResource
+    {
+        $this->authorize('view', $post);
+
+        return new PostResource($post->load(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount')]));
     }
 }

@@ -18,4 +18,5 @@ Route::prefix('mobile/v1')
     ->group(function (): void {
         Route::get('me', MeController::class)->name('me');
         Route::get('posts', [PostController::class, 'index'])->name('posts.index');
+        Route::get('posts/{post}', [PostController::class, 'show'])->name('posts.show');
     });

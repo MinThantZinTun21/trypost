@@ -22,4 +22,6 @@ class PostsRepository @Inject constructor(
             lastPage = dto.meta.lastPage,
         )
     }
+
+    suspend fun post(id: String): ApiResult<Post> = client.call { post(id) }.map { it.toPost() }
 }

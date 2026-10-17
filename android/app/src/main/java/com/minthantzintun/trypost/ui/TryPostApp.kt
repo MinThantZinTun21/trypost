@@ -12,12 +12,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.minthantzintun.trypost.feature.detail.PostDetailRoute
 import com.minthantzintun.trypost.feature.posts.PostsRoute
 import com.minthantzintun.trypost.feature.signin.SignInRoute
 import kotlinx.serialization.Serializable
 
 @Serializable
 data object PostsDestination
+
+@Serializable
+data class PostDetailDestination(val id: String)
 
 @Composable
 fun TryPostApp(viewModel: RootViewModel = hiltViewModel()) {
@@ -38,7 +42,10 @@ private fun SignedInNavHost(ownerName: String) {
 
     NavHost(navController = navController, startDestination = PostsDestination) {
         composable<PostsDestination> {
-            PostsRoute(ownerName = ownerName, onOpenPost = {})
+            PostsRoute(ownerName = ownerName, onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) })
+        }
+        composable<PostDetailDestination> {
+            PostDetailRoute(onBack = { navController.popBackStack() })
         }
     }
 }
