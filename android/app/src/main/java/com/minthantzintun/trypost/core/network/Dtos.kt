@@ -68,6 +68,19 @@ data class SocialAccountDto(
     @SerialName("avatar_url") val avatarUrl: String? = null,
 )
 
+/** An unpaginated `{"data": [...]}` list, such as the Social accounts. */
+@Serializable
+data class ListDto<T>(val data: List<T>)
+
+/** A Social account the post list can be filtered to (`SocialAccountResource`). */
+@Serializable
+data class AccountDto(
+    val id: String,
+    val platform: String,
+    @SerialName("display_label") val displayLabel: String,
+    val status: String,
+)
+
 /** A reply that only says what the server did, such as a queued Send to Telegram. */
 @Serializable
 data class MessageDto(val message: String)

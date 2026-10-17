@@ -74,6 +74,8 @@ fun PostsRoute(
         state = state,
         ownerName = ownerName,
         onSelectTab = viewModel::selectTab,
+        onOpenAccounts = viewModel::loadAccounts,
+        onSelectAccount = viewModel::selectAccount,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
@@ -88,6 +90,8 @@ fun PostsScreen(
     state: PostsUiState,
     ownerName: String,
     onSelectTab: (PostTab) -> Unit,
+    onOpenAccounts: () -> Unit,
+    onSelectAccount: (String?) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
@@ -122,6 +126,7 @@ fun PostsScreen(
                         )
                     }
                 }
+                AccountFilter(state = state, onOpen = onOpenAccounts, onSelect = onSelectAccount)
             }
         },
     ) { padding ->

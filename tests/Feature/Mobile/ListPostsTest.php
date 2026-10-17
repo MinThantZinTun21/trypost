@@ -155,3 +155,33 @@ test('a finalized post is not editable', function () {
         ->assertOk()
         ->assertJsonPath('data.0.editable', false);
 });
+
+test('an account filter keeps posts with an enabled post platform on that account, on every tab', function (string $tab, array $attributes) {
+    $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    $other = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    $onAccount = mobilePost($attributes);
+    PostPlatform::factory()->create(['post_id' => $onAccount->id, 'social_account_id' => $account->id, 'enabled' => true]);
+    $disabledOnAccount = mobilePost($attributes);
+    PostPlatform::factory()->create(['post_id' => $disabledOnAccount->id, 'social_account_id' => $account->id, 'enabled' => false]);
+    PostPlatform::factory()->create(['post_id' => $disabledOnAccount->id, 'social_account_id' => $other->id, 'enabled' => true]);
+    $onOther = mobilePost($attributes);
+    PostPlatform::factory()->create(['post_id' => $onOther->id, 'social_account_id' => $other->id, 'enabled' => true]);
+
+    $this->getJson(route('mobile.v1.posts.index', ['status' => $tab, 'account' => $account->id]), $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.*.id', [$onAccount->id]);
+})->with([
+    'scheduled' => ['scheduled', ['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]],
+    'published' => ['published', ['status' => PostStatus::Published, 'published_at' => now()->subDay()]],
+    'failed' => ['failed', ['status' => PostStatus::Failed, 'scheduled_at' => now()->subDay()]],
+]);
+
+test('the account filter must name one of the workspace\'s social accounts', function (Closure $account) {
+    $this->getJson(route('mobile.v1.posts.index', ['status' => 'scheduled', 'account' => $account()]), $this->headers)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('account');
+})->with([
+    'unknown' => [fn () => fake()->uuid()],
+    'another workspace\'s' => [fn () => SocialAccount::factory()->create()->id],
+    'not a uuid' => [fn () => 'facebook'],
+]);

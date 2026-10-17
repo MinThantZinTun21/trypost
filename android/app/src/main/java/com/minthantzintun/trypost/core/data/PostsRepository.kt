@@ -1,8 +1,10 @@
 package com.minthantzintun.trypost.core.data
 
+import com.minthantzintun.trypost.core.model.Platform
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostPage
 import com.minthantzintun.trypost.core.model.PostTab
+import com.minthantzintun.trypost.core.model.SocialAccount
 import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.core.network.MobileClient
 import com.minthantzintun.trypost.core.model.PlatformText
@@ -28,14 +30,27 @@ class PostsRepository @Inject constructor(
     /** Posts changed through this repository. */
     val changes: SharedFlow<Post> get() = postChanges.posts
 
-    suspend fun page(tab: PostTab, page: Int): ApiResult<PostPage> = client.call {
-        posts(tab = tab.wire, page = page)
+    /** One page of a tab, only Posts on [accountId] when it is set. */
+    suspend fun page(tab: PostTab, page: Int, accountId: String? = null): ApiResult<PostPage> = client.call {
+        posts(tab = tab.wire, page = page, account = accountId)
     }.map { dto ->
         PostPage(
             posts = dto.data.map { it.toPost() },
             page = dto.meta.currentPage,
             lastPage = dto.meta.lastPage,
         )
+    }
+
+    /** The Social accounts in the calendar's order, disconnected ones included. */
+    suspend fun socialAccounts(): ApiResult<List<SocialAccount>> = client.call { socialAccounts() }.map { dto ->
+        dto.data.map {
+            SocialAccount(
+                id = it.id,
+                platform = Platform.fromWire(it.platform),
+                label = it.displayLabel,
+                isConnected = it.status == "connected",
+            )
+        }
     }
 
     suspend fun post(id: String): ApiResult<Post> = client.call { post(id) }.map { it.toPost() }

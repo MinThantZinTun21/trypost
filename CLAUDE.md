@@ -287,6 +287,11 @@ before adding anything.
   fields freely, but rename or remove one only in a new `/mobile/v2`.
 - The list tabs are `App\Enums\Mobile\PostTab`, not Post statuses: Scheduled
   includes Publishing, Failed includes Partially published.
+- `?account=<id>` filters every tab to Posts with an enabled Post platform on
+  that Social account (`Post::onSocialAccount()`, the calendar's own filter);
+  an unknown or another workspace's account is 422. `GET social-accounts`
+  lists the accounts for the picker in the calendar's order, disconnected ones
+  included, wrapped in `data` like the paginated lists.
 - **Videos** (ADR 0013) are a name and a video file, not Posts and not the
   removed Content library. `/mobile/v1/videos` lists them newest first,
   `POST videos/uploads` hands out a presigned PUT through

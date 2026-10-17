@@ -104,10 +104,7 @@ class PostController extends Controller
 
         $posts = $workspace->posts()
             ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount')])
-            ->when($accountId, fn ($query) => $query->whereHas(
-                'postPlatforms',
-                fn ($target) => $target->enabled()->where('social_account_id', $accountId),
-            ))
+            ->when($accountId, fn ($query) => $query->onSocialAccount($accountId))
             ->whereBetween('scheduled_at', [$rangeStart->copy()->utc(), $rangeEnd->copy()->utc()])
             ->orderBy('scheduled_at')
             ->get()

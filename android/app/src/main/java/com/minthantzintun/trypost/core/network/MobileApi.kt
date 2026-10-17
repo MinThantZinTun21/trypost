@@ -16,7 +16,11 @@ interface MobileApi {
     suspend fun posts(
         @Query("status") tab: String,
         @Query("page") page: Int,
+        @Query("account") account: String? = null,
     ): PageDto<PostDto>
+
+    @GET("mobile/v1/social-accounts")
+    suspend fun socialAccounts(): ListDto<AccountDto>
 
     @GET("mobile/v1/posts/{post}")
     suspend fun post(@Path("post") id: String): PostDto

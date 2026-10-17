@@ -30,7 +30,8 @@ class PostController extends Controller
     {
         $query = $request->user()->resolveCurrentWorkspace()
             ->posts()
-            ->with(self::enabledPlatforms());
+            ->with(self::enabledPlatforms())
+            ->when($request->accountId(), fn ($query, string $accountId) => $query->onSocialAccount($accountId));
 
         $posts = $request->tab()->apply($query->getQuery())
             ->paginate((int) config('app.pagination.default'))

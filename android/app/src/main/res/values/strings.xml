@@ -34,6 +34,10 @@
     <string name="tab_scheduled">Scheduled</string>
     <string name="tab_published">Published</string>
     <string name="tab_failed">Failed</string>
+    <string name="account_filter_all">All accounts</string>
+    <string name="account_filter_one">One account</string>
+    <string name="account_filter_disconnected">Disconnected</string>
+    <string name="account_filter_error">Couldn\'t load accounts.</string>
     <string name="empty_scheduled_title">Nothing scheduled</string>
     <string name="empty_scheduled_body">Scheduled posts show here, soonest first.</string>
     <string name="empty_published_title">Nothing published yet</string>

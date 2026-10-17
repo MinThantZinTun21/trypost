@@ -94,6 +94,18 @@ class Post extends Model
         return $query->where('status', PostStatus::Failed);
     }
 
+    /**
+     * Posts with an enabled Post platform on the Social account, the filter
+     * shared by the calendar and the Mobile post list.
+     */
+    public function scopeOnSocialAccount(Builder $query, string $socialAccountId): Builder
+    {
+        return $query->whereHas(
+            'postPlatforms',
+            fn (Builder $target) => $target->enabled()->where('social_account_id', $socialAccountId),
+        );
+    }
+
     public function markAsPublishing(): void
     {
         $this->update(['status' => PostStatus::Publishing]);
