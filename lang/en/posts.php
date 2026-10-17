@@ -201,9 +201,14 @@ return [
 
     'edit' => [
         'title' => 'Edit Post',
+        'create_title' => 'New Post',
         'view_title' => 'View Post',
         'schedule' => 'Schedule',
+        'save' => 'Save',
+        'new_post' => 'New post',
+        'leave_unsaved' => 'You have unsaved changes. Leave without saving them?',
         'pick_time' => 'Pick time',
+        'clear_time' => 'Clear time',
         'pick_time_past' => 'Pick a future date and time.',
         'post_now' => 'Post now',
         'time' => 'Time',
@@ -211,10 +216,6 @@ return [
         'delete' => 'Delete',
         'schedule_for' => 'Schedule for',
         'schedule_date' => 'Schedule date',
-        'unschedule' => 'Unschedule',
-        'saving' => 'Saving...',
-        'saved' => 'Saved',
-        'draft' => 'Draft',
         'media' => 'Media',
         'add_media' => 'Add media',
         'caption' => 'Caption',
@@ -259,8 +260,7 @@ return [
         'publishing_overlay_title' => 'Your post is being published',
         'publishing_overlay_subtitle' => 'This can take a few moments. You can safely leave this page.',
         'scheduled_overlay_title' => 'This post is scheduled',
-        'scheduled_overlay_subtitle' => 'Scheduled for :date. Unschedule it first to make changes.',
-        'unschedule_cta' => 'Unschedule to edit',
+        'scheduled_overlay_subtitle' => 'Scheduled for :date. Save to keep your changes.',
 
         'tabs' => [
             'compose' => 'Compose',

@@ -60,12 +60,12 @@ Route::middleware(['auth', EnsureHasWorkspace::class])->group(function () {
 
     // Posts
     Route::get('posts/{status?}', [PostController::class, 'index'])->name('app.posts.index')->where('status', 'draft|scheduled|published');
+    Route::get('posts/create', [PostController::class, 'create'])->name('app.posts.create');
     Route::post('posts', [PostController::class, 'store'])->name('app.posts.store');
     Route::get('posts/{post}/edit', [PostController::class, 'edit'])->name('app.posts.edit');
     Route::get('posts/{post}', [PostController::class, 'show'])->name('app.posts.show');
     Route::put('posts/{post}', [PostController::class, 'update'])->name('app.posts.update');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('app.posts.destroy');
-    Route::post('posts/{post}/duplicate', [PostController::class, 'duplicate'])->name('app.posts.duplicate');
 
     // Insights (Facebook Pages only, ADR 0004)
     Route::get('insights', [InsightsController::class, 'index'])->name('app.insights.index');

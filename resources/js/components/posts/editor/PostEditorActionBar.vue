@@ -5,8 +5,8 @@ withDefaults(
     defineProps<{
         isReadOnly: boolean;
         isScheduled: boolean;
+        isNew: boolean;
         canEdit?: boolean;
-        isSaving: boolean;
         isSubmitting: boolean;
         isPostActionDisabled: boolean;
         postActionTooltip: string;
@@ -24,7 +24,6 @@ const scheduledDateTime = defineModel<string>('scheduledDateTime', {
 
 const emit = defineEmits<{
     (e: 'delete'): void;
-    (e: 'unschedule'): void;
     (e: 'submit', status: string): void;
 }>();
 </script>
@@ -38,8 +37,8 @@ const emit = defineEmits<{
         <PostEditorActions
             :is-read-only="isReadOnly"
             :is-scheduled="isScheduled"
+            :is-new="isNew"
             :can-edit="canEdit"
-            :is-saving="isSaving"
             :is-submitting="isSubmitting"
             :is-post-action-disabled="isPostActionDisabled"
             :post-action-tooltip="postActionTooltip"
@@ -47,7 +46,6 @@ const emit = defineEmits<{
             v-model:has-picked-time="hasPickedTime"
             v-model:scheduled-date-time="scheduledDateTime"
             @delete="emit('delete')"
-            @unschedule="emit('unschedule')"
             @submit="emit('submit', $event)"
         />
     </div>

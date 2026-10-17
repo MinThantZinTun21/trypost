@@ -14,12 +14,12 @@ import {
 import { usePageErrors } from '@/composables/usePageErrors';
 import { PostStatus } from '@/types/post';
 
-withDefaults(
+const props = withDefaults(
     defineProps<{
         isReadOnly: boolean;
         isScheduled: boolean;
+        isNew: boolean;
         canEdit?: boolean;
-        isSaving: boolean;
         isSubmitting: boolean;
         isPostActionDisabled: boolean;
         postActionTooltip: string;
@@ -37,40 +37,36 @@ const scheduledDateTime = defineModel<string>('scheduledDateTime', {
 
 const emit = defineEmits<{
     (e: 'delete'): void;
-    (e: 'unschedule'): void;
     (e: 'submit', status: string): void;
 }>();
 
 const errors = usePageErrors();
 const scheduledAtError = computed(() => errors.value.scheduled_at);
+
+// A Scheduled post that keeps a time is saved in place; a new one is scheduled.
+const scheduleLabelKey = computed(() =>
+    props.isScheduled && !props.isNew
+        ? 'posts.edit.save'
+        : 'posts.edit.schedule',
+);
 </script>
 
 <template>
-    <Button
-        v-if="isScheduled && canEdit"
-        type="button"
-        variant="outline"
-        class="bg-background hover:bg-muted"
-        :disabled="isSubmitting"
-        @click="emit('unschedule')"
-    >
-        {{ $t('posts.edit.unschedule_cta') }}
-    </Button>
-
     <div
-        v-else-if="!isReadOnly && canEdit"
+        v-if="!isReadOnly && canEdit"
         class="flex w-full flex-col gap-1 lg:w-auto lg:items-end"
     >
         <div class="flex w-full items-center gap-2 lg:w-auto">
             <TooltipProvider>
-                <Tooltip>
+                <Tooltip v-if="!isNew">
                     <TooltipTrigger as-child>
                         <Button
                             type="button"
                             variant="outline"
                             size="icon"
                             class="bg-destructive/10 hover:bg-destructive/20"
-                            :disabled="isSaving || isSubmitting"
+                            data-testid="post-delete"
+                            :disabled="isSubmitting"
                             @click="emit('delete')"
                         >
                             <IconTrash class="size-4 text-destructive" />
@@ -127,7 +123,7 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
                             >
                                 {{
                                     hasPickedTime
-                                        ? $t('posts.edit.schedule')
+                                        ? $t(scheduleLabelKey)
                                         : $t('posts.edit.post_now')
                                 }}
                             </Button>

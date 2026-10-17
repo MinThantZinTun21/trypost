@@ -193,7 +193,7 @@ const remove = () => {
                     class="bg-rose-100 text-rose-700 hover:bg-rose-200"
                     @click="remove"
                 >
-                    {{ $t('posts.edit.unschedule') }}
+                    {{ $t('posts.edit.clear_time') }}
                 </Button>
                 <Button
                     v-else

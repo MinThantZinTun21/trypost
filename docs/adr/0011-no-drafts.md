@@ -11,6 +11,6 @@ The Owner never used Drafts as a place to keep work, and they filled the lists w
 
 ## Consequences
 
-- "New post" and Duplicate open a create page that saves nothing until Schedule or Post now, and asks before leaving with unsaved work. Editing a Scheduled post still autosaves.
+- "New post" and Duplicate open a create page that saves nothing until Schedule or Post now, and asks before leaving with unsaved work. A Scheduled post is edited in place and saved with a Save button; nothing autosaves any more.
 - The MCP `create_post` tool takes only `scheduled` or `now`.
 - `DELETE /mobile/v1/posts/{post}/schedule` and the Drafts tab are removed from `/mobile/v1` without a `/mobile/v2`. This is a one-off break of ADR 0010's contract: there is one Owner and one phone, and the new APK is installed when the server deploys.

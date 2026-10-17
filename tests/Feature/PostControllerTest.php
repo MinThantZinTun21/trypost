@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     $this->user = User::factory()->create([]);
@@ -230,97 +229,214 @@ test('calendar does not include unscheduled drafts', function () {
 });
 
 // Create tests
-test('the old wizard route is gone', function () {
-    expect(Route::has('app.posts.create'))->toBeFalse();
-});
-
-test('new post creates a draft and lands on the editor with no AI', function () {
-    $response = $this->actingAs($this->user)->post(route('app.posts.store'));
-
-    $post = Post::where('workspace_id', $this->workspace->id)->sole();
-    expect($post->status)->toBe(PostStatus::Draft);
-
-    $response->assertRedirect(route('app.posts.edit', $post));
-
+test('new post opens the composer without saving a Post and with no AI', function () {
     $this->actingAs($this->user)
-        ->get(route('app.posts.edit', $post))
+        ->get(route('app.posts.create'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('posts/Edit', false)
-            ->where('post.id', $post->id)
+            ->where('post.id', null)
+            ->where('post.scheduled_at', null)
+            ->has('post.post_platforms', 1)
+            ->where('post.post_platforms.0.id', $this->socialAccount->id)
+            ->where('post.post_platforms.0.social_account_id', $this->socialAccount->id)
+            ->where('post.post_platforms.0.enabled', false)
+            ->where('post.post_platforms.0.content_type', ContentType::FacebookPost->value)
             ->missing('templates')
             ->missing('aiEnabled')
         );
+
+    expect(Post::query()->count())->toBe(0);
 });
 
-test('new post from a calendar day creates a draft on that day and lands on the editor', function () {
-    $response = $this->actingAs($this->user)->post(route('app.posts.store'), ['date' => '2026-06-15']);
+test('new post from a calendar day starts on that day', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.posts.create', ['date' => '2026-06-15']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('post.scheduled_at', fn (string $scheduledAt): bool => str_starts_with($scheduledAt, '2026-06-15T09:00:00'))
+        );
 
-    $post = Post::where('workspace_id', $this->workspace->id)->sole();
-    expect($post->status)->toBe(PostStatus::Draft);
-    expect($post->scheduled_at->utc()->format('Y-m-d'))->toBe('2026-06-15');
+    expect(Post::query()->count())->toBe(0);
+});
 
-    $response->assertRedirect(route('app.posts.edit', $post));
+test('new post rejects an invalid date', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.posts.create', ['date' => 'not-a-date']))
+        ->assertSessionHasErrors(['date']);
+});
+
+test('new post requires authentication', function () {
+    $this->get(route('app.posts.create'))->assertRedirect(route('login'));
+});
+
+test('new post sends the Owner to connect accounts when none is active', function () {
+    $this->socialAccount->delete();
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.create'))
+        ->assertRedirect(route('app.accounts'));
 });
 
 test('new post gives a user with no workspace one and sends them to connect accounts', function () {
     $newUser = User::factory()->create();
 
-    $response = $this->actingAs($newUser)->post(route('app.posts.store'));
+    $this->actingAs($newUser)->get(route('app.posts.create'))->assertRedirect(route('app.accounts'));
 
-    $response->assertRedirect(route('app.accounts'));
     expect($newUser->fresh()->current_workspace_id)->not->toBeNull();
+});
+
+test('duplicate opens the composer pre-filled from the original without saving a Post', function () {
+    $youtube = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::YouTube,
+    ]);
+    $turnedOff = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::TikTok,
+        'is_active' => false,
+    ]);
+    $original = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Published,
+        'content' => 'Copy me',
+        'media' => [['id' => 'media-1', 'path' => 'medias/clip.mp4', 'type' => 'video', 'mime_type' => 'video/mp4']],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $original->id,
+        'social_account_id' => $youtube->id,
+        'platform' => Platform::YouTube,
+        'content_type' => ContentType::YouTubeShort,
+        'enabled' => true,
+        'meta' => ['title' => 'My Short'],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $original->id,
+        'social_account_id' => $turnedOff->id,
+        'platform' => Platform::TikTok,
+        'content_type' => ContentType::TikTokVideo,
+        'enabled' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.create', ['duplicate' => $original->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('post.id', null)
+            ->where('post.content', 'Copy me')
+            ->where('post.media.0.id', 'media-1')
+            ->where('post.scheduled_at', null)
+            ->has('post.post_platforms', 2)
+            ->where('post.post_platforms', fn ($platforms): bool => collect($platforms)->contains(
+                fn (array $platform): bool => $platform['social_account_id'] === $youtube->id
+                    && $platform['enabled'] === true
+                    && $platform['content_type'] === ContentType::YouTubeShort->value
+                    && $platform['meta'] === ['title' => 'My Short'],
+            ) && collect($platforms)->contains(
+                fn (array $platform): bool => $platform['social_account_id'] === $this->socialAccount->id
+                    && $platform['enabled'] === false,
+            ))
+        );
+
+    expect(Post::query()->count())->toBe(1);
+});
+
+test('duplicate refuses a Post from another workspace', function () {
+    $other = Post::factory()->create();
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.create', ['duplicate' => $other->id]))
+        ->assertSessionHasErrors(['duplicate']);
 });
 
 // Store tests
 test('store post requires authentication', function () {
-    $response = $this->post(route('app.posts.store'));
-
-    $response->assertRedirect(route('login'));
+    $this->post(route('app.posts.store'))->assertRedirect(route('login'));
 });
 
-test('store post redirects to accounts if no social accounts connected', function () {
-    $this->socialAccount->delete();
+test('store schedules a new Post with the composer payload', function () {
+    $scheduledAt = now()->addDay()->startOfSecond();
 
-    $response = $this->actingAs($this->user)->post(route('app.posts.store'));
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => PostStatus::Scheduled->value,
+        'content' => 'Hello from the composer',
+        'scheduled_at' => $scheduledAt->toIso8601String(),
+        'platforms' => [
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::FacebookPost->value, 'meta' => []],
+        ],
+    ]);
 
-    $response->assertRedirect(route('app.accounts'));
+    $post = Post::query()->sole();
+
+    $response->assertRedirect(route('app.posts.show', $post));
+    $response->assertSessionHas('flash.bannerStyle', 'success');
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->content)->toBe('Hello from the composer')
+        ->and($post->created_via)->toBe(CreatedVia::Web)
+        ->and($post->scheduled_at->equalTo($scheduledAt))->toBeTrue()
+        ->and($post->postPlatforms()->enabled()->sole()->social_account_id)->toBe($this->socialAccount->id);
 });
 
-test('store post creates draft and redirects to edit', function () {
-    $response = $this->actingAs($this->user)->post(route('app.posts.store'));
+test('store posts a new Post now through the publish job', function () {
+    Bus::fake();
 
-    $response->assertRedirect();
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => PostStatus::Publishing->value,
+        'content' => 'Right now',
+        'platforms' => [
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::FacebookPost->value],
+        ],
+    ]);
 
-    $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post)->not->toBeNull();
-    expect($post->status)->toBe(PostStatus::Draft);
-    expect($post->created_via)->toBe(CreatedVia::Web);
-    expect($post->postPlatforms)->toHaveCount(1);
+    $post = Post::query()->sole();
+
+    $response->assertRedirect(route('app.posts.show', $post));
+    expect($post->status)->toBe(PostStatus::Publishing);
+    Bus::assertDispatched(PublishPost::class, fn (PublishPost $job): bool => $job->post->is($post));
 });
 
-test('store post leaves scheduled_at null when no date is provided', function () {
-    $this->actingAs($this->user)->post(route('app.posts.store'))->assertRedirect();
-
-    $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post->scheduled_at)->toBeNull();
-});
-
-test('store post schedules draft on the date param when provided', function () {
+test('store saves nothing when the composer checks fail', function () {
     $this->actingAs($this->user)->post(route('app.posts.store'), [
-        'date' => '2026-06-15',
-    ])->assertRedirect();
+        'status' => PostStatus::Scheduled->value,
+        'content' => 'Too late',
+        'scheduled_at' => now()->subHour()->toIso8601String(),
+        'platforms' => [
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::FacebookPost->value],
+        ],
+    ])->assertSessionHasErrors('scheduled_at');
 
-    $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post->scheduled_at->utc()->format('Y-m-d H:i:s'))->toBe('2026-06-15 09:00:00');
+    expect(Post::query()->count())->toBe(0);
 });
 
-test('store post rejects invalid date format', function () {
-    $this->actingAs($this->user)
-        ->post(route('app.posts.store'), ['date' => 'not-a-date'])
-        ->assertSessionHasErrors(['date']);
+test('store refuses a status other than scheduled or publishing', function () {
+    $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => 'draft',
+        'content' => 'Nope',
+        'platforms' => [
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::FacebookPost->value],
+        ],
+    ])->assertSessionHasErrors('status');
 
-    expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(0);
+    expect(Post::query()->count())->toBe(0);
+});
+
+test('store needs at least one Social account of the workspace', function () {
+    $foreign = SocialAccount::factory()->create();
+
+    $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => PostStatus::Publishing->value,
+        'content' => 'Nope',
+        'platforms' => [],
+    ])->assertSessionHasErrors('platforms');
+
+    $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => PostStatus::Publishing->value,
+        'content' => 'Nope',
+        'platforms' => [['social_account_id' => $foreign->id, 'content_type' => ContentType::FacebookPost->value]],
+    ])->assertSessionHasErrors('platforms.0.social_account_id');
+
+    expect(Post::query()->count())->toBe(0);
 });
 
 // Edit tests

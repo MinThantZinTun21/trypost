@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Post\CreatePost as CreatePostAction;
-use App\Actions\Post\UpdatePost;
+use App\Actions\Post\CreateComposedPost;
 use App\Dto\MediaItem;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
@@ -17,7 +16,6 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
-use App\Support\PostComposerValidator;
 use App\Support\PostPlatformMetaRules;
 use App\Support\TikTokText;
 use App\Support\YouTubeDescription;
@@ -27,7 +25,6 @@ use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -64,9 +61,9 @@ class CreatePost extends Tool
     }
 
     /**
-     * Creates the Post through the composer's create and update actions, and
-     * checks it with the composer's update rules, so an Assistant gets the
-     * same errors the composer would show. A rejected Post is rolled back.
+     * Creates the Post through the composer's own create action
+     * (CreateComposedPost), so an Assistant gets the same errors the composer
+     * would show. A rejected Post is rolled back.
      *
      * @param  array<string, mixed>  $input
      *
@@ -87,33 +84,19 @@ class CreatePost extends Tool
         $status = self::MODE_STATUSES[data_get($validated, 'mode')];
         $scheduledAt = data_get($validated, 'scheduled_at');
 
-        $post = DB::transaction(function () use ($workspace, $user, $validated, $accounts, $mediaItems, $status, $scheduledAt): Post {
-            $post = CreatePostAction::execute($workspace, $user, [
-                'content' => data_get($validated, 'content') ?? '',
-                'created_via' => CreatedVia::Mcp,
-            ]);
-
-            $postPlatformIds = $post->postPlatforms()->pluck('id', 'social_account_id');
-
-            $payload = [
-                'status' => $status->value,
-                'content' => data_get($validated, 'content') ?? '',
-                'media' => $mediaItems->map(fn (MediaItem $item): array => $item->toArray())->all(),
-                'scheduled_at' => $scheduledAt ? Carbon::parse($scheduledAt)->utc()->toIso8601String() : null,
-                'platforms' => collect(data_get($validated, 'social_accounts'))
-                    ->map(fn (array $entry): array => $this->platformPayload(
-                        $entry,
-                        $accounts->get(data_get($entry, 'id')),
-                        (string) $postPlatformIds->get(data_get($entry, 'id')),
-                        $mediaItems,
-                    ))
-                    ->all(),
-            ];
-
-            PostComposerValidator::make($post, $payload)->validate();
-
-            return data_get(UpdatePost::execute($workspace, $post, $payload), 'post');
-        });
+        $post = data_get(CreateComposedPost::execute($workspace, $user, [
+            'status' => $status->value,
+            'content' => data_get($validated, 'content') ?? '',
+            'media' => $mediaItems->map(fn (MediaItem $item): array => $item->toArray())->all(),
+            'scheduled_at' => $scheduledAt ? Carbon::parse($scheduledAt)->utc()->toIso8601String() : null,
+            'platforms' => collect(data_get($validated, 'social_accounts'))
+                ->map(fn (array $entry): array => $this->platformPayload(
+                    $entry,
+                    $accounts->get(data_get($entry, 'id')),
+                    $mediaItems,
+                ))
+                ->all(),
+        ], CreatedVia::Mcp), 'post');
 
         return $post->refresh();
     }
@@ -236,7 +219,7 @@ class CreatePost extends Tool
      * @param  Collection<int, MediaItem>  $mediaItems
      * @return array{id: string, content_type: string, meta: array<string, mixed>}
      */
-    private function platformPayload(array $entry, SocialAccount $account, string $postPlatformId, Collection $mediaItems): array
+    private function platformPayload(array $entry, SocialAccount $account, Collection $mediaItems): array
     {
         $contentType = $this->contentType($entry, $account, $mediaItems);
 
@@ -246,7 +229,7 @@ class CreatePost extends Tool
         ];
 
         return [
-            'id' => $postPlatformId,
+            'social_account_id' => $account->id,
             'content_type' => $contentType->value,
             'meta' => collect($settings)
                 ->mapWithKeys(fn (string $key): array => [$key => data_get($entry, $key)])

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { computed, onUnmounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import PostEditorActionBar from '@/components/posts/editor/PostEditorActionBar.vue';
@@ -18,10 +18,10 @@ import {
 } from '@/composables/usePostCompliance';
 import { isActivelyPublishing } from '@/composables/usePostStatus';
 import date from '@/date';
-import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
     destroy as destroyPost,
+    store as storePost,
     update as updatePost,
 } from '@/routes/app/posts';
 import type { MediaItem } from '@/types/media';
@@ -55,8 +55,10 @@ interface PostPlatform {
     meta?: Record<string, any>;
 }
 
+// A new Post (ADR 0011) has no id until it is scheduled or posted now; its
+// Post platforms stand for Social accounts and are keyed by the account id.
 interface Post {
-    id: string;
+    id: string | null;
     content: string;
     media: MediaItem[];
     status: string;
@@ -102,8 +104,11 @@ const isReadOnly = computed(() =>
 const isPublishing = computed(() =>
     isActivelyPublishing(post.value.status, post.value.post_platforms),
 );
-const isScheduled = computed(() => post.value.status === PostStatus.Scheduled);
-const isLocked = computed(() => isReadOnly.value || isScheduled.value);
+const isNew = computed(() => post.value.id === null);
+const isScheduled = computed(
+    () => !isNew.value && post.value.status === PostStatus.Scheduled,
+);
+const isLocked = computed(() => isReadOnly.value);
 
 // Content
 const content = ref(post.value.content || '');
@@ -170,8 +175,6 @@ const pickTimeLabel = computed(() => {
 
 // UI state
 const isSubmitting = ref(false);
-const isSaving = ref(false);
-const showSaved = ref(false);
 const isPostActionDisabled = computed(
     () =>
         isSubmitting.value ||
@@ -243,7 +246,9 @@ const getSubmitData = () => {
     const platforms = post.value.post_platforms
         .filter((pp) => selectedPlatformIds.value.includes(pp.id))
         .map((pp) => ({
-            id: pp.id,
+            ...(isNew.value
+                ? { social_account_id: pp.social_account_id }
+                : { id: pp.id }),
             content_type: platformContentTypes.value[pp.id] ?? pp.content_type,
             meta: platformMeta.value[pp.id] ?? pp.meta ?? {},
         }));
@@ -256,100 +261,73 @@ const getSubmitData = () => {
     };
 };
 
-const save = () => {
-    if (isSubmitting.value || isLocked.value || isSaving.value) return;
-
-    const data = getSubmitData();
-
-    isSaving.value = true;
-    showSaved.value = false;
-
-    router.put(
-        updatePost.url(post.value.id),
-        {
-            status: post.value.status,
-            ...data,
-        },
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                showSaved.value = true;
-                setTimeout(() => {
-                    showSaved.value = false;
-                }, 2000);
-            },
-            onFinish: () => {
-                isSaving.value = false;
-            },
-        },
-    );
-};
-
-const debouncedSave = debounce(() => {
-    if (!isLocked.value && !isSubmitting.value) {
-        save();
-    }
-}, 1500);
-
-const triggerAutosave = () => {
-    if (!isLocked.value) {
-        showSaved.value = false;
-        debouncedSave();
-    }
-};
-
-watch(
-    [
-        content,
-        media,
-        selectedPlatformIds,
-        scheduledDateTime,
-        platformMeta,
-        platformContentTypes,
-    ],
-    triggerAutosave,
-    { deep: true },
+// Nothing autosaves (ADR 0011): unsaved edits ask before the page is left.
+const savedSnapshot = ref(JSON.stringify(getSubmitData()));
+const isDirty = computed(
+    () =>
+        !isReadOnly.value &&
+        JSON.stringify(getSubmitData()) !== savedSnapshot.value,
 );
 
-onUnmounted(() => {
-    debouncedSave.cancel();
+const confirmLeave = (event: Event) => {
+    if (isSubmitting.value || !isDirty.value) return;
+
+    if (!window.confirm(trans('posts.edit.leave_unsaved'))) {
+        event.preventDefault();
+    }
+};
+
+const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+    if (isSubmitting.value || !isDirty.value) return;
+
+    event.preventDefault();
+};
+
+let stopLeaveGuard: (() => void) | null = null;
+
+onMounted(() => {
+    stopLeaveGuard = router.on('before', (event) => {
+        if (event.detail.visit.only.length > 0) return;
+        confirmLeave(event);
+    });
+    window.addEventListener('beforeunload', warnBeforeUnload);
+});
+
+onBeforeUnmount(() => {
+    stopLeaveGuard?.();
+    window.removeEventListener('beforeunload', warnBeforeUnload);
 });
 
 const submit = (status: string = PostStatus.Scheduled) => {
     if (isSubmitting.value || isReadOnly.value) return;
-    debouncedSave.cancel();
 
-    const data = getSubmitData();
+    const payload = { status, ...getSubmitData() };
+    const options = {
+        onSuccess: () => {
+            savedSnapshot.value = JSON.stringify(getSubmitData());
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
+        },
+    };
+
     isSubmitting.value = true;
 
-    router.put(
-        updatePost.url(post.value.id),
-        {
-            status,
-            ...data,
-        },
-        {
-            onFinish: () => {
-                isSubmitting.value = false;
-            },
-        },
-    );
+    if (isNew.value) {
+        router.post(storePost.url(), payload, options);
+
+        return;
+    }
+
+    router.put(updatePost.url(post.value.id as string), payload, options);
 };
 
 const deletePost = () => {
-    if (isReadOnly.value) return;
+    if (isReadOnly.value || isNew.value) return;
     deleteModal.value?.open({
-        url: destroyPost.url(post.value.id),
+        url: destroyPost.url(post.value.id as string),
         confirmText: trans('common.confirm_modal.delete_keyword'),
     });
-};
-
-const unschedulePost = () => {
-    if (isReadOnly.value || isSubmitting.value) return;
-    debouncedSave.cancel();
-    scheduledDateTime.value = '';
-    hasPickedTime.value = false;
-    submit(PostStatus.Draft);
 };
 
 usePollWhile(() => post.value.status === PostStatus.Publishing, {
@@ -358,7 +336,9 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
 </script>
 
 <template>
-    <Head :title="$t('posts.edit.title')" />
+    <Head
+        :title="isNew ? $t('posts.edit.create_title') : $t('posts.edit.title')"
+    />
 
     <AppLayout :full-width="true" :mobile-action-bar="!isReadOnly">
         <div class="flex min-h-0 flex-1 flex-col">
@@ -368,8 +348,7 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
             <div :class="isScheduled ? 'shrink-0' : 'hidden shrink-0 lg:block'">
                 <PostEditorHeader
                     :post="post"
-                    :is-saving="isSaving"
-                    :show-saved="showSaved"
+                    :is-new="isNew"
                     :is-submitting="isSubmitting"
                     :is-post-action-disabled="isPostActionDisabled"
                     :post-action-tooltip="postActionTooltip"
@@ -377,14 +356,13 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                     v-model:has-picked-time="hasPickedTime"
                     v-model:scheduled-date-time="scheduledDateTime"
                     @delete="deletePost"
-                    @unschedule="unschedulePost"
                     @submit="submit"
                 />
             </div>
 
             <PostEditorMobileNav
                 v-model:active-view="mobileView"
-                :status="post.status"
+                :is-scheduled="isScheduled"
             />
 
             <div class="relative flex-1 overflow-hidden">
@@ -409,13 +387,7 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                         </p>
                     </div>
                 </div>
-                <div
-                    class="flex h-full"
-                    :class="{
-                        'pointer-events-none opacity-60 select-none':
-                            isScheduled,
-                    }"
-                >
+                <div class="flex h-full">
                     <div
                         class="w-full overflow-y-auto lg:w-2/3 lg:border-r lg:border-border"
                         :class="{ 'hidden lg:block': mobileView !== 'compose' }"
@@ -459,7 +431,7 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
             <PostEditorActionBar
                 :is-read-only="isReadOnly"
                 :is-scheduled="isScheduled"
-                :is-saving="isSaving"
+                :is-new="isNew"
                 :is-submitting="isSubmitting"
                 :is-post-action-disabled="isPostActionDisabled"
                 :post-action-tooltip="postActionTooltip"
@@ -467,7 +439,6 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                 v-model:has-picked-time="hasPickedTime"
                 v-model:scheduled-date-time="scheduledDateTime"
                 @delete="deletePost"
-                @unschedule="unschedulePost"
                 @submit="submit"
             />
         </div>

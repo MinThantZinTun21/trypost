@@ -12,8 +12,8 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
 import {
+    create as createPostPage,
     destroy as destroyPost,
-    duplicate as duplicatePost,
     edit as editPost,
     index as postsIndex,
     show as showPost,
@@ -177,8 +177,10 @@ const handleDelete = (post: Post) => {
     });
 };
 
+// Duplicate opens the composer pre-filled from the Post; nothing is saved
+// until it is scheduled or posted now (ADR 0011).
 const handleDuplicate = (post: Post) => {
-    router.post(duplicatePost.url(post.id));
+    router.visit(createPostPage.url({ query: { duplicate: post.id } }));
 };
 
 const handleCopyId = (post: Post) =>
