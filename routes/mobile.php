@@ -22,6 +22,7 @@ Route::prefix('mobile/v1')
         Route::get('posts/{post}', [PostController::class, 'show'])->name('posts.show');
         Route::put('posts/{post}', [PostController::class, 'update'])->name('posts.update');
         Route::put('posts/{post}/schedule', [PostController::class, 'reschedule'])->name('posts.reschedule');
+        Route::post('posts/{post}/publish', [PostController::class, 'publish'])->name('posts.publish');
         Route::post('posts/{post}/telegram', [PostController::class, 'sendToTelegram'])->name('posts.send');
         Route::get('videos', [VideoController::class, 'index'])->name('videos.index');
         Route::post('videos/uploads', [VideoController::class, 'startUpload'])->name('videos.uploads.store');

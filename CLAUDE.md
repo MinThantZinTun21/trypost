@@ -255,8 +255,8 @@ before adding anything.
   (`config('trypost.mobile.token')`; empty = 404, wrong = 401), and acts as the
   Owner. It shares `AuthenticatesWithOwnerToken` with `AuthenticateMcpToken`;
   the two secrets stay separate so each can be rotated alone.
-- The app views Posts, edits their texts, Reschedules them and Sends them to
-  Telegram (ADR 0012). It never creates Posts or changes media, Social
+- The app views Posts, edits their texts, Reschedules them, Posts them now and
+  Sends them to Telegram (ADR 0012). It never creates Posts or changes media, Social
   accounts or Content types. There is
   no Unschedule (ADR 0011): `DELETE /mobile/v1/posts/{post}/schedule` and the
   Drafts tab are gone. Every change goes through `UpdatePost` and the shared rules
@@ -269,6 +269,10 @@ before adding anything.
   before `UpdatePost`. The resources list enabled Post platforms in the same
   order (`PostPlatform::inComposerOrder()`), so a `platforms.N.*` error names
   the app's Nth Social account. A new `scheduled_at` must carry its UTC offset.
+- `POST /mobile/v1/posts/{post}/publish` (`PublishPostNow`) is Post now: the
+  same stored payload and composer checks, then `UpdatePost` with
+  `status=publishing`, the web's own publish path. Only a Scheduled post; a
+  finalized one is 409.
 - `PUT /mobile/v1/posts/{post}` (`UpdatePostTexts`) edits only the content and
   each Post platform's Title, Description, caption and Tags, through the same
   stored payload and composer checks. A text the Content type does not publish

@@ -44,6 +44,10 @@ class PostsRepository @Inject constructor(
     suspend fun reschedule(id: String, at: Instant): ApiResult<Post> =
         client.call { reschedule(id, RescheduleBody(at.toString())) }.map { it.toPost() }.announced()
 
+    /** Publishes a Scheduled post now through the composer's own path; the server runs its checks. */
+    suspend fun publishNow(id: String): ApiResult<Post> =
+        client.call { publishNow(id) }.map { it.toPost() }.announced()
+
     /**
      * Queues Send to Telegram (ADR 0012) and returns the server's message.
      * The Post does not change, so nothing is announced.

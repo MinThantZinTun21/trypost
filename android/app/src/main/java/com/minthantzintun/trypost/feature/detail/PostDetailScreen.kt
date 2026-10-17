@@ -83,6 +83,7 @@ fun PostDetailRoute(
                     isSaving = state.isSaving,
                     actionError = state.actionError,
                     onReschedule = viewModel::reschedule,
+                    onPublishNow = viewModel::publishNow,
                     extraActions = { extraActions(post) },
                 )
                 TelegramAction(

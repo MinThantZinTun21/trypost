@@ -12,6 +12,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.core.designsystem.asLabel
 import com.minthantzintun.trypost.core.model.Post
+import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.ui.message
 import java.time.Instant
@@ -42,11 +44,11 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
-private enum class ScheduleStep { None, Date, Time }
+private enum class ScheduleStep { None, Date, Time, PostNow }
 
 /**
- * Reschedule: a date, then a time, in the phone's timezone. Only a Scheduled
- * post shows it.
+ * Reschedule (a date, then a time, in the phone's timezone) and Post now,
+ * after a confirm. Only a Scheduled post shows them.
  */
 @Composable
 fun ScheduleActions(
@@ -54,6 +56,7 @@ fun ScheduleActions(
     isSaving: Boolean,
     actionError: ApiError?,
     onReschedule: (Instant) -> Unit,
+    onPublishNow: () -> Unit = {},
     extraActions: @Composable () -> Unit = {},
 ) {
     if (!post.isEditable) {
@@ -74,6 +77,15 @@ fun ScheduleActions(
             ) {
                 Text(stringResource(R.string.reschedule).asLabel())
             }
+            if (post.status == PostStatus.Scheduled) {
+                OutlinedButton(
+                    onClick = { step = ScheduleStep.PostNow },
+                    enabled = !isSaving,
+                    modifier = Modifier.testTag("post-now"),
+                ) {
+                    Text(stringResource(R.string.post_now).asLabel())
+                }
+            }
             extraActions()
             if (isSaving) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -87,6 +99,23 @@ fun ScheduleActions(
 
     when (step) {
         ScheduleStep.None -> Unit
+        ScheduleStep.PostNow -> AlertDialog(
+            onDismissRequest = { step = ScheduleStep.None },
+            title = { Text(stringResource(R.string.post_now_confirm_title)) },
+            text = { Text(stringResource(R.string.post_now_confirm_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        step = ScheduleStep.None
+                        onPublishNow()
+                    },
+                    modifier = Modifier.testTag("post-now-confirm"),
+                ) { Text(stringResource(R.string.post_now).asLabel()) }
+            },
+            dismissButton = {
+                TextButton(onClick = { step = ScheduleStep.None }) { Text(stringResource(R.string.cancel).asLabel()) }
+            },
+        )
         ScheduleStep.Date -> DateStep(
             initial = pickedDate ?: initial.toLocalDate(),
             zone = zone,

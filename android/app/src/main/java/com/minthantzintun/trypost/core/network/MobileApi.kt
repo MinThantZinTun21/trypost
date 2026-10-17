@@ -27,6 +27,9 @@ interface MobileApi {
     @PUT("mobile/v1/posts/{post}/schedule")
     suspend fun reschedule(@Path("post") id: String, @Body body: RescheduleBody): PostDto
 
+    @POST("mobile/v1/posts/{post}/publish")
+    suspend fun publishNow(@Path("post") id: String): PostDto
+
     @POST("mobile/v1/posts/{post}/telegram")
     suspend fun sendToTelegram(@Path("post") id: String): MessageDto
 }

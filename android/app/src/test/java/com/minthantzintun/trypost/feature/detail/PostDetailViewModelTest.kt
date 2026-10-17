@@ -217,4 +217,44 @@ class PostDetailViewModelTest {
         assertNull(state.telegramNotice)
         assertEquals(PostStatus.Scheduled, state.post?.status)
     }
+
+    @Test
+    fun `post now publishes the post and follows it until it settles`() = runTest {
+        server.enqueue(json(postJson("p1", status = "scheduled")))
+        val viewModel = viewModel()
+        viewModel.state.first { !it.isLoading }
+        server.takeRequest()
+
+        server.enqueue(json(postJson("p1", status = "publishing", scheduledAt = "2030-01-01T09:00:00+00:00")))
+        server.enqueue(json(postJson("p1", status = "published", publishedAt = "2030-01-01T09:00:05+00:00")))
+        viewModel.publishNow()
+        val state = viewModel.state.first { it.post?.status == PostStatus.Published }
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/mobile/v1/posts/p1/publish", request.url.encodedPath)
+        assertEquals("/mobile/v1/posts/p1", server.takeRequest().url.encodedPath)
+        assertNull(state.actionError)
+    }
+
+    @Test
+    fun `a refused post now keeps the post and names the account`() = runTest {
+        server.enqueue(json(postJson("p1", status = "scheduled")))
+        val viewModel = viewModel()
+        viewModel.state.first { !it.isLoading }
+
+        server.enqueue(
+            json(
+                """{"message":"Pick a privacy level.","errors":{"platforms.0.meta.privacy_level":["Pick a privacy level."]}}""",
+                code = 422,
+            ),
+        )
+        viewModel.publishNow()
+        val state = viewModel.state.first { !it.isSaving && it.actionError != null }
+
+        assertEquals(PostStatus.Scheduled, state.post?.status)
+        val line = (state.actionError as ApiError.Validation).messagesFor(state.post!!).single()
+        assertEquals("My Page", line.accountName)
+        assertEquals("Pick a privacy level.", line.message)
+    }
 }

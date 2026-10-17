@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Mobile\V1;
 
+use App\Actions\Post\PublishPostNow;
 use App\Actions\Post\ReschedulePost;
 use App\Actions\Post\UpdatePostTexts;
 use App\Http\Controllers\Controller;
@@ -18,6 +19,7 @@ use App\Support\PostStatusRules;
 use Closure;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -56,6 +58,15 @@ class PostController extends Controller
     {
         return $this->editRefusal($post)
             ?? $this->show(ReschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post, $request->scheduledAt())->refresh());
+    }
+
+    /**
+     * Post now (ADR 0012): the composer's own publish of a Scheduled post.
+     */
+    public function publish(Request $request, Post $post): PostResource|JsonResponse
+    {
+        return $this->editRefusal($post)
+            ?? $this->show(PublishPostNow::execute($request->user()->resolveCurrentWorkspace(), $post)->refresh());
     }
 
     /**

@@ -78,6 +78,10 @@ class PostDetailViewModel @Inject constructor(
         runAction { postsRepository.reschedule(postId, at) }
     }
 
+    fun publishNow() {
+        runAction { postsRepository.publishNow(postId) }
+    }
+
     /** Queues Send to Telegram; the Post itself does not change. */
     fun sendToTelegram() {
         if (_state.value.isSendingToTelegram) {
@@ -111,8 +115,13 @@ class PostDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             when (val result = action()) {
-                is ApiResult.Success -> _state.update {
-                    it.copy(post = result.value, isSaving = false, error = null)
+                is ApiResult.Success -> {
+                    _state.update { it.copy(post = result.value, isSaving = false, error = null) }
+
+                    // Post now leaves it publishing, so follow it until it settles.
+                    if (result.value.status == PostStatus.Publishing) {
+                        load(isRefresh = false)
+                    }
                 }
                 is ApiResult.Failure -> {
                     _state.update { it.copy(isSaving = false, actionError = result.error) }
