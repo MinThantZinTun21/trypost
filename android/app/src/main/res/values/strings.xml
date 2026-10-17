@@ -89,6 +89,13 @@
     <string name="unschedule_confirm_body">It becomes a Draft and won\'t publish until you schedule it again.</string>
     <string name="action_error_title">Couldn\'t save</string>
 
+    <!-- Edit -->
+    <string name="edit">Edit</string>
+    <string name="edit_title">Edit post</string>
+    <string name="save">Save</string>
+    <string name="edit_content_hint">The Facebook text, and what any blank text below falls back to.</string>
+    <string name="edit_tags_hint">Separate tags with commas.</string>
+
     <!-- Statuses -->
     <string name="status_draft">Draft</string>
     <string name="status_scheduled">Scheduled</string>

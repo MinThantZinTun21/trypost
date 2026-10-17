@@ -27,6 +27,7 @@ class PostPlatformResource extends JsonResource
             'content_type' => $this->content_type?->value,
             'status' => $this->status->value,
             'meta' => (object) ($this->meta ?? []),
+            'text_fields' => $this->content_type?->textFields() ?? [],
             'platform_url' => $this->platform_url,
             'error_message' => $this->error_message,
             'published_at' => $this->published_at?->toIso8601String(),

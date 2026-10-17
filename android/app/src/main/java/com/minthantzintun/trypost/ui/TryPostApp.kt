@@ -12,7 +12,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import com.minthantzintun.trypost.R
+import com.minthantzintun.trypost.core.designsystem.asLabel
 import com.minthantzintun.trypost.feature.detail.PostDetailRoute
+import com.minthantzintun.trypost.feature.edit.EditPostRoute
 import com.minthantzintun.trypost.feature.posts.PostsRoute
 import com.minthantzintun.trypost.feature.signin.SignInRoute
 import kotlinx.serialization.Serializable
@@ -22,6 +29,9 @@ data object PostsDestination
 
 @Serializable
 data class PostDetailDestination(val id: String)
+
+@Serializable
+data class EditPostDestination(val id: String)
 
 @Composable
 fun TryPostApp(viewModel: RootViewModel = hiltViewModel()) {
@@ -45,7 +55,23 @@ private fun SignedInNavHost(ownerName: String) {
             PostsRoute(ownerName = ownerName, onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) })
         }
         composable<PostDetailDestination> {
-            PostDetailRoute(onBack = { navController.popBackStack() })
+            PostDetailRoute(
+                onBack = { navController.popBackStack() },
+                extraActions = { post ->
+                    OutlinedButton(
+                        onClick = { navController.navigate(EditPostDestination(post.id)) },
+                        modifier = Modifier.testTag("edit"),
+                    ) {
+                        Text(stringResource(R.string.edit).asLabel())
+                    }
+                },
+            )
+        }
+        composable<EditPostDestination> {
+            EditPostRoute(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
         }
     }
 }

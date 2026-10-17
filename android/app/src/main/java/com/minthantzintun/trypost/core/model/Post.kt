@@ -28,6 +28,8 @@ data class PostPlatform(
     val contentType: String?,
     val status: PlatformStatus,
     val meta: Map<String, Any?>,
+    /** The texts this Post platform's Content type publishes, as the server lists them. */
+    val texts: List<PlatformText>,
     val platformUrl: String?,
     val errorMessage: String?,
     val publishedAt: Instant?,

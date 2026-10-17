@@ -53,6 +53,7 @@ data class PostPlatformDto(
     @SerialName("content_type") val contentType: String? = null,
     val status: String,
     val meta: JsonObject = JsonObject(emptyMap()),
+    @SerialName("text_fields") val textFields: List<String> = emptyList(),
     @SerialName("platform_url") val platformUrl: String? = null,
     @SerialName("error_message") val errorMessage: String? = null,
     @SerialName("published_at") val publishedAt: String? = null,
@@ -76,4 +77,17 @@ data class ErrorBodyDto(
 @Serializable
 data class RescheduleBody(
     @SerialName("scheduled_at") val scheduledAt: String,
+)
+
+@Serializable
+data class UpdatePostTextsBody(
+    val content: String,
+    val platforms: List<PlatformTextsBody>,
+)
+
+/** One Post platform's texts; a JSON null clears a text so the Post content stands in. */
+@Serializable
+data class PlatformTextsBody(
+    val id: String,
+    val meta: JsonObject,
 )

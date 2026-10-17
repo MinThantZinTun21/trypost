@@ -4,6 +4,7 @@ import com.minthantzintun.trypost.core.model.MediaItem
 import com.minthantzintun.trypost.core.model.MediaType
 import com.minthantzintun.trypost.core.model.Platform
 import com.minthantzintun.trypost.core.model.PlatformStatus
+import com.minthantzintun.trypost.core.model.PlatformText
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostPlatform
 import com.minthantzintun.trypost.core.model.PostStatus
@@ -47,6 +48,7 @@ private fun PostPlatformDto.toPostPlatform(): PostPlatform = PostPlatform(
     contentType = contentType,
     status = PlatformStatus.fromWire(status),
     meta = meta.mapValues { (_, value) -> value.toValue() },
+    texts = textFields.mapNotNull(PlatformText::fromMetaKey),
     platformUrl = platformUrl,
     errorMessage = errorMessage,
     publishedAt = publishedAt.toInstant(),

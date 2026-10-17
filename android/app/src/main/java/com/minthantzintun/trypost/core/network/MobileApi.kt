@@ -21,6 +21,9 @@ interface MobileApi {
     @GET("mobile/v1/posts/{post}")
     suspend fun post(@Path("post") id: String): PostDto
 
+    @PUT("mobile/v1/posts/{post}")
+    suspend fun update(@Path("post") id: String, @Body body: UpdatePostTextsBody): PostDto
+
     @PUT("mobile/v1/posts/{post}/schedule")
     suspend fun reschedule(@Path("post") id: String, @Body body: RescheduleBody): PostDto
 

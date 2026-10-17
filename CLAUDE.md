@@ -262,6 +262,11 @@ before adding anything.
   (`PostComposerValidator::make()`, shared with the MCP `create_post` tool)
   before `UpdatePost`. The resources list enabled Post platforms in the same
   order, so a `platforms.N.*` error names the app's Nth Social account.
+- `PUT /mobile/v1/posts/{post}` (`UpdatePostTexts`) edits only the content and
+  each Post platform's Title, Description, caption and Tags, through the same
+  stored payload and composer checks. A text the Content type does not publish
+  is refused (`ContentType::textFields()`, which the resource sends as
+  `text_fields`, so the app keeps no copy of that map); a null text clears it.
 - Responses are the `App\Http\Resources\Mobile\V1` resources, with times in
   ISO 8601 UTC. Treat their fields as a contract with an installed app: add
   fields freely, but rename or remove one only in a new `/mobile/v2`.

@@ -47,6 +47,14 @@ class PostDetailViewModel @Inject constructor(
 
     init {
         load(isRefresh = false)
+
+        viewModelScope.launch {
+            postsRepository.changes.collect { post ->
+                if (post.id == postId) {
+                    show(post)
+                }
+            }
+        }
     }
 
     fun refresh() {
