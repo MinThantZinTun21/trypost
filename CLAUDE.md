@@ -286,6 +286,8 @@ before adding anything.
   flags and creator info are not required or fetched (`PostPlatformMetaRules`,
   the MCP `create_post` tool, `PostController::edit`); the composer shows a
   Telegram note instead (`tiktokViaTelegram` shared prop).
+  `VerifyUpcomingPostConnections` skips TikTok targets, so a broken TikTok
+  token never warns that a handed-off post is at risk.
 - The Download link is `media.download` (`routes/media.php`): a permanent
   signed URL that needs no sign-in, so a video over 50 MB is still reachable
   from the channel. On R2 it redirects to a 30-minute presigned URL that forces
