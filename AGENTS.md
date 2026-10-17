@@ -240,6 +240,9 @@ before adding anything.
 - Tools say "Social account", never "channel". Tool names are snake_case.
   Tools reuse the same actions and validation as the composer; they never
   publish through a separate path.
+- `delete_post`, `delete_content_idea` and `delete_library_item` reuse the web
+  delete actions. `delete_post` refuses what the web refuses
+  (`PostStatusRules::blocksDeletion()`: publishing or published Posts).
 
 ## Content library (ADR 0007)
 
@@ -257,7 +260,7 @@ before adding anything.
 - The Post keeps `library_item_id` (null on delete), which is how an item
   counts the Posts made from it. Deleting an item keeps its Posts and media.
 - MCP tools: `list_library_items`, `get_library_item`, `create_library_item`,
-  `schedule_library_item`.
+  `schedule_library_item`, `delete_library_item`.
 
 ## TikTok handoff through Telegram (ADR 0009)
 
