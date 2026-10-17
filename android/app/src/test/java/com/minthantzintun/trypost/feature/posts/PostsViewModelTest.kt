@@ -1,5 +1,6 @@
 package com.minthantzintun.trypost.feature.posts
 
+import com.minthantzintun.trypost.core.data.PostChanges
 import com.minthantzintun.trypost.core.data.PostsRepository
 import com.minthantzintun.trypost.core.data.SessionRepository
 import com.minthantzintun.trypost.core.model.MediaType
@@ -36,6 +37,7 @@ class PostsViewModelTest {
 
     private val server = MockWebServer()
     private lateinit var store: FakeSessionStore
+    private val changes = PostChanges()
 
     @Before
     fun setUp() {
@@ -49,7 +51,7 @@ class PostsViewModelTest {
     }
 
     private fun viewModel(): PostsViewModel = PostsViewModel(
-        PostsRepository(testClient(store)),
+        PostsRepository(testClient(store), changes),
         SessionRepository(store, testApiFactory(), testJson),
     )
 
@@ -142,6 +144,20 @@ class PostsViewModelTest {
 
         assertNull(tab.error)
         assertEquals(listOf("p1"), tab.posts.map { it.id })
+    }
+
+    @Test
+    fun `a post changed on another screen reloads the loaded tabs`() = runTest {
+        server.enqueue(postsPage(listOf(postJson("p1"))))
+        val viewModel = viewModel()
+        viewModel.settled(PostTab.Scheduled)
+
+        server.enqueue(postsPage(emptyList()))
+        viewModel.state.value.tabs.getValue(PostTab.Scheduled).posts.single().let(changes::announce)
+
+        val tab = viewModel.state.first { it.tabs.getValue(PostTab.Scheduled).posts.isEmpty() }.tabs.getValue(PostTab.Scheduled)
+        assertEquals(2, server.requestCount)
+        assertTrue(tab.posts.isEmpty())
     }
 
     @Test

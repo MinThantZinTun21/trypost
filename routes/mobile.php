@@ -19,4 +19,6 @@ Route::prefix('mobile/v1')
         Route::get('me', MeController::class)->name('me');
         Route::get('posts', [PostController::class, 'index'])->name('posts.index');
         Route::get('posts/{post}', [PostController::class, 'show'])->name('posts.show');
+        Route::put('posts/{post}/schedule', [PostController::class, 'reschedule'])->name('posts.reschedule');
+        Route::delete('posts/{post}/schedule', [PostController::class, 'unschedule'])->name('posts.unschedule');
     });

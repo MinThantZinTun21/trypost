@@ -67,7 +67,7 @@ import java.time.format.FormatStyle
 @Composable
 fun PostDetailRoute(
     onBack: () -> Unit,
-    actions: @Composable (Post) -> Unit = {},
+    extraActions: @Composable (Post) -> Unit = {},
     viewModel: PostDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -77,7 +77,16 @@ fun PostDetailRoute(
         onBack = onBack,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
-        actions = actions,
+        actions = { post ->
+            ScheduleActions(
+                post = post,
+                isSaving = state.isSaving,
+                actionError = state.actionError,
+                onReschedule = viewModel::reschedule,
+                onUnschedule = viewModel::unschedule,
+                extraActions = { extraActions(post) },
+            )
+        },
     )
 }
 
@@ -193,6 +202,7 @@ private fun Post.whenLine(zone: ZoneId): String {
     return when {
         publishedAt != null && (status == PostStatus.Published || status == PostStatus.PartiallyPublished) ->
             stringResource(R.string.detail_published_at, publishedAt.formatted(zone))
+        status == PostStatus.Draft -> stringResource(R.string.detail_not_scheduled)
         scheduledAt != null -> stringResource(R.string.detail_scheduled_for, scheduledAt.formatted(zone))
         else -> stringResource(R.string.detail_not_scheduled)
     }

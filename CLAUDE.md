@@ -255,6 +255,13 @@ before adding anything.
   It never creates Posts, changes media, Social accounts or Content types, or
   publishes now. Every change goes through `UpdatePost` and the shared rules
   (`PostStatusRules`, `PostPlatformMetaRules`); a finalized Post is 409.
+- `ReschedulePost` / `UnschedulePost` rebuild the stored Post as a composer
+  payload (`PostComposerValidator::storedPayload()`, every enabled Post
+  platform with its Content type and meta, since `UpdatePost` disables the ones
+  left out) and run the composer's own checks
+  (`PostComposerValidator::make()`, shared with the MCP `create_post` tool)
+  before `UpdatePost`. The resources list enabled Post platforms in the same
+  order, so a `platforms.N.*` error names the app's Nth Social account.
 - Responses are the `App\Http\Resources\Mobile\V1` resources, with times in
   ISO 8601 UTC. Treat their fields as a contract with an installed app: add
   fields freely, but rename or remove one only in a new `/mobile/v2`.

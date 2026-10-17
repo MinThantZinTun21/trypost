@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 import javax.inject.Inject
 
 data class PostDetailUiState(
@@ -23,6 +24,8 @@ data class PostDetailUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val error: ApiError? = null,
+    val isSaving: Boolean = false,
+    val actionError: ApiError? = null,
 )
 
 /**
@@ -59,6 +62,42 @@ class PostDetailViewModel @Inject constructor(
         _state.update { it.copy(post = post, error = null) }
     }
 
+    fun reschedule(at: Instant) {
+        runAction { postsRepository.reschedule(postId, at) }
+    }
+
+    fun unschedule() {
+        runAction { postsRepository.unschedule(postId) }
+    }
+
+    fun dismissActionError() {
+        _state.update { it.copy(actionError = null) }
+    }
+
+    private fun runAction(action: suspend () -> ApiResult<Post>) {
+        if (_state.value.isSaving) {
+            return
+        }
+
+        _state.update { it.copy(isSaving = true, actionError = null) }
+
+        viewModelScope.launch {
+            when (val result = action()) {
+                is ApiResult.Success -> _state.update {
+                    it.copy(post = result.value, isSaving = false, error = null)
+                }
+                is ApiResult.Failure -> {
+                    _state.update { it.copy(isSaving = false, actionError = result.error) }
+
+                    // The Post moved on (it started publishing or finished), so show where it is now.
+                    if (result.error is ApiError.Conflict) {
+                        load(isRefresh = true)
+                    }
+                }
+            }
+        }
+    }
+
     private fun load(isRefresh: Boolean) {
         loadJob?.cancel()
         _state.update { it.copy(isLoading = !isRefresh && it.post == null, isRefreshing = isRefresh, error = null) }
@@ -67,7 +106,7 @@ class PostDetailViewModel @Inject constructor(
             while (true) {
                 when (val result = postsRepository.post(postId)) {
                     is ApiResult.Success -> _state.update {
-                        PostDetailUiState(post = result.value, isLoading = false, isRefreshing = false)
+                        it.copy(post = result.value, isLoading = false, isRefreshing = false, error = null)
                     }
                     is ApiResult.Failure -> _state.update {
                         it.copy(isLoading = false, isRefreshing = false, error = result.error)

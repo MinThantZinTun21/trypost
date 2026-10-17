@@ -13,12 +13,12 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\Delivery;
 use App\Enums\TikTok\PrivacyLevel;
-use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\LibraryItem;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Support\PostComposerValidator;
 use App\Support\TikTokText;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeTags;
@@ -26,7 +26,6 @@ use App\Support\YouTubeTitle;
 use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
-use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -123,7 +122,7 @@ class CreatePost extends Tool
                     ->all(),
             ];
 
-            $this->composerValidator($post, $payload)->validate();
+            PostComposerValidator::make($post, $payload)->validate();
 
             return data_get(UpdatePost::execute($workspace, $post, $payload), 'post');
         });
@@ -310,24 +309,5 @@ class CreatePost extends Tool
     {
         return ContentType::tryFrom((string) data_get($entry, 'content_type'))
             ?? ContentType::defaultForMedia($account->platform, $mediaItems);
-    }
-
-    /**
-     * A validator built from UpdatePostRequest's rules, messages and after-hook,
-     * bound to the new Post the way the composer's PUT route binds it.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    private function composerValidator(Post $post, array $payload): ValidationValidator
-    {
-        $formRequest = UpdatePostRequest::create("/{$post->id}", 'PUT', $payload);
-        $route = (new Route('PUT', '{post}', []))->bind($formRequest);
-        $route->setParameter('post', $post);
-        $formRequest->setRouteResolver(fn (): Route => $route);
-
-        $validator = Validator::make($formRequest->all(), $formRequest->rules(), $formRequest->messages(), $formRequest->attributes());
-        $formRequest->withValidator($validator);
-
-        return $validator;
     }
 }

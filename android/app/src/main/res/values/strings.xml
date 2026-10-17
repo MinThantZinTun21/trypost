@@ -79,6 +79,16 @@
     <string name="content_type_tiktok_photo">Photo</string>
     <string name="content_type_youtube_short">Short</string>
 
+    <!-- Schedule -->
+    <string name="schedule">Schedule</string>
+    <string name="reschedule">Reschedule</string>
+    <string name="unschedule">Unschedule</string>
+    <string name="next">Next</string>
+    <string name="schedule_pick_time">Pick a time</string>
+    <string name="unschedule_confirm_title">Unschedule this post?</string>
+    <string name="unschedule_confirm_body">It becomes a Draft and won\'t publish until you schedule it again.</string>
+    <string name="action_error_title">Couldn\'t save</string>
+
     <!-- Statuses -->
     <string name="status_draft">Draft</string>
     <string name="status_scheduled">Scheduled</string>

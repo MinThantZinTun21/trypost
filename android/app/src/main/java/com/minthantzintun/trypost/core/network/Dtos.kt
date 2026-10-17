@@ -72,3 +72,8 @@ data class ErrorBodyDto(
     val message: String? = null,
     val errors: Map<String, List<String>> = emptyMap(),
 )
+
+@Serializable
+data class RescheduleBody(
+    @SerialName("scheduled_at") val scheduledAt: String,
+)

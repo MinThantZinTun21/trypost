@@ -52,6 +52,10 @@ class PostsViewModel @Inject constructor(
 
     init {
         loadFirstPage(PostTab.Scheduled, isRefresh = false)
+
+        viewModelScope.launch {
+            postsRepository.changes.collect { reloadLoadedTabs() }
+        }
     }
 
     fun selectTab(tab: PostTab) {
