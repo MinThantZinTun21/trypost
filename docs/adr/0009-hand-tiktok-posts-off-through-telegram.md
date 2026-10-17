@@ -21,3 +21,5 @@ The target then counts as **Published**, with no live link: the app has done its
 - Each message is a step keyed by what it sends, and the steps that went out are cached, so a retry never sends the video twice.
 - TikTok's privacy level, interaction flags and creator info are not asked for or checked while delivery is Telegram.
 - Download links are still signed with `APP_KEY` and carry `APP_URL`; rotating the key or moving the domain breaks every link already in the channel.
+
+A manual Send to Telegram from the Mobile app (ADR 0012) does not bring back the mirror of ADR 0008: the Owner triggers it per Post, and nothing is sent automatically.
