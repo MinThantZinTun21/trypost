@@ -81,6 +81,10 @@
     <string name="reschedule">Reschedule</string>
     <string name="next">Next</string>
     <string name="schedule_pick_time">Pick a time</string>
+    <string name="telegram_send">Send to Telegram</string>
+    <string name="telegram_send_confirm_title">Send to Telegram?</string>
+    <string name="telegram_send_confirm_body">The post\'s media and text go to your Telegram channel. The post itself does not change.</string>
+    <string name="telegram_send_confirm">Send</string>
     <string name="action_error_title">Couldn\'t save</string>
 
     <!-- Edit -->

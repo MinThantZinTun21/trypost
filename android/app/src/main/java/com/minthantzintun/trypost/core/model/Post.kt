@@ -14,6 +14,10 @@ data class Post(
     val platforms: List<PostPlatform>,
 )
 
+/** Send to Telegram needs a video or a photo to send. */
+val Post.canSendToTelegram: Boolean
+    get() = media.any { it.type == MediaType.Video || it.type == MediaType.Image }
+
 data class MediaItem(
     val id: String,
     val type: MediaType,

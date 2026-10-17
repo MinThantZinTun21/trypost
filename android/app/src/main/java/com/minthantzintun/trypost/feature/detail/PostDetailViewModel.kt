@@ -26,6 +26,10 @@ data class PostDetailUiState(
     val error: ApiError? = null,
     val isSaving: Boolean = false,
     val actionError: ApiError? = null,
+    val isSendingToTelegram: Boolean = false,
+    /** The server's word that the send was queued. */
+    val telegramNotice: String? = null,
+    val telegramError: ApiError? = null,
 )
 
 /**
@@ -72,6 +76,26 @@ class PostDetailViewModel @Inject constructor(
 
     fun reschedule(at: Instant) {
         runAction { postsRepository.reschedule(postId, at) }
+    }
+
+    /** Queues Send to Telegram; the Post itself does not change. */
+    fun sendToTelegram() {
+        if (_state.value.isSendingToTelegram) {
+            return
+        }
+
+        _state.update { it.copy(isSendingToTelegram = true, telegramNotice = null, telegramError = null) }
+
+        viewModelScope.launch {
+            when (val result = postsRepository.sendToTelegram(postId)) {
+                is ApiResult.Success -> _state.update { it.copy(isSendingToTelegram = false, telegramNotice = result.value) }
+                is ApiResult.Failure -> _state.update { it.copy(isSendingToTelegram = false, telegramError = result.error) }
+            }
+        }
+    }
+
+    fun dismissTelegramNotice() {
+        _state.update { it.copy(telegramNotice = null, telegramError = null) }
     }
 
     fun dismissActionError() {

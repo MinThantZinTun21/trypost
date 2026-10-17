@@ -252,8 +252,9 @@ before adding anything.
   (`config('trypost.mobile.token')`; empty = 404, wrong = 401), and acts as the
   Owner. It shares `AuthenticatesWithOwnerToken` with `AuthenticateMcpToken`;
   the two secrets stay separate so each can be rotated alone.
-- The app views Posts, edits their texts, and Reschedules them. It never
-  creates Posts or changes media, Social accounts or Content types. There is
+- The app views Posts, edits their texts, Reschedules them and Sends them to
+  Telegram (ADR 0012). It never creates Posts or changes media, Social
+  accounts or Content types. There is
   no Unschedule (ADR 0011): `DELETE /mobile/v1/posts/{post}/schedule` and the
   Drafts tab are gone. Every change goes through `UpdatePost` and the shared rules
   (`PostStatusRules`, `PostPlatformMetaRules`); a finalized Post is 409.
@@ -292,9 +293,20 @@ before adding anything.
   connect flow (`PlatformsRemovedTest` still forbids `telegram` routes). It is
   one channel from `.env`: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHANNEL_ID`
   (`config('trypost.telegram')`); a handoff without them fails the target.
-- Only TikTok targets go to Telegram. The old mirror of every published Post
-  (`SendPostToTelegram`, `posts.telegram_sent_at`, the `TelegramFailed`
-  Notification) was removed; do not bring it back.
+- Scheduled sends go to Telegram only for TikTok targets. The old mirror of
+  every published Post (`SendPostToTelegram`, `posts.telegram_sent_at`, the
+  `TelegramFailed` Notification) was removed; do not bring it back.
+- **Send to Telegram** (ADR 0012) is the Owner's manual copy of one Post from
+  the Mobile app: `POST /mobile/v1/posts/{post}/telegram` (route name
+  `mobile.v1.posts.send`, since route names may not say `telegram`) answers
+  202 and queues `App\Jobs\SendToTelegram`, in any status; 422 when Telegram
+  is not set up or the Post has no video or photo. The job sends the first
+  enabled TikTok target's handoff steps (`TikTokHandoff::steps()`), else the
+  videos, the photos and the Post content, through the same `TelegramSteps`.
+  It never changes the Post or its platforms. Each press has its own send id,
+  so a retry skips the steps already sent but a second press sends again. A
+  refusal or running out of retries stores a `TelegramSendFailed`
+  Notification.
 - The handoff sends, in order: each video with its Download link as the
   caption (the link alone over the Bot API's 50 MB limit), or the photos as
   albums of up to 10 items and 50 MB; then the TikTok caption as its own
@@ -407,8 +419,9 @@ before adding anything.
   notification preferences, and `MAIL_MAILER` stays `log`. Do not add a mail
   provider.
 - `App\Jobs\SendNotification` stores an in-app `Notification` row. There are
-  three types: `PostFailed` (full or partial failure; a fully published post
-  sends nothing), `AccountDisconnected` and `PostAtRisk`. Titles and bodies
+  four types: `PostFailed` (full or partial failure; a fully published post
+  sends nothing), `AccountDisconnected`, `PostAtRisk` and `TelegramSendFailed`
+  (a manual Send to Telegram that Telegram refused or that ran out of retries). Titles and bodies
   resolve through `lang/en/notifications.php`.
 
 ## Language (English only)

@@ -174,4 +174,47 @@ class PostDetailViewModelTest {
         assertEquals(ApiError.Conflict("This post has already been processed."), state.actionError)
         assertEquals(3, server.requestCount)
     }
+
+    @Test
+    fun `sending to telegram shows the server's message and leaves the post`() = runTest {
+        server.enqueue(json(postJson("p1", status = "published", publishedAt = "2030-01-02T09:31:00+00:00")))
+        val viewModel = viewModel()
+        viewModel.state.first { !it.isLoading }
+        server.takeRequest()
+
+        server.enqueue(json("""{"message":"Sending to Telegram"}""", code = 202))
+        viewModel.sendToTelegram()
+        val state = viewModel.state.first { !it.isSendingToTelegram && it.telegramNotice != null }
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/mobile/v1/posts/p1/telegram", request.url.encodedPath)
+        assertEquals("Sending to Telegram", state.telegramNotice)
+        assertEquals(PostStatus.Published, state.post?.status)
+        assertNull(state.telegramError)
+
+        viewModel.dismissTelegramNotice()
+        assertNull(viewModel.state.value.telegramNotice)
+    }
+
+    @Test
+    fun `a refused send to telegram shows the server's reason`() = runTest {
+        server.enqueue(json(postJson("p1")))
+        val viewModel = viewModel()
+        viewModel.state.first { !it.isLoading }
+
+        server.enqueue(
+            json(
+                """{"message":"Telegram is not set up.","errors":{"telegram":["Telegram is not set up."]}}""",
+                code = 422,
+            ),
+        )
+        viewModel.sendToTelegram()
+        val state = viewModel.state.first { !it.isSendingToTelegram && it.telegramError != null }
+
+        val error = state.telegramError as ApiError.Validation
+        assertEquals(listOf("Telegram is not set up."), error.fields["telegram"])
+        assertNull(state.telegramNotice)
+        assertEquals(PostStatus.Scheduled, state.post?.status)
+    }
 }

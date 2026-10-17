@@ -77,13 +77,22 @@ fun PostDetailRoute(
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         actions = { post ->
-            ScheduleActions(
-                post = post,
-                isSaving = state.isSaving,
-                actionError = state.actionError,
-                onReschedule = viewModel::reschedule,
-                extraActions = { extraActions(post) },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ScheduleActions(
+                    post = post,
+                    isSaving = state.isSaving,
+                    actionError = state.actionError,
+                    onReschedule = viewModel::reschedule,
+                    extraActions = { extraActions(post) },
+                )
+                TelegramAction(
+                    post = post,
+                    isSending = state.isSendingToTelegram,
+                    notice = state.telegramNotice,
+                    error = state.telegramError,
+                    onSend = viewModel::sendToTelegram,
+                )
+            }
         },
     )
 }

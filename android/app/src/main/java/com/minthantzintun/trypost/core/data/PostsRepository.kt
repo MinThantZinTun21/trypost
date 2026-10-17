@@ -45,6 +45,13 @@ class PostsRepository @Inject constructor(
         client.call { reschedule(id, RescheduleBody(at.toString())) }.map { it.toPost() }.announced()
 
     /**
+     * Queues Send to Telegram (ADR 0012) and returns the server's message.
+     * The Post does not change, so nothing is announced.
+     */
+    suspend fun sendToTelegram(id: String): ApiResult<String> =
+        client.call { sendToTelegram(id) }.map { it.message }
+
+    /**
      * Saves the Post content and each Post platform's texts, keyed by Post
      * platform id. A blank text is cleared so the Post content stands in;
      * tags are a comma separated line. Platforms go in [platformOrder], the

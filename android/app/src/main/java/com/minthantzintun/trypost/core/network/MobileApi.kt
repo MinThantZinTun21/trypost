@@ -2,6 +2,7 @@ package com.minthantzintun.trypost.core.network
 
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -25,4 +26,7 @@ interface MobileApi {
 
     @PUT("mobile/v1/posts/{post}/schedule")
     suspend fun reschedule(@Path("post") id: String, @Body body: RescheduleBody): PostDto
+
+    @POST("mobile/v1/posts/{post}/telegram")
+    suspend fun sendToTelegram(@Path("post") id: String): MessageDto
 }

@@ -68,6 +68,10 @@ data class SocialAccountDto(
     @SerialName("avatar_url") val avatarUrl: String? = null,
 )
 
+/** A reply that only says what the server did, such as a queued Send to Telegram. */
+@Serializable
+data class MessageDto(val message: String)
+
 @Serializable
 data class ErrorBodyDto(
     val message: String? = null,
