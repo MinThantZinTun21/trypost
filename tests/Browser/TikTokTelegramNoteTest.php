@@ -16,7 +16,7 @@ function seedTikTokTelegramEditor(): Post
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
     $user->update(['current_workspace_id' => $workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'For the channel', 'status' => Status::Draft]);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'For the channel', 'status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
     $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     PostPlatform::factory()->tiktok()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'enabled' => true]);
     test()->actingAs($user);

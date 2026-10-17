@@ -15,7 +15,7 @@ data class DaySection(
 /** The time a Post is listed under: when it went out on Published, else when it is due. */
 fun Post.listedAt(tab: PostTab): Instant? = when (tab) {
     PostTab.Published -> publishedAt ?: scheduledAt
-    PostTab.Scheduled, PostTab.Draft -> scheduledAt
+    PostTab.Scheduled -> scheduledAt
     PostTab.Failed -> scheduledAt ?: publishedAt
 }
 

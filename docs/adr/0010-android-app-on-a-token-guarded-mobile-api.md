@@ -17,3 +17,5 @@ So a narrow mobile API comes back under `/mobile/v1`, guarded by one bearer secr
 - Rotating `MOBILE_TOKEN` signs the phone out; it does not touch `MCP_TOKEN`.
 - The app is online-only and stores the token encrypted with the Android Keystore. It is sideloaded from a signed APK built by GitHub Actions; there is no Play Store listing.
 - Times go over the wire as ISO 8601 with an offset; the app shows them in the phone's timezone, as the web app does in the browser's.
+
+ADR 0011 removes the Drafts tab and Unschedule (`DELETE /mobile/v1/posts/{post}/schedule`), and ADR 0012 lets the app Post now, Send to Telegram and upload Videos; those lines above no longer hold.

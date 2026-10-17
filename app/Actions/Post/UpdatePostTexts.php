@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 class UpdatePostTexts
 {
     /**
-     * Changes a Draft's or Scheduled post's content and its Post platforms'
+     * Changes a Scheduled post's content and its Post platforms'
      * texts, keeping its status, time, media, Post platforms and Content types,
      * after the same checks the composer runs for that status. A null text
      * clears it, so the Post content stands in again.

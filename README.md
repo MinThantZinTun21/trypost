@@ -16,11 +16,11 @@ This is a hard fork of [trypostit/trypost](https://github.com/trypostit/trypost)
 
 - **One Owner.** The seeder creates the account. There is no sign-up page, and `php artisan owner:reset-password` resets the password on the server.
 - **Three platforms.** Facebook Pages (Post, Reel, Story), TikTok (Video, Photo) and YouTube Shorts.
-- **Write once, schedule anywhere.** Pick the accounts, upload images or videos from your computer (large files upload in chunks), and save as a draft or schedule the post.
-- **Calendar.** Month, week and day views, with drag and drop to reschedule, plus lists of scheduled, draft and posted posts.
+- **Write once, schedule anywhere.** Pick the accounts, upload images or videos from your computer (large files upload in chunks), and schedule the post or send it now. Nothing is saved until it is scheduled.
+- **Calendar.** Month, week and day views, with drag and drop to reschedule, plus lists of scheduled and posted posts.
 - **Publishing you can see.** Each platform's result shows a link or a failure reason, and the post page refreshes while it publishes.
 - **Works with Claude Code.** An MCP server at `/mcp` lets an Assistant list your Social accounts and schedule posts for you.
-- **Android app.** View your posts, fix their texts, and Reschedule or Unschedule them from your phone (`android/`).
+- **Android app.** View your posts, filter them by account, fix their texts, Reschedule them, post them now or send them to Telegram, and upload Videos for your Assistant, all from your phone (`android/`).
 - **In-app notifications** when a post fails, when an account disconnects, or when an upcoming post's account needs reconnecting. Expiring tokens are refreshed automatically.
 
 ## Requirements

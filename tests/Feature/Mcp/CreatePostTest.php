@@ -12,6 +12,7 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Models\Video;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\Fluent\AssertableJson;
@@ -30,7 +31,10 @@ function ownerAsset(string $state = 'image'): Media
 {
     $factory = Media::factory()->assets()->for(test()->workspace, 'mediable');
 
-    return ($state === 'video' ? $factory->video() : $factory)->create(['meta' => $state === 'video' ? ['duration' => 30] : null]);
+    return ($state === 'video' ? $factory->video() : $factory)->create([
+        'size' => 1024 * 1024,
+        'meta' => $state === 'video' ? ['duration' => 30] : null,
+    ]);
 }
 
 /**
@@ -46,13 +50,16 @@ function onlyPost(): Post
     return Post::query()->sole();
 }
 
-test('a video draft defaults to Reel, TikTok Video and YouTube Short and is created via mcp', function () {
+test('a video post defaults to Reel, TikTok Video and YouTube Short and is created via mcp', function () {
+    $this->freezeSecond();
     $video = ownerAsset('video');
+    $scheduledAt = now()->addDay()->utc()->toIso8601String();
 
     createPostWith([
         'content' => 'Launch day',
         'media_ids' => [$video->id],
-        'mode' => 'draft',
+        'mode' => 'scheduled',
+        'scheduled_at' => $scheduledAt,
         'social_accounts' => [
             ['id' => $this->facebook->id],
             ['id' => $this->tiktok->id, 'privacy_level' => 'SELF_ONLY'],
@@ -60,15 +67,15 @@ test('a video draft defaults to Reel, TikTok Video and YouTube Short and is crea
         ],
     ])->assertOk()->assertStructuredContent(fn (AssertableJson $json) => $json
         ->where('post.id', onlyPost()->id)
-        ->where('post.status', 'draft')
-        ->where('post.scheduled_at', null)
-        ->where('post.goes_out', __('mcp.post.goes_out_never')));
+        ->where('post.status', 'scheduled')
+        ->where('post.scheduled_at', $scheduledAt)
+        ->where('post.goes_out', __('mcp.post.goes_out_at', ['time' => $scheduledAt])));
 
     $post = onlyPost();
     $enabled = $post->postPlatforms()->enabled()->get()->keyBy('social_account_id');
 
     expect($post->created_via)->toBe(CreatedVia::Mcp)
-        ->and($post->status)->toBe(Status::Draft)
+        ->and($post->status)->toBe(Status::Scheduled)
         ->and($post->content)->toBe('Launch day')
         ->and(array_column($post->media, 'id'))->toBe([$video->id])
         ->and($enabled)->toHaveCount(3)
@@ -83,7 +90,8 @@ test('an image post defaults to Facebook Post and TikTok Photo', function () {
 
     createPostWith([
         'media_ids' => [$image->id],
-        'mode' => 'draft',
+        'mode' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
         'social_accounts' => [
             ['id' => $this->facebook->id],
             ['id' => $this->tiktok->id, 'privacy_level' => 'SELF_ONLY'],
@@ -99,7 +107,8 @@ test('an image post defaults to Facebook Post and TikTok Photo', function () {
 test('a given content type wins over the default', function () {
     createPostWith([
         'media_ids' => [ownerAsset('video')->id],
-        'mode' => 'draft',
+        'mode' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
         'social_accounts' => [['id' => $this->facebook->id, 'content_type' => 'facebook_story']],
     ])->assertOk();
 
@@ -110,7 +119,8 @@ test('titles, descriptions, captions and TikTok settings are stored on each acco
     createPostWith([
         'content' => 'Fallback text',
         'media_ids' => [ownerAsset('video')->id],
-        'mode' => 'draft',
+        'mode' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
         'social_accounts' => [
             ['id' => $this->facebook->id, 'title' => 'Reel title', 'description' => 'Reel description', 'privacy_level' => 'SELF_ONLY'],
             ['id' => $this->tiktok->id, 'caption' => 'TikTok caption', 'privacy_level' => 'SELF_ONLY', 'allow_comments' => true, 'allow_duet' => false, 'allow_stitch' => false, 'is_aigc' => true],
@@ -183,36 +193,40 @@ test('create_post rejects input before saving anything', function (Closure $argu
         fn () => ['mode' => 'scheduled', 'social_accounts' => [['id' => test()->facebook->id]]],
         fn () => __('validation.required_if', ['attribute' => 'scheduled at', 'other' => 'mode', 'value' => 'scheduled']),
     ],
-    'TikTok draft without privacy' => [
-        fn () => ['mode' => 'draft', 'social_accounts' => [['id' => test()->tiktok->id]]],
+    'TikTok post without privacy' => [
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'social_accounts' => [['id' => test()->tiktok->id]]],
         fn () => __('mcp.post.tiktok_privacy_required', ['account' => test()->tiktok->accountDisplayName()]),
     ],
     'unknown account' => [
-        fn () => ['mode' => 'draft', 'social_accounts' => [['id' => SocialAccount::factory()->create()->id]]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'social_accounts' => [['id' => SocialAccount::factory()->create()->id]]],
         fn () => __('mcp.post.account_not_found'),
     ],
     'unknown media' => [
-        fn () => ['mode' => 'draft', 'media_ids' => [Media::factory()->assets()->for(Workspace::factory(), 'mediable')->create()->id], 'social_accounts' => [['id' => test()->facebook->id]]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [Media::factory()->assets()->for(Workspace::factory(), 'mediable')->create()->id], 'social_accounts' => [['id' => test()->facebook->id]]],
+        fn () => __('mcp.post.media_not_found'),
+    ],
+    'a Video\'s file' => [
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [Video::factory()->for(test()->workspace)->withFile()->create()->file->id], 'social_accounts' => [['id' => test()->facebook->id]]],
         fn () => __('mcp.post.media_not_found'),
     ],
     'title on a Facebook Post' => [
-        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->facebook->id, 'title' => 'Ignored']]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->facebook->id, 'title' => 'Ignored']]],
         fn () => __('mcp.post.text_field_unused', ['field' => 'title', 'type' => 'facebook_post']),
     ],
     'caption on a TikTok Photo' => [
-        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'caption' => 'Ignored']]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'caption' => 'Ignored']]],
         fn () => __('mcp.post.text_field_unused', ['field' => 'caption', 'type' => 'tiktok_photo']),
     ],
     'title on a TikTok Video' => [
-        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset('video')->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'title' => 'Ignored']]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [ownerAsset('video')->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'title' => 'Ignored']]],
         fn () => __('mcp.post.text_field_unused', ['field' => 'title', 'type' => 'tiktok_video']),
     ],
     'tags on a TikTok Video' => [
-        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset('video')->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'tags' => ['cooking']]]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [ownerAsset('video')->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'tags' => ['cooking']]]],
         fn () => __('mcp.post.text_field_unused', ['field' => 'tags', 'type' => 'tiktok_video']),
     ],
     'content type from another platform' => [
-        fn () => ['mode' => 'draft', 'social_accounts' => [['id' => test()->facebook->id, 'content_type' => 'youtube_short']]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'social_accounts' => [['id' => test()->facebook->id, 'content_type' => 'youtube_short']]],
         fn () => __('mcp.post.content_type_platform', ['type' => 'youtube_short', 'account' => test()->facebook->accountDisplayName()]),
     ],
 ]);
@@ -228,15 +242,15 @@ test('create_post returns the composer\'s errors and rolls the post back', funct
         fn () => __('posts.form.warnings.no_image_allowed'),
     ],
     'YouTube title over its limit' => [
-        fn () => ['mode' => 'draft', 'social_accounts' => [['id' => test()->youtube->id, 'title' => str_repeat('a', 101)]]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'social_accounts' => [['id' => test()->youtube->id, 'title' => str_repeat('a', 101)]]],
         fn () => __('posts.form.youtube.title_max'),
     ],
     'TikTok photo title over its limit' => [
-        fn () => ['mode' => 'draft', 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'title' => str_repeat('a', 91)]]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'media_ids' => [ownerAsset()->id], 'social_accounts' => [['id' => test()->tiktok->id, 'privacy_level' => 'SELF_ONLY', 'title' => str_repeat('a', 91)]]],
         fn () => __('posts.form.tiktok.photo_title_max'),
     ],
     'YouTube tags over their limit' => [
-        fn () => ['mode' => 'draft', 'social_accounts' => [['id' => test()->youtube->id, 'tags' => [str_repeat('a', 250), str_repeat('b', 250)]]]],
+        fn () => ['mode' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'social_accounts' => [['id' => test()->youtube->id, 'tags' => [str_repeat('a', 250), str_repeat('b', 250)]]]],
         fn () => __('posts.form.youtube.tags_max'),
     ],
     'YouTube description over its limit' => [
@@ -261,3 +275,13 @@ test('with Telegram delivery a TikTok post is scheduled without a privacy level'
         ->and($tiktok->content_type)->toBe(ContentType::TikTokVideo)
         ->and(data_get($tiktok->meta, 'caption'))->toBe('Post me by hand');
 });
+
+test('a post that has finished publishing says so instead of a time', function (Status $status) {
+    $post = Post::factory()->create(['status' => $status, 'scheduled_at' => now()->subHour()]);
+
+    expect(CreatePost::postPayload($post)['goes_out'])->toBe(__('mcp.post.goes_out_done'));
+})->with([
+    'published' => [Status::Published],
+    'partially published' => [Status::PartiallyPublished],
+    'failed' => [Status::Failed],
+]);

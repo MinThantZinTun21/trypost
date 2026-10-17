@@ -48,3 +48,14 @@ fun postJson(
            "social_account":{"id":"sa1","display_name":"My Page","username":"mypage","avatar_url":null}}]}
     """.trimIndent()
 }
+
+/** One `/mobile/v1/videos` page with the given video JSON objects. */
+fun videosPage(videos: List<String>, page: Int = 1, lastPage: Int = 1): MockResponse =
+    json("""{"data":[${videos.joinToString(",")}],"meta":{"current_page":$page,"last_page":$lastPage}}""")
+
+fun videoJson(id: String, name: String = "Video $id", size: Long? = 5_242_880, duration: Double? = 75.5): String =
+    """{"id":"$id","name":"$name","size":${size ?: "null"},"duration":${duration ?: "null"},"created_at":"2030-01-02T09:30:00+00:00"}"""
+
+/** The reply to `POST /mobile/v1/videos/uploads`, pointing the PUT back at this server. */
+fun MockWebServer.videoUploadStarted(uploadId: String = "up-1"): MockResponse =
+    json("""{"upload_id":"$uploadId","url":"${url("/bucket/raw.mp4?X-Amz-Signature=abc")}","headers":{"Content-Type":"video/mp4"},"expires_in_seconds":3600}""")

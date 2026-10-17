@@ -38,8 +38,8 @@ class DaySectionsTest {
     }
 
     @Test
-    fun `undated drafts share one section`() {
-        val sections = groupByDay(listOf(post("a", null), post("b", null)), PostTab.Draft, ZoneId.of("UTC"))
+    fun `undated posts share one section`() {
+        val sections = groupByDay(listOf(post("a", null), post("b", null)), PostTab.Failed, ZoneId.of("UTC"))
 
         assertEquals(1, sections.size)
         assertEquals(null, sections.single().day)

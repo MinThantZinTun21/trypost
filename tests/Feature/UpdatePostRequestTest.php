@@ -19,7 +19,6 @@ test('youtube description checks effective web metadata before scheduling or pub
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $this->post->update([
         'content' => 'Short title',
-        'status' => Status::Draft,
         'media' => $this->mediaPayload,
     ]);
     $this->postPlatform->update(['enabled' => false]);
@@ -53,7 +52,7 @@ test('youtube description checks effective web metadata before scheduling or pub
         }
     } else {
         $response->assertSessionHasErrors('platforms.0.meta.description');
-        expect($this->post->fresh()->status)->toBe(Status::Draft);
+        expect($this->post->fresh()->status)->toBe(Status::Scheduled);
         Queue::assertNotPushed(PublishPost::class);
     }
 })->with([
@@ -74,18 +73,20 @@ test('youtube description reports and persists independent selected channel valu
         ]);
     });
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
+        'media' => $this->mediaPayload,
         'platforms' => [
-            ['id' => $platforms[0]->id, 'meta' => ['description' => 'First channel']],
-            ['id' => $platforms[1]->id, 'meta' => ['description' => str_repeat('é', 2501)]],
+            ['id' => $platforms[0]->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['description' => 'First channel']],
+            ['id' => $platforms[1]->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['description' => str_repeat('é', 2501)]],
         ],
     ])->assertSessionHasErrors('platforms.1.meta.description')->assertSessionDoesntHaveErrors('platforms.0.meta.description');
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
         'content' => 'Short title',
+        'media' => $this->mediaPayload,
         'platforms' => [
-            ['id' => $platforms[0]->id, 'meta' => ['description' => 'First channel']],
-            ['id' => $platforms[1]->id, 'meta' => ['description' => str_repeat('é', 2500)]],
+            ['id' => $platforms[0]->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['description' => 'First channel']],
+            ['id' => $platforms[1]->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['description' => str_repeat('é', 2500)]],
         ],
     ])->assertSessionHasNoErrors();
     expect(data_get($platforms[0]->fresh()->meta, 'description'))->toBe('First channel')
@@ -143,6 +144,7 @@ test('youtube description validation keeps submitted channel order and rolls bac
         'meta' => ['description' => 'Valid description'],
     ]);
     $this->post->update(['content' => 'Original title']);
+    $scheduledAt = $this->post->fresh()->scheduled_at;
 
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
         'status' => Status::Scheduled->value,
@@ -156,9 +158,9 @@ test('youtube description validation keeps submitted channel order and rolls bac
     ])->assertSessionHasErrors('platforms.1.meta.description')
         ->assertSessionDoesntHaveErrors('platforms.0.meta.description');
 
-    expect($this->post->fresh()->status)->toBe(Status::Draft)
+    expect($this->post->fresh()->status)->toBe(Status::Scheduled)
         ->and($this->post->fresh()->content)->toBe('Original title')
-        ->and($this->post->fresh()->scheduled_at)->toBeNull()
+        ->and($this->post->fresh()->scheduled_at->equalTo($scheduledAt))->toBeTrue()
         ->and($platform->fresh()->enabled)->toBeTrue()
         ->and($secondPlatform->fresh()->enabled)->toBeFalse()
         ->and($this->postPlatform->fresh()->enabled)->toBeTrue();
@@ -184,6 +186,16 @@ beforeEach(function () {
             'type' => 'video',
             'mime_type' => 'video/mp4',
             'original_filename' => 'test-video.mp4',
+        ],
+    ];
+    $this->imagePayload = [
+        [
+            'id' => 'test-media-image',
+            'path' => 'media/2026-01/test-photo.jpg',
+            'url' => 'https://example.com/media/2026-01/test-photo.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test-photo.jpg',
         ],
     ];
     $this->socialAccount = SocialAccount::factory()->create([
@@ -232,7 +244,7 @@ test('publishing a tiktok post with privacy_level passes privacy_level validatio
     $response->assertSessionDoesntHaveErrors(['platforms.0.meta.privacy_level']);
 });
 
-test('saving a draft does not enforce media compatibility', function () {
+test('scheduling enforces media compatibility', function () {
     $youtubeAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::YouTube,
@@ -244,7 +256,7 @@ test('saving a draft does not enforce media compatibility', function () {
 
     $response = $this->actingAs($this->user)
         ->put(route('app.posts.update', $this->post), [
-            'status' => Status::Draft->value,
+            'status' => Status::Scheduled->value,
             'media' => [[
                 'id' => 'test-media-image',
                 'path' => 'media/2026-01/photo.jpg',
@@ -258,7 +270,7 @@ test('saving a draft does not enforce media compatibility', function () {
             ],
         ]);
 
-    $response->assertSessionDoesntHaveErrors(['platforms.0.content_type']);
+    $response->assertSessionHasErrors(['platforms.0.content_type' => __('posts.form.warnings.no_image_allowed')]);
 });
 
 test('publishing a tiktok post with an unknown privacy_level is rejected', function () {
@@ -298,10 +310,11 @@ test('publishing a tiktok post as self only branded content is rejected', functi
     $response->assertSessionHasErrors(['platforms.0.meta.privacy_level' => trans('posts.form.tiktok.privacy.private_disabled_branded')]);
 });
 
-test('saving a tiktok post as draft without privacy_level skips the privacy_level rule', function () {
+test('scheduling a tiktok post without privacy_level is rejected', function () {
     $response = $this->actingAs($this->user)
         ->put(route('app.posts.update', $this->post), [
-            'status' => Status::Draft->value,
+            'status' => Status::Scheduled->value,
+            'media' => $this->mediaPayload,
             'platforms' => [
                 [
                     'id' => $this->postPlatform->id,
@@ -311,7 +324,7 @@ test('saving a tiktok post as draft without privacy_level skips the privacy_leve
             ],
         ]);
 
-    $response->assertSessionDoesntHaveErrors(['platforms.0.meta.privacy_level']);
+    $response->assertSessionHasErrors(['platforms.0.meta.privacy_level' => trans('posts.form.tiktok.privacy_required')]);
 });
 
 test('scheduling a youtube post over 100 chars is rejected with the platform name', function () {
@@ -372,32 +385,6 @@ test('scheduling a youtube post within 100 chars passes content-length validatio
     $response->assertSessionDoesntHaveErrors('content');
 });
 
-test('saving an over-limit youtube post as draft skips the content-length rule', function () {
-    $youtubeAccount = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::YouTube,
-    ]);
-    $youtubePlatform = PostPlatform::factory()->youtube()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $youtubeAccount->id,
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->put(route('app.posts.update', $this->post), [
-            'status' => Status::Draft->value,
-            'content' => str_repeat('a', 1000),
-            'platforms' => [
-                [
-                    'id' => $youtubePlatform->id,
-                    'content_type' => ContentType::YouTubeShort->value,
-                    'meta' => [],
-                ],
-            ],
-        ]);
-
-    $response->assertSessionDoesntHaveErrors('content');
-});
-
 test('scheduling across multiple platforms enforces the strictest content-length cap', function () {
     $facebookAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -441,10 +428,10 @@ test('scheduling across multiple platforms enforces the strictest content-length
     expect(session('errors')->get('content')[0])->toContain('YouTube');
 });
 
-test('draft save drops the removed media source keys', function () {
+test('saving drops the removed media source keys', function () {
     $response = $this->actingAs($this->user)
         ->put(route('app.posts.update', $this->post), [
-            'status' => Status::Draft->value,
+            'status' => Status::Scheduled->value,
             'media' => [[
                 'id' => 'media-keep-meta',
                 'path' => 'medias/photo.jpg',
@@ -465,7 +452,7 @@ test('draft save drops the removed media source keys', function () {
         ->and(data_get($this->post->media, '0'))->not->toHaveKey('source_meta');
 });
 
-test('youtube title saves on a draft and reloads in the editor', function () {
+test('youtube title saves on a scheduled post and reloads in the editor', function () {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $platform = PostPlatform::factory()->youtube()->create([
         'post_id' => $this->post->id,
@@ -474,9 +461,10 @@ test('youtube title saves on a draft and reloads in the editor', function () {
     ]);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
+        'media' => $this->mediaPayload,
         'platforms' => [
-            ['id' => $platform->id, 'meta' => ['title' => 'My own Short title']],
+            ['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['title' => 'My own Short title']],
         ],
     ])->assertSessionHasNoErrors();
 
@@ -489,7 +477,7 @@ test('youtube title saves on a draft and reloads in the editor', function () {
         ));
 });
 
-test('youtube title limits hold on a draft', function (string $title, string $key) {
+test('youtube title limits hold on a scheduled post', function (string $title, string $key) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $platform = PostPlatform::factory()->youtube()->create([
         'post_id' => $this->post->id,
@@ -498,9 +486,10 @@ test('youtube title limits hold on a draft', function (string $title, string $ke
     ]);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
+        'media' => $this->mediaPayload,
         'platforms' => [
-            ['id' => $platform->id, 'meta' => ['title' => $title]],
+            ['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['title' => $title]],
         ],
     ])->assertSessionHasErrors(['platforms.0.meta.title' => __($key)]);
 
@@ -512,11 +501,12 @@ test('youtube title limits hold on a draft', function (string $title, string $ke
 
 test('a title the youtube limits reject is fine on another platform', function () {
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
+        'media' => $this->mediaPayload,
         'platforms' => [
-            ['id' => $this->postPlatform->id, 'meta' => ['title' => 'Use <b>bold</b>']],
+            ['id' => $this->postPlatform->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value, 'title' => 'Use <b>bold</b>']],
         ],
-    ])->assertSessionDoesntHaveErrors('platforms.0.meta.title');
+    ])->assertSessionHasNoErrors();
 });
 
 test('a youtube title lifts the 100 character cap on the content', function (array $meta, bool $capped) {
@@ -556,10 +546,11 @@ test('a youtube post whose stored title lifts the cap keeps long content within 
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
         'content' => str_repeat('é', 2501),
+        'media' => $this->mediaPayload,
         'platforms' => [
-            ['id' => $platform->id, 'meta' => $meta],
+            ['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => $meta],
         ],
     ]);
 
@@ -572,7 +563,7 @@ test('a youtube post whose stored title lifts the cap keeps long content within 
     'title cleared' => [['title' => null], false],
 ]);
 
-test('facebook reel title and description save on a draft and reload in the editor', function () {
+test('facebook reel title and description save on a scheduled post and reload in the editor', function () {
     $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
     $platform = PostPlatform::factory()->create([
         'post_id' => $this->post->id,
@@ -584,9 +575,10 @@ test('facebook reel title and description save on a draft and reload in the edit
     $description = trim(str_repeat('Long Reel description. ', 300));
 
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
+        'media' => $this->mediaPayload,
         'platforms' => [
-            ['id' => $platform->id, 'meta' => ['title' => 'Reel title', 'description' => $description]],
+            ['id' => $platform->id, 'content_type' => ContentType::FacebookReel->value, 'meta' => ['title' => 'Reel title', 'description' => $description]],
         ],
     ])->assertSessionHasNoErrors();
 
@@ -600,12 +592,13 @@ test('facebook reel title and description save on a draft and reload in the edit
         ));
 });
 
-test('tiktok caption and photo text save on a draft and reload in the editor', function () {
-    $meta = ['caption' => 'TikTok-only caption', 'title' => 'Photo title', 'description' => 'Photo description'];
+test('tiktok caption and photo text save on a scheduled post and reload in the editor', function () {
+    $meta = ['privacy_level' => PrivacyLevel::SelfOnly->value, 'caption' => 'TikTok-only caption', 'title' => 'Photo title', 'description' => 'Photo description'];
 
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
-        'platforms' => [['id' => $this->postPlatform->id, 'meta' => $meta]],
+        'status' => Status::Scheduled->value,
+        'media' => $this->mediaPayload,
+        'platforms' => [['id' => $this->postPlatform->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => $meta]],
     ])->assertSessionHasNoErrors();
 
     expect($this->postPlatform->fresh()->meta)->toEqual($meta);
@@ -617,10 +610,12 @@ test('tiktok caption and photo text save on a draft and reload in the editor', f
         ));
 });
 
-test('tiktok text limits hold on a draft for the text its content type publishes', function (ContentType $contentType, string $checked, string $key, string $hidden) {
+test('tiktok text limits hold for the text its content type publishes', function (ContentType $contentType, string $checked, string $key, string $hidden) {
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
+        'media' => $contentType === ContentType::TikTokPhoto ? $this->imagePayload : $this->mediaPayload,
         'platforms' => [['id' => $this->postPlatform->id, 'content_type' => $contentType->value, 'meta' => [
+            'privacy_level' => PrivacyLevel::SelfOnly->value,
             'caption' => str_repeat('a', 2201),
             'title' => str_repeat('a', 91),
         ]]],
@@ -635,8 +630,10 @@ test('tiktok text limits follow the stored content type when none is submitted',
     $this->postPlatform->update(['content_type' => ContentType::TikTokPhoto]);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
+        'media' => $this->imagePayload,
         'platforms' => [['id' => $this->postPlatform->id, 'meta' => [
+            'privacy_level' => PrivacyLevel::SelfOnly->value,
             'caption' => str_repeat('a', 2201),
             'title' => str_repeat('a', 91),
         ]]],
@@ -652,7 +649,8 @@ test('a content type from another platform does not skip the text limits', funct
     ]);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
+        'media' => $this->mediaPayload,
         'platforms' => [['id' => $platform->id, 'content_type' => ContentType::FacebookPost->value, 'meta' => ['title' => str_repeat('a', 101)]]],
     ])->assertSessionHasErrors(['platforms.0.meta.title' => __('posts.form.youtube.title_max')]);
 });
@@ -668,20 +666,21 @@ test('a content type from another platform is rejected and not stored', function
     ])->assertSessionHasErrors(['platforms.0.content_type' => __('posts.form.warnings.content_type_platform')]);
 
     expect($this->postPlatform->fresh()->content_type)->toBe(ContentType::TikTokVideo);
-})->with([Status::Draft->value, Status::Scheduled->value]);
+})->with([Status::Scheduled->value, Status::Publishing->value]);
 
 test('a content type from the platform passes the platform check', function () {
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
-        'platforms' => [['id' => $this->postPlatform->id, 'content_type' => ContentType::TikTokPhoto->value]],
-    ])->assertSessionDoesntHaveErrors('platforms.0.content_type');
+        'status' => Status::Scheduled->value,
+        'media' => $this->imagePayload,
+        'platforms' => [['id' => $this->postPlatform->id, 'content_type' => ContentType::TikTokPhoto->value, 'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]],
+    ])->assertSessionHasNoErrors();
 
     expect($this->postPlatform->fresh()->content_type)->toBe(ContentType::TikTokPhoto);
 });
 
-test('a draft whose platforms is not a list gets a validation error', function () {
+test('a post whose platforms is not a list gets a validation error', function () {
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
-        'status' => Status::Draft->value,
+        'status' => Status::Scheduled->value,
         'platforms' => 'tiktok',
     ])->assertSessionHasErrors('platforms');
 });

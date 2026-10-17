@@ -42,7 +42,7 @@ data class EditPostUiState(
 )
 
 /**
- * Edits a Draft's or Scheduled post's content and each Social account's own
+ * Edits a Scheduled post's content and each Social account's own
  * texts, offering only the texts its Content type publishes.
  */
 @HiltViewModel

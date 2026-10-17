@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 class ReschedulePost
 {
     /**
-     * Schedules a Draft or moves a Scheduled post to $scheduledAt, keeping its
+     * Moves a Scheduled post to $scheduledAt, keeping its
      * content, media, Post platforms and Content types, after the same checks
      * the composer runs before scheduling.
      *

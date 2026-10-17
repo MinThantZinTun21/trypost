@@ -36,7 +36,7 @@ interface PostPlatform {
 }
 
 interface Post {
-    id: string;
+    id: string | null;
     post_platforms: PostPlatform[];
 }
 

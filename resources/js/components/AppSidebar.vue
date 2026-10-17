@@ -8,7 +8,6 @@ import {
     IconClock,
     IconFileCheck,
     IconFileText,
-    IconPencil,
     IconSelector,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -67,7 +66,6 @@ const postsNavItems = computed<NavItem[]>(() => [
         excludeActive: [
             postsIndex.url('scheduled'),
             postsIndex.url('published'),
-            postsIndex.url('draft'),
         ],
     },
     {
@@ -79,11 +77,6 @@ const postsNavItems = computed<NavItem[]>(() => [
         title: trans('sidebar.posts.posted'),
         href: postsIndex.url('published'),
         icon: IconFileCheck,
-    },
-    {
-        title: trans('sidebar.posts.drafts'),
-        href: postsIndex.url('draft'),
-        icon: IconPencil,
     },
 ]);
 

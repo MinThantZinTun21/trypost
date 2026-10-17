@@ -63,18 +63,19 @@ test('process scheduled posts does not dispatch for future posts', function () {
     Queue::assertNotPushed(PublishPost::class);
 });
 
-test('process scheduled posts does not dispatch for draft posts', function () {
+test('process scheduled posts does not dispatch for failed posts that were due', function () {
     Queue::fake();
 
     $socialAccount = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $draftPost = Post::factory()->draft()->create([
+    $failedPost = Post::factory()->failed()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
+        'scheduled_at' => now()->subMinute(),
     ]);
 
     PostPlatform::factory()->create([
-        'post_id' => $draftPost->id,
+        'post_id' => $failedPost->id,
         'social_account_id' => $socialAccount->id,
     ]);
 

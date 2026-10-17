@@ -18,4 +18,8 @@ return [
         'title' => 'Post failed to publish',
         'body' => 'Failed on: :platforms',
     ],
+    'telegram_send_failed' => [
+        'title' => 'Send to Telegram failed',
+        'body' => 'The post did not reach Telegram: :reason',
+    ],
 ];

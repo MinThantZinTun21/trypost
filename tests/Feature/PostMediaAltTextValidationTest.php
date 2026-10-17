@@ -19,7 +19,7 @@ test('post update keeps media alt_text in meta', function () {
     ]);
 
     $response = $this->actingAs($user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
         'content' => 'hi',
         'media' => [[
             'id' => 'm1', 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg',
@@ -43,7 +43,7 @@ test('post update preserves every media meta key, not just alt_text', function (
     ]);
 
     $response = $this->actingAs($user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
         'content' => 'hi',
         'media' => [[
             'id' => 'm1', 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg', 'type' => 'image',
@@ -80,7 +80,7 @@ test('media alt_text over 2000 chars is rejected', function () {
     ]);
 
     $response = $this->actingAs($user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
         'content' => 'hi',
         'media' => [[
             'id' => 'm1', 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg',
@@ -105,7 +105,7 @@ test('media alt_text at exactly 2000 chars is accepted', function () {
     $altText = str_repeat('a', 2000);
 
     $response = $this->actingAs($user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
         'content' => 'hi',
         'media' => [[
             'id' => 'm1', 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg',
@@ -129,7 +129,7 @@ test('non-string media alt_text is rejected', function () {
     ]);
 
     $response = $this->actingAs($user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
         'content' => 'hi',
         'media' => [[
             'id' => 'm1', 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg',

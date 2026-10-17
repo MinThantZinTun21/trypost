@@ -3,6 +3,7 @@ package com.minthantzintun.trypost.core.network
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -16,7 +17,11 @@ interface MobileApi {
     suspend fun posts(
         @Query("status") tab: String,
         @Query("page") page: Int,
+        @Query("account") account: String? = null,
     ): PageDto<PostDto>
+
+    @GET("mobile/v1/social-accounts")
+    suspend fun socialAccounts(): ListDto<AccountDto>
 
     @GET("mobile/v1/posts/{post}")
     suspend fun post(@Path("post") id: String): PostDto
@@ -27,6 +32,21 @@ interface MobileApi {
     @PUT("mobile/v1/posts/{post}/schedule")
     suspend fun reschedule(@Path("post") id: String, @Body body: RescheduleBody): PostDto
 
-    @DELETE("mobile/v1/posts/{post}/schedule")
-    suspend fun unschedule(@Path("post") id: String): PostDto
+    @POST("mobile/v1/posts/{post}/publish")
+    suspend fun publishNow(@Path("post") id: String): PostDto
+
+    @POST("mobile/v1/posts/{post}/telegram")
+    suspend fun sendToTelegram(@Path("post") id: String): MessageDto
+
+    @GET("mobile/v1/videos")
+    suspend fun videos(@Query("page") page: Int): PageDto<VideoDto>
+
+    @POST("mobile/v1/videos/uploads")
+    suspend fun startVideoUpload(@Body body: StartVideoUploadBody): VideoUploadDto
+
+    @POST("mobile/v1/videos")
+    suspend fun storeVideo(@Body body: StoreVideoBody): VideoDto
+
+    @DELETE("mobile/v1/videos/{video}")
+    suspend fun deleteVideo(@Path("video") id: String)
 }

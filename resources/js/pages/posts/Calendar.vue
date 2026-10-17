@@ -305,20 +305,16 @@ const isCurrentMonth = (day: dayjs.Dayjs): boolean => {
 
 const getStatusColor = (status: string): string => {
     const colors: Record<string, string> = {
-        draft: 'bg-card text-foreground',
         scheduled: 'bg-primary/20 text-foreground',
         publishing: 'bg-amber-100 text-foreground',
         published: 'bg-emerald-100 text-foreground',
         partially_published: 'bg-amber-100 text-foreground',
         failed: 'bg-rose-100 text-foreground',
     };
-    return colors[status] ?? colors.draft;
+    return colors[status] ?? 'bg-card text-foreground';
 };
 
-const EDITABLE_STATUSES: readonly string[] = [
-    PostStatus.Draft,
-    PostStatus.Scheduled,
-];
+const EDITABLE_STATUSES: readonly string[] = [PostStatus.Scheduled];
 
 const getPostUrl = (post: Post): string => {
     return EDITABLE_STATUSES.includes(post.status)

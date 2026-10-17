@@ -44,11 +44,11 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
-private enum class ScheduleStep { None, Date, Time, ConfirmUnschedule }
+private enum class ScheduleStep { None, Date, Time, PostNow }
 
 /**
- * Schedule or Reschedule (a date, then a time, in the phone's timezone) and
- * Unschedule after a confirmation. Only a Draft or Scheduled post shows them.
+ * Reschedule (a date, then a time, in the phone's timezone) and Post now,
+ * after a confirm. Only a Scheduled post shows them.
  */
 @Composable
 fun ScheduleActions(
@@ -56,7 +56,7 @@ fun ScheduleActions(
     isSaving: Boolean,
     actionError: ApiError?,
     onReschedule: (Instant) -> Unit,
-    onUnschedule: () -> Unit,
+    onPublishNow: () -> Unit = {},
     extraActions: @Composable () -> Unit = {},
 ) {
     if (!post.isEditable) {
@@ -75,15 +75,15 @@ fun ScheduleActions(
                 enabled = !isSaving,
                 modifier = Modifier.testTag("reschedule"),
             ) {
-                Text(stringResource(if (post.status == PostStatus.Scheduled) R.string.reschedule else R.string.schedule).asLabel())
+                Text(stringResource(R.string.reschedule).asLabel())
             }
             if (post.status == PostStatus.Scheduled) {
                 OutlinedButton(
-                    onClick = { step = ScheduleStep.ConfirmUnschedule },
+                    onClick = { step = ScheduleStep.PostNow },
                     enabled = !isSaving,
-                    modifier = Modifier.testTag("unschedule"),
+                    modifier = Modifier.testTag("post-now"),
                 ) {
-                    Text(stringResource(R.string.unschedule).asLabel())
+                    Text(stringResource(R.string.post_now).asLabel())
                 }
             }
             extraActions()
@@ -99,6 +99,23 @@ fun ScheduleActions(
 
     when (step) {
         ScheduleStep.None -> Unit
+        ScheduleStep.PostNow -> AlertDialog(
+            onDismissRequest = { step = ScheduleStep.None },
+            title = { Text(stringResource(R.string.post_now_confirm_title)) },
+            text = { Text(stringResource(R.string.post_now_confirm_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        step = ScheduleStep.None
+                        onPublishNow()
+                    },
+                    modifier = Modifier.testTag("post-now-confirm"),
+                ) { Text(stringResource(R.string.post_now).asLabel()) }
+            },
+            dismissButton = {
+                TextButton(onClick = { step = ScheduleStep.None }) { Text(stringResource(R.string.cancel).asLabel()) }
+            },
+        )
         ScheduleStep.Date -> DateStep(
             initial = pickedDate ?: initial.toLocalDate(),
             zone = zone,
@@ -117,23 +134,6 @@ fun ScheduleActions(
                 onReschedule(LocalDateTime.of(date, time).atZone(zone).toInstant())
             },
             onDismiss = { step = ScheduleStep.None },
-        )
-        ScheduleStep.ConfirmUnschedule -> AlertDialog(
-            onDismissRequest = { step = ScheduleStep.None },
-            title = { Text(stringResource(R.string.unschedule_confirm_title)) },
-            text = { Text(stringResource(R.string.unschedule_confirm_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        step = ScheduleStep.None
-                        onUnschedule()
-                    },
-                    modifier = Modifier.testTag("unschedule-confirm"),
-                ) { Text(stringResource(R.string.unschedule).asLabel()) }
-            },
-            dismissButton = {
-                TextButton(onClick = { step = ScheduleStep.None }) { Text(stringResource(R.string.cancel).asLabel()) }
-            },
         )
     }
 }

@@ -84,11 +84,6 @@ class Post extends Model
         return $query->scheduled()->where('scheduled_at', '<=', now());
     }
 
-    public function scopeDraft(Builder $query): Builder
-    {
-        return $query->where('status', PostStatus::Draft);
-    }
-
     public function scopePublished(Builder $query): Builder
     {
         return $query->whereIn('status', [PostStatus::Published, PostStatus::PartiallyPublished]);
@@ -97,6 +92,18 @@ class Post extends Model
     public function scopeFailed(Builder $query): Builder
     {
         return $query->where('status', PostStatus::Failed);
+    }
+
+    /**
+     * Posts with an enabled Post platform on the Social account, the filter
+     * shared by the calendar and the Mobile post list.
+     */
+    public function scopeOnSocialAccount(Builder $query, string $socialAccountId): Builder
+    {
+        return $query->whereHas(
+            'postPlatforms',
+            fn (Builder $target) => $target->enabled()->where('social_account_id', $socialAccountId),
+        );
     }
 
     public function markAsPublishing(): void

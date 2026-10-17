@@ -19,7 +19,7 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  *
  * Each platform is measured against its own sanitized content, matching what the
  * publisher will actually send: the editor stores HTML, which the sanitizer
- * strips. Measuring the raw draft would block saving a post that publishes fine.
+ * strips. Measuring the raw text would block saving a post that publishes fine.
  */
 class ContentFitsPlatformLimits implements ValidationRule
 {

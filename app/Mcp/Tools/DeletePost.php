@@ -17,7 +17,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[Name('delete_post')]
-#[Description('Deletes one of the Owner\'s Posts that has not gone out: a draft, a scheduled Post or a failed one. A Post that is publishing or published cannot be deleted, because it is already live on its Social accounts. Ask the Owner before deleting.')]
+#[Description('Deletes one of the Owner\'s Posts that has not gone out: a scheduled Post or a failed one. A Post that is publishing or published cannot be deleted, because it is already live on its Social accounts. Ask the Owner before deleting.')]
 #[IsDestructive]
 class DeletePost extends Tool
 {

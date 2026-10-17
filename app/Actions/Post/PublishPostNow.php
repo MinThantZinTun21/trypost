@@ -10,11 +10,12 @@ use App\Models\Workspace;
 use App\Support\PostComposerValidator;
 use Illuminate\Validation\ValidationException;
 
-class UnschedulePost
+class PublishPostNow
 {
     /**
-     * Turns a Scheduled post back into a Draft, keeping everything else,
-     * including the time it was planned for.
+     * Publishes a Scheduled post now through the composer's own path
+     * (UpdatePost with status publishing), keeping its content, media, Post
+     * platforms and Content types, after the composer's checks.
      *
      * @throws ValidationException
      */
@@ -22,7 +23,7 @@ class UnschedulePost
     {
         $payload = [
             ...PostComposerValidator::storedPayload($post),
-            'status' => PostStatus::Draft->value,
+            'status' => PostStatus::Publishing->value,
         ];
 
         PostComposerValidator::make($post, $payload)->validate();

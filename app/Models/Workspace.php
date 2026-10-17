@@ -46,6 +46,11 @@ class Workspace extends Model
         return $this->hasMany(SocialAccount::class);
     }
 
+    public function videos(): HasMany
+    {
+        return $this->hasMany(Video::class);
+    }
+
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);

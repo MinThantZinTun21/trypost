@@ -26,6 +26,10 @@ data class PostDetailUiState(
     val error: ApiError? = null,
     val isSaving: Boolean = false,
     val actionError: ApiError? = null,
+    val isSendingToTelegram: Boolean = false,
+    /** The server's word that the send was queued. */
+    val telegramNotice: String? = null,
+    val telegramError: ApiError? = null,
 )
 
 /**
@@ -74,8 +78,28 @@ class PostDetailViewModel @Inject constructor(
         runAction { postsRepository.reschedule(postId, at) }
     }
 
-    fun unschedule() {
-        runAction { postsRepository.unschedule(postId) }
+    fun publishNow() {
+        runAction { postsRepository.publishNow(postId) }
+    }
+
+    /** Queues Send to Telegram; the Post itself does not change. */
+    fun sendToTelegram() {
+        if (_state.value.isSendingToTelegram) {
+            return
+        }
+
+        _state.update { it.copy(isSendingToTelegram = true, telegramNotice = null, telegramError = null) }
+
+        viewModelScope.launch {
+            when (val result = postsRepository.sendToTelegram(postId)) {
+                is ApiResult.Success -> _state.update { it.copy(isSendingToTelegram = false, telegramNotice = result.value) }
+                is ApiResult.Failure -> _state.update { it.copy(isSendingToTelegram = false, telegramError = result.error) }
+            }
+        }
+    }
+
+    fun dismissTelegramNotice() {
+        _state.update { it.copy(telegramNotice = null, telegramError = null) }
     }
 
     fun dismissActionError() {
@@ -91,8 +115,13 @@ class PostDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             when (val result = action()) {
-                is ApiResult.Success -> _state.update {
-                    it.copy(post = result.value, isSaving = false, error = null)
+                is ApiResult.Success -> {
+                    _state.update { it.copy(post = result.value, isSaving = false, error = null) }
+
+                    // Post now leaves it publishing, so follow it until it settles.
+                    if (result.value.status == PostStatus.Publishing) {
+                        load(isRefresh = false)
+                    }
                 }
                 is ApiResult.Failure -> {
                     _state.update { it.copy(isSaving = false, actionError = result.error) }

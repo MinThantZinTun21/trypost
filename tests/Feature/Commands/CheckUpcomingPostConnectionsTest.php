@@ -132,13 +132,13 @@ test('dispatches nothing when the only at-risk post_platform is on a paused acco
     Queue::assertNothingPushed();
 });
 
-test('dispatches nothing when the only at-risk post is still a draft', function () {
+test('dispatches nothing when the only post in the window has already failed', function () {
     Event::fake();
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->draft()->create([
+    $post = Post::factory()->failed()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addMinutes(30),
     ]);

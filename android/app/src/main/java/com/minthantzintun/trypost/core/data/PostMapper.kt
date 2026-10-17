@@ -57,7 +57,7 @@ private fun PostPlatformDto.toPostPlatform(): PostPlatform = PostPlatform(
     accountAvatarUrl = socialAccount.avatarUrl,
 )
 
-private fun String?.toInstant(): Instant? = this?.let {
+internal fun String?.toInstant(): Instant? = this?.let {
     try {
         OffsetDateTime.parse(it).toInstant()
     } catch (exception: DateTimeParseException) {

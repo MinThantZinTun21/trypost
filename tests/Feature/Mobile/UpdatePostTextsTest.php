@@ -130,13 +130,14 @@ test('only enabled accounts of this post can be edited', function () {
         ->assertJsonValidationErrors('platforms.0.id');
 });
 
-test('a draft saves without the publish checks', function () {
-    $this->post->update(['status' => PostStatus::Draft]);
+test('a scheduled post keeps the publish checks', function () {
     $this->tiktok->update(['meta' => []]);
 
-    $this->putJson(route('mobile.v1.posts.update', $this->post), ['content' => 'Draft text'], $this->headers)
-        ->assertOk()
-        ->assertJsonPath('status', 'draft');
+    $this->putJson(route('mobile.v1.posts.update', $this->post), ['content' => 'New text'], $this->headers)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('platforms.1.meta.privacy_level');
+
+    expect($this->post->refresh()->content)->toBe('Old content');
 });
 
 test('a post that is publishing or finished cannot be edited', function (PostStatus $status) {
@@ -155,7 +156,7 @@ test('a post that is publishing or finished cannot be edited', function (PostSta
 ]);
 
 test('another workspace\'s post is not found', function () {
-    $post = Post::factory()->draft()->create();
+    $post = Post::factory()->scheduled()->create();
 
     $this->putJson(route('mobile.v1.posts.update', $post), ['content' => 'x'], $this->headers)
         ->assertNotFound();

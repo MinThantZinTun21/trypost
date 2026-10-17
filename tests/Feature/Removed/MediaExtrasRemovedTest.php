@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Schema;
@@ -49,6 +50,7 @@ test('webhook log pruning is no longer scheduled', function () {
 });
 
 test('a post is duplicated without labels', function () {
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->owner->id,
@@ -57,20 +59,21 @@ test('a post is duplicated without labels', function () {
     ]);
 
     $this->actingAs($this->owner)
-        ->post(route('app.posts.duplicate', $post))
-        ->assertRedirect();
-
-    $copy = Post::query()->whereKeyNot($post->id)->sole();
-
-    expect($copy->content)->toBe('Copy me')
-        ->and($copy->status)->toBe(PostStatus::Draft);
+        ->get(route('app.posts.create', ['duplicate' => $post->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Edit')
+            ->where('post.content', 'Copy me')
+            ->missing('post.labels')
+            ->missing('labels')
+        );
 });
 
 test('the post editor no longer receives labels or signatures', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->owner->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
     ]);
 
     $this->actingAs($this->owner)

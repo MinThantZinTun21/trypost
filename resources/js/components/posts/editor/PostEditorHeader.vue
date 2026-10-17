@@ -3,14 +3,12 @@ import { IconCalendar, IconCircleCheck } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PostEditorActions from '@/components/posts/editor/PostEditorActions.vue';
-import { Spinner } from '@/components/ui/spinner';
 import { PostStatus } from '@/types/post';
 
 interface Props {
     post: { status: string };
+    isNew: boolean;
     canEdit?: boolean;
-    isSaving: boolean;
-    showSaved: boolean;
     isSubmitting: boolean;
     isPostActionDisabled: boolean;
     postActionTooltip: string;
@@ -28,7 +26,6 @@ const scheduledDateTime = defineModel<string>('scheduledDateTime', {
 
 const emit = defineEmits<{
     (e: 'delete'): void;
-    (e: 'unschedule'): void;
     (e: 'submit', status: string): void;
 }>();
 
@@ -46,7 +43,9 @@ const PUBLISHED_STATUSES: readonly string[] = [
 const isReadOnly = computed(() =>
     READONLY_STATUSES.includes(props.post.status),
 );
-const isScheduled = computed(() => props.post.status === PostStatus.Scheduled);
+const isScheduled = computed(
+    () => !props.isNew && props.post.status === PostStatus.Scheduled,
+);
 const isPublished = computed(() =>
     PUBLISHED_STATUSES.includes(props.post.status),
 );
@@ -87,32 +86,18 @@ const isPublished = computed(() =>
 
         <div v-else class="flex items-center gap-3 pl-12 md:pl-0">
             <span
-                v-if="isSaving"
-                class="flex items-center gap-1.5 text-xs font-semibold text-foreground/70"
-            >
-                <Spinner class="size-3.5" aria-hidden="true" />
-                {{ $t('posts.edit.saving') }}
-            </span>
-            <span
-                v-else-if="showSaved"
-                class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700"
-            >
-                <IconCircleCheck class="size-3.5" stroke-width="2.5" />
-                {{ $t('posts.edit.saved') }}
-            </span>
-            <span
-                v-else-if="isPublished"
+                v-if="isPublished"
                 class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700"
             >
                 <IconCircleCheck class="size-3.5" stroke-width="2.5" />
                 {{ $t('posts.edit.status.published') }}
             </span>
             <span
-                v-else
+                v-else-if="isNew"
                 class="flex items-center gap-1.5 text-xs font-semibold text-foreground/60"
             >
                 <span class="size-2 rounded-full bg-foreground/40" />
-                {{ $t('posts.edit.draft') }}
+                {{ $t('posts.edit.new_post') }}
             </span>
         </div>
 
@@ -122,8 +107,8 @@ const isPublished = computed(() =>
             <PostEditorActions
                 :is-read-only="isReadOnly"
                 :is-scheduled="isScheduled"
+                :is-new="isNew"
                 :can-edit="canEdit"
-                :is-saving="isSaving"
                 :is-submitting="isSubmitting"
                 :is-post-action-disabled="isPostActionDisabled"
                 :post-action-tooltip="postActionTooltip"
@@ -131,7 +116,6 @@ const isPublished = computed(() =>
                 v-model:has-picked-time="hasPickedTime"
                 v-model:scheduled-date-time="scheduledDateTime"
                 @delete="emit('delete')"
-                @unschedule="emit('unschedule')"
                 @submit="emit('submit', $event)"
             />
         </div>
