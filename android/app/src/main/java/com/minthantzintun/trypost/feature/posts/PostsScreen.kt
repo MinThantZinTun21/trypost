@@ -30,8 +30,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +53,7 @@ import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostTab
 import com.minthantzintun.trypost.core.model.toPlainText
 import com.minthantzintun.trypost.core.ui.color
+import com.minthantzintun.trypost.core.ui.LoadMoreWhenNearEnd
 import com.minthantzintun.trypost.core.ui.label
 import com.minthantzintun.trypost.core.ui.message
 import java.time.LocalDate
@@ -191,7 +190,7 @@ private fun TabContent(
             val sections = remember(tabState.posts, tab, zone) { groupByDay(tabState.posts, tab, zone) }
             val listState = remember(tab) { LazyListState() }
 
-            LoadMoreWhenNearEnd(listState, tabState, onLoadMore)
+            LoadMoreWhenNearEnd(listState, tabState.hasMore, tabState.page, tabState.loadMoreError != null, onLoadMore)
 
             PullToRefreshBox(
                 isRefreshing = tabState.isRefreshing,
@@ -238,24 +237,6 @@ private fun TabContent(
         }
     }
 }
-
-@Composable
-private fun LoadMoreWhenNearEnd(listState: LazyListState, tabState: TabState, onLoadMore: () -> Unit) {
-    val isNearEnd by remember(listState) {
-        derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisible >= listState.layoutInfo.totalItemsCount - LOAD_MORE_THRESHOLD
-        }
-    }
-
-    LaunchedEffect(isNearEnd, tabState.hasMore, tabState.page) {
-        if (isNearEnd && tabState.hasMore && tabState.loadMoreError == null) {
-            onLoadMore()
-        }
-    }
-}
-
-private const val LOAD_MORE_THRESHOLD = 5
 
 @Composable
 private fun DayHeader(day: LocalDate?) {

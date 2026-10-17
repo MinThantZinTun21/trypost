@@ -88,3 +88,29 @@ test('a duplicated Post is only saved when it is scheduled', function () {
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('a new Post is saved only when it is scheduled', function () {
+    ['original' => $original, 'account' => $account] = seedCreatePostComposer();
+    $day = now()->addDays(2)->format('Y-m-d');
+
+    $page = visit(route('app.posts.create', ['date' => $day]));
+    waitForCreatePostTestId($page, "channel-{$account->id}");
+
+    $page->click("@channel-{$account->id}")
+        ->type('@post-content', 'Brand new post');
+    waitForCreatePostTestId($page, 'post-submit');
+
+    expect(Post::query()->count())->toBe(1);
+
+    $page->click('@post-submit');
+    waitForCreatePostToLeave($page);
+
+    $created = Post::query()->whereKeyNot($original->id)->sole();
+
+    expect($created->status)->toBe(Status::Scheduled)
+        ->and($created->content)->toBe('Brand new post')
+        ->and($created->scheduled_at->utc()->format('Y-m-d H:i'))->toBe("{$day} 09:00")
+        ->and($created->postPlatforms()->enabled()->sole()->social_account_id)->toBe($account->id);
+
+    $page->assertNoJavaScriptErrors();
+});

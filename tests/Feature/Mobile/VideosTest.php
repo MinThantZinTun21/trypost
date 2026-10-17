@@ -88,6 +88,7 @@ test('a finished upload is registered as a video with its name', function () {
     $video = Video::query()->sole();
     expect($response->json('id'))->toBe($video->id)
         ->and($video->workspace_id)->toBe($this->workspace->id)
+        ->and($video->user_id)->toBe($this->owner->id)
         ->and($video->file->path)->toBe('medias/raw.mp4')
         ->and($this->workspace->getMedia('assets')->exists())->toBeFalse();
 });

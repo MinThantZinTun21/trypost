@@ -28,6 +28,7 @@ class Video extends Model
 
     protected $fillable = [
         'workspace_id',
+        'user_id',
         'name',
     ];
 
@@ -41,6 +42,14 @@ class Video extends Model
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    /**
+     * Who uploaded the Video.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function file(): MorphOne

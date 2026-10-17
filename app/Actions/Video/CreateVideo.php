@@ -22,7 +22,7 @@ class CreateVideo
     public static function execute(Workspace $workspace, User $user, string $name, string $uploadId): Video
     {
         return DB::transaction(function () use ($workspace, $user, $name, $uploadId): Video {
-            $video = $workspace->videos()->create(['name' => $name]);
+            $video = $workspace->videos()->create(['user_id' => $user->id, 'name' => $name]);
 
             app(DirectAssetReceiver::class)->completeVideo($video, $user, $uploadId);
 

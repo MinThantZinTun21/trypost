@@ -311,6 +311,34 @@ test('duplicate opens the composer pre-filled from the original without saving a
     expect(Post::query()->count())->toBe(1);
 });
 
+test('duplicate does not carry over a disconnected account', function () {
+    $disconnected = SocialAccount::factory()->youtube()->disconnected()->create(['workspace_id' => $this->workspace->id]);
+    $original = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Published,
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $original->id,
+        'social_account_id' => $disconnected->id,
+        'platform' => Platform::YouTube,
+        'content_type' => ContentType::YouTubeShort,
+        'enabled' => true,
+        'meta' => ['title' => 'My Short'],
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.create', ['duplicate' => $original->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('post.post_platforms', fn ($platforms): bool => collect($platforms)->contains(
+                fn (array $platform): bool => $platform['social_account_id'] === $disconnected->id
+                    && $platform['enabled'] === false
+                    && $platform['meta'] === [],
+            ))
+        );
+});
+
 test('duplicate refuses a Post from another workspace', function () {
     $other = Post::factory()->create();
 

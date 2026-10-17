@@ -275,3 +275,13 @@ test('with Telegram delivery a TikTok post is scheduled without a privacy level'
         ->and($tiktok->content_type)->toBe(ContentType::TikTokVideo)
         ->and(data_get($tiktok->meta, 'caption'))->toBe('Post me by hand');
 });
+
+test('a post that has finished publishing says so instead of a time', function (Status $status) {
+    $post = Post::factory()->create(['status' => $status, 'scheduled_at' => now()->subHour()]);
+
+    expect(CreatePost::postPayload($post)['goes_out'])->toBe(__('mcp.post.goes_out_done'));
+})->with([
+    'published' => [Status::Published],
+    'partially published' => [Status::PartiallyPublished],
+    'failed' => [Status::Failed],
+]);

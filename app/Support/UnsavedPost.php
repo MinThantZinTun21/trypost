@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -18,7 +19,8 @@ use Illuminate\Support\Collection;
  * never saved: it has no id, and each Post platform stands for one active
  * Social account, keyed by that account's id, until the Owner schedules it
  * or posts it now. A duplicate copies the original's content, media and,
- * for each account still active, its toggle, Content type and meta.
+ * for each account still connected, its toggle, Content type and meta; a
+ * disconnected account starts switched off.
  */
 class UnsavedPost
 {
@@ -38,7 +40,10 @@ class UnsavedPost
         $post->id = null;
 
         return $post->setRelation('postPlatforms', $socialAccounts->map(
-            fn (SocialAccount $account): PostPlatform => self::platform($account, $originalPlatforms->get($account->id)),
+            fn (SocialAccount $account): PostPlatform => self::platform(
+                $account,
+                $account->status === SocialAccountStatus::Connected ? $originalPlatforms->get($account->id) : null,
+            ),
         )->values());
     }
 

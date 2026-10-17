@@ -113,7 +113,8 @@ class CreatePost extends Tool
             'scheduled_at' => $post->scheduled_at?->toIso8601String(),
             'goes_out' => match ($post->status) {
                 PostStatus::Publishing => __('mcp.post.goes_out_now'),
-                default => __('mcp.post.goes_out_at', ['time' => $post->scheduled_at->toIso8601String()]),
+                PostStatus::Scheduled => __('mcp.post.goes_out_at', ['time' => $post->scheduled_at?->toIso8601String()]),
+                default => __('mcp.post.goes_out_done'),
             },
         ];
     }

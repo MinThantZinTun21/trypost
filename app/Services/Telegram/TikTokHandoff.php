@@ -49,14 +49,11 @@ class TikTokHandoff
         } catch (ConnectionException $exception) {
             throw new PlatformUnavailableException($exception->getMessage());
         } catch (RequestException $exception) {
-            // A rate limit, a server error or a lost connection retries later; any other refusal fails the target.
-            $retryAfter = TelegramClient::retryAfter($exception);
-
-            if ($retryAfter !== null || $exception->response->serverError()) {
+            if (TelegramClient::isTransient($exception)) {
                 throw new PlatformUnavailableException(
                     message: TelegramClient::errorDescription($exception),
                     httpStatus: $exception->response->status(),
-                    retryDelaySeconds: $retryAfter,
+                    retryDelaySeconds: TelegramClient::retryAfter($exception),
                 );
             }
 

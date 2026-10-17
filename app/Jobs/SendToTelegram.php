@@ -81,11 +81,11 @@ class SendToTelegram implements ShouldQueue
         } catch (ConnectionException $exception) {
             $this->retryLater($exception->getMessage(), self::RETRY_DELAY_SECONDS);
         } catch (RequestException $exception) {
-            // A rate limit or a server error retries later; any other refusal fails the send.
-            $retryAfter = TelegramClient::retryAfter($exception);
-
-            if ($retryAfter !== null || $exception->response->serverError()) {
-                $this->retryLater(TelegramClient::errorDescription($exception), $retryAfter ?? self::RETRY_DELAY_SECONDS);
+            if (TelegramClient::isTransient($exception)) {
+                $this->retryLater(
+                    TelegramClient::errorDescription($exception),
+                    TelegramClient::retryAfter($exception) ?? self::RETRY_DELAY_SECONDS,
+                );
 
                 return;
             }

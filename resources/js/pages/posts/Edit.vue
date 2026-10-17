@@ -108,7 +108,6 @@ const isNew = computed(() => post.value.id === null);
 const isScheduled = computed(
     () => !isNew.value && post.value.status === PostStatus.Scheduled,
 );
-const isLocked = computed(() => isReadOnly.value);
 
 // Content
 const content = ref(post.value.content || '');
@@ -228,7 +227,7 @@ const snapToCompatibleVariant = (platformId: string) => {
 };
 
 const togglePlatform = (platformId: string) => {
-    if (isLocked.value) return;
+    if (isReadOnly.value) return;
 
     if (selectedPlatformIds.value.includes(platformId)) {
         selectedPlatformIds.value = selectedPlatformIds.value.filter(
@@ -416,7 +415,7 @@ usePollWhile(() => post.value.status === PostStatus.Publishing, {
                             :platform-issues="platformIssues"
                             :platform-configs="platformConfigs"
                             :tiktok-creator-infos="tiktokCreatorInfos"
-                            :is-read-only="isLocked"
+                            :is-read-only="isReadOnly"
                             :posted-at="scheduledDateTime || null"
                             @toggle-platform="togglePlatform"
                             @update:platform-meta="updatePlatformMeta"

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
@@ -29,8 +28,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +48,7 @@ import com.minthantzintun.trypost.core.designsystem.MessageState
 import com.minthantzintun.trypost.core.designsystem.UnderlinedField
 import com.minthantzintun.trypost.core.designsystem.asLabel
 import com.minthantzintun.trypost.core.model.Video
+import com.minthantzintun.trypost.core.ui.LoadMoreWhenNearEnd
 import com.minthantzintun.trypost.core.ui.message
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -243,7 +241,7 @@ private fun VideoList(
             val listState = rememberLazyListState()
             val zone = remember { ZoneId.systemDefault() }
 
-            LoadMoreWhenNearEnd(listState, state, onLoadMore)
+            LoadMoreWhenNearEnd(listState, state.hasMore, state.page, state.loadMoreError != null, onLoadMore)
 
             PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("videos-list")) {
@@ -277,22 +275,6 @@ private fun VideoList(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun LoadMoreWhenNearEnd(listState: LazyListState, state: VideosUiState, onLoadMore: () -> Unit) {
-    val isNearEnd by remember(listState) {
-        derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf false
-            lastVisible >= listState.layoutInfo.totalItemsCount - 3
-        }
-    }
-
-    LaunchedEffect(isNearEnd, state.hasMore, state.page) {
-        if (isNearEnd && state.hasMore) {
-            onLoadMore()
         }
     }
 }
