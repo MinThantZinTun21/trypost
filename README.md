@@ -20,6 +20,7 @@ This is a hard fork of [trypostit/trypost](https://github.com/trypostit/trypost)
 - **Calendar.** Month, week and day views, with drag and drop to reschedule, plus lists of scheduled, draft and posted posts.
 - **Publishing you can see.** Each platform's result shows a link or a failure reason, and the post page refreshes while it publishes.
 - **Works with Claude Code.** An MCP server at `/mcp` lets an Assistant list your Social accounts and schedule posts for you.
+- **Android app.** View your posts, fix their texts, and Reschedule or Unschedule them from your phone (`android/`).
 - **In-app notifications** when a post fails, when an account disconnects, or when an upcoming post's account needs reconnecting. Expiring tokens are refreshed automatically.
 
 ## Requirements
@@ -174,6 +175,42 @@ claude mcp add --transport http trypost https://your-app.example/mcp --header "A
 ```
 
 Every tool acts as the Owner. Start by asking Claude to list your Social accounts.
+
+## Android app
+
+The app in `android/` talks to `/mobile/v1` with one bearer secret. Set `MOBILE_TOKEN` to a long random string (`openssl rand -hex 32`) in the server's `.env`; an empty token turns the mobile API off. Install the app, enter the server address (prefilled with production) and the token. Changing `MOBILE_TOKEN` signs the phone out.
+
+Build and test it with JDK 17 or newer and the Android SDK:
+
+```bash
+cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug
+```
+
+The debug APK lands in `android/app/build/outputs/apk/debug/`. A debug build may also reach a local server over plain HTTP at `http://10.0.2.2:<port>` from the emulator.
+
+### Install a signed release
+
+1. Generate the release keystore once and keep it (and its password) safe; every later release must be signed with it, or the phone refuses the update:
+
+   ```bash
+   keytool -genkeypair -keystore trypost-release.jks -alias trypost -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+2. Add four repository secrets (Settings → Secrets and variables → Actions): `ANDROID_KEYSTORE_BASE64` (the output of `base64 -i trypost-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`trypost`) and `ANDROID_KEY_PASSWORD`.
+3. Run **Android release** from the Actions tab. It tests, builds, signs and verifies the APK, and attaches it to the run as `trypost-android-<run number>`.
+4. Set `MOBILE_TOKEN` in the server's `.env` and restart the app container.
+5. On the phone, download the artifact, unzip it, open `app-release.apk` and allow installs from that app when Android asks. Sign in with the server address and the token.
+
+To sign a release locally instead, put the same settings in `android/keystore.properties` (git-ignored):
+
+```properties
+storeFile=/path/to/trypost-release.jks
+storePassword=…
+keyAlias=trypost
+keyPassword=…
+```
+
+then run `./gradlew :app:assembleRelease`; the APK lands in `android/app/build/outputs/apk/release/`. CI sets the same values through `TRYPOST_KEYSTORE_FILE`, `TRYPOST_KEYSTORE_PASSWORD`, `TRYPOST_KEY_ALIAS` and `TRYPOST_KEY_PASSWORD`.
 
 ## Tests
 

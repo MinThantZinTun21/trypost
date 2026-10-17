@@ -29,6 +29,14 @@ class PostPlatformMetaRules
     public const int TEXT_MAX_LENGTH = 10000;
 
     /**
+     * The meta keys that hold a Post platform's texts; ContentType::textFields()
+     * says which of them each Content type publishes.
+     *
+     * @var list<string>
+     */
+    public const array TEXT_FIELDS = ['title', 'description', 'caption', 'tags'];
+
+    /**
      * Validation rules for `platforms.*.meta` and all its per-platform sub-keys.
      * Spread into a FormRequest/MCP tool rule set as the complete meta contract.
      *
@@ -37,8 +45,6 @@ class PostPlatformMetaRules
     public static function rules(): array
     {
         return [
-            'platforms.*.meta' => ['sometimes', 'nullable', 'array'],
-
             // Facebook
             'platforms.*.meta.aspect_ratio' => ['sometimes', 'nullable', 'string', Rule::enum(AspectRatio::class)],
 
@@ -52,6 +58,21 @@ class PostPlatformMetaRules
             'platforms.*.meta.disclose' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
+
+            ...self::textRules(),
+        ];
+    }
+
+    /**
+     * The `platforms.*.meta` rule and its text sub-keys alone, for a flow that
+     * changes only a Post platform's texts (the mobile API's edit).
+     *
+     * @return array<string, mixed>
+     */
+    public static function textRules(): array
+    {
+        return [
+            'platforms.*.meta' => ['sometimes', 'nullable', 'array'],
 
             // Facebook Reel, TikTok and YouTube text. Platform-specific limits live in
             // textLimitViolations(); this cap matches the content's own.

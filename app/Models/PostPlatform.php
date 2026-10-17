@@ -84,6 +84,15 @@ class PostPlatform extends Model
         return $query->where('post_platforms.enabled', true);
     }
 
+    /**
+     * The order the mobile API lists a Post's platforms in and sends them to the
+     * composer's checks, so a `platforms.N.*` validation key names the Nth one.
+     */
+    public function scopeInComposerOrder(Builder $query): Builder
+    {
+        return $query->orderBy('post_platforms.created_at')->orderBy('post_platforms.id');
+    }
+
     public function scopeDisabled(Builder $query): Builder
     {
         return $query->where('post_platforms.enabled', false);

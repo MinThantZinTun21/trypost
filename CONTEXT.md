@@ -29,7 +29,15 @@ A Post with a set publish time that has not started publishing yet.
 _Avoid_: Queued post, pending post
 
 **Draft**:
-A Post with no publish time that is not yet scheduled.
+A Post that is not scheduled, so it does not publish. It may keep the time it was once planned for.
+
+**Reschedule**:
+Give a Post a new publish time: move a Scheduled post, or schedule a Draft. The time must be in the future.
+_Avoid_: Move, postpone, edit time
+
+**Unschedule**:
+Turn a Scheduled post back into a Draft, so it no longer publishes. The time it was planned for is kept only as the starting point for a later Reschedule.
+_Avoid_: Cancel, unpublish
 
 **Content type**:
 The form a Post takes on one Platform: a Facebook Post, Reel or Story; a TikTok Video or Photo; or a YouTube Short.
@@ -70,6 +78,10 @@ _Avoid_: Hashtags, keywords
 **Assistant**:
 An AI tool, such as Claude Code, connected to the app over MCP that reads Social accounts and creates Posts on the Owner's behalf.
 _Avoid_: Bot, agent, API client
+
+**Mobile app**:
+The Owner's Android app. It views Posts, edits their texts, and Reschedules or Unschedules them; it never creates Posts or changes media.
+_Avoid_: Client, API client
 
 **Insights**:
 Numbers Facebook reports about how a Facebook Page and its posts perform. Facebook only; TikTok and YouTube have none in this app.

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TryPost</string>
+
+    <!-- Sign in -->
+    <string name="sign_in_title">Sign in to TryPost</string>
+    <string name="sign_in_body">Enter your server address and the MOBILE_TOKEN from its .env file.</string>
+    <string name="sign_in_server_url">Server address</string>
+    <string name="sign_in_token">Mobile token</string>
+    <string name="sign_in_submit">Sign in</string>
+    <string name="sign_in_show_token">Show</string>
+    <string name="sign_in_hide_token">Hide</string>
+    <string name="sign_in_invalid_address">Enter an address like https://trypost.example.com.</string>
+    <string name="sign_in_missing_token">Enter your mobile token.</string>
+    <string name="sign_in_unauthorized">The server refused this token. Check MOBILE_TOKEN in the server\'s .env.</string>
+    <string name="sign_in_not_found">There is no mobile API at this address. Check the address, and that MOBILE_TOKEN is set on the server.</string>
+
+    <!-- Errors -->
+    <string name="error_unreachable">Can\'t reach the server. Check your connection and try again.</string>
+    <string name="error_server">The server had a problem (%1$s). Try again.</string>
+    <string name="error_server_unknown">The server sent a reply the app can\'t read. Try again.</string>
+    <string name="error_conflict">This post is publishing or already finished, so it can\'t change.</string>
+    <string name="error_validation">Check the highlighted fields.</string>
+    <string name="error_unauthorized">You were signed out because the server refused the token.</string>
+    <string name="error_not_found">Not found on the server.</string>
+    <string name="retry">Try again</string>
+
+    <!-- Posts -->
+    <string name="posts_title">Posts</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_confirm_title">Sign out?</string>
+    <string name="sign_out_confirm_body">The token is removed from this phone. You\'ll need it again to sign back in.</string>
+    <string name="cancel">Cancel</string>
+    <string name="tab_scheduled">Scheduled</string>
+    <string name="tab_draft">Drafts</string>
+    <string name="tab_published">Published</string>
+    <string name="tab_failed">Failed</string>
+    <string name="empty_scheduled_title">Nothing scheduled</string>
+    <string name="empty_scheduled_body">Scheduled posts show here, soonest first.</string>
+    <string name="empty_draft_title">No drafts</string>
+    <string name="empty_draft_body">Drafts you save on the web show here.</string>
+    <string name="empty_published_title">Nothing published yet</string>
+    <string name="empty_published_body">Posts that went out show here, newest first.</string>
+    <string name="empty_failed_title">Nothing failed</string>
+    <string name="empty_failed_body">Failed and partially published posts show here.</string>
+    <string name="posts_error_title">Couldn\'t load posts</string>
+    <string name="posts_no_date">No date</string>
+    <string name="posts_today">Today</string>
+    <string name="posts_tomorrow">Tomorrow</string>
+    <string name="posts_yesterday">Yesterday</string>
+    <string name="posts_no_text">(No text)</string>
+    <plurals name="posts_media_count">
+        <item quantity="one">%1$d media file</item>
+        <item quantity="other">%1$d media files</item>
+    </plurals>
+
+    <!-- Post detail -->
+    <string name="detail_title">Post</string>
+    <string name="back">Back</string>
+    <string name="detail_error_title">Couldn\'t load this post</string>
+    <string name="detail_scheduled_for">Scheduled for %1$s</string>
+    <string name="detail_published_at">Published %1$s</string>
+    <string name="detail_not_scheduled">Not scheduled</string>
+    <string name="detail_content">Content</string>
+    <string name="detail_media">Media</string>
+    <string name="detail_accounts">Social accounts</string>
+    <string name="detail_video">Video</string>
+    <string name="detail_document">PDF</string>
+    <string name="detail_view_on">View on %1$s</string>
+    <string name="detail_publishing_note">Publishing now. This page refreshes until it\'s done.</string>
+    <string name="text_title">Title</string>
+    <string name="text_description">Description</string>
+    <string name="text_caption">Caption</string>
+    <string name="text_tags">Tags</string>
+    <string name="content_type_facebook_post">Post</string>
+    <string name="content_type_facebook_reel">Reel</string>
+    <string name="content_type_facebook_story">Story</string>
+    <string name="content_type_tiktok_video">Video</string>
+    <string name="content_type_tiktok_photo">Photo</string>
+    <string name="content_type_youtube_short">Short</string>
+
+    <!-- Schedule -->
+    <string name="schedule">Schedule</string>
+    <string name="reschedule">Reschedule</string>
+    <string name="unschedule">Unschedule</string>
+    <string name="next">Next</string>
+    <string name="schedule_pick_time">Pick a time</string>
+    <string name="unschedule_confirm_title">Unschedule this post?</string>
+    <string name="unschedule_confirm_body">It becomes a Draft and won\'t publish until you schedule it again.</string>
+    <string name="action_error_title">Couldn\'t save</string>
+
+    <!-- Edit -->
+    <string name="edit">Edit</string>
+    <string name="edit_title">Edit post</string>
+    <string name="save">Save</string>
+    <string name="edit_content_hint">The Facebook text, and what any blank text below falls back to.</string>
+    <string name="edit_tags_hint">Separate tags with commas.</string>
+
+    <!-- Statuses -->
+    <string name="status_draft">Draft</string>
+    <string name="status_scheduled">Scheduled</string>
+    <string name="status_publishing">Publishing</string>
+    <string name="status_published">Published</string>
+    <string name="status_partially_published">Partially published</string>
+    <string name="status_failed">Failed</string>
+    <string name="status_pending">Pending</string>
+    <string name="status_retrying">Retrying</string>
+</resources>

@@ -13,12 +13,13 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\Delivery;
 use App\Enums\TikTok\PrivacyLevel;
-use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\LibraryItem;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Support\PostComposerValidator;
+use App\Support\PostPlatformMetaRules;
 use App\Support\TikTokText;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeTags;
@@ -26,7 +27,6 @@ use App\Support\YouTubeTitle;
 use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
-use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -49,12 +49,6 @@ class CreatePost extends Tool
         'scheduled' => PostStatus::Scheduled,
         'now' => PostStatus::Publishing,
     ];
-
-    /**
-     * The per-account text and YouTube Tags an Assistant may set;
-     * ContentType::textFields() says which of them a Content type publishes.
-     */
-    private const TEXT_FIELDS = ['title', 'description', 'caption', 'tags'];
 
     /**
      * The TikTok settings an Assistant may set, copied onto the Social account's meta.
@@ -123,7 +117,7 @@ class CreatePost extends Tool
                     ->all(),
             ];
 
-            $this->composerValidator($post, $payload)->validate();
+            PostComposerValidator::make($post, $payload)->validate();
 
             return data_get(UpdatePost::execute($workspace, $post, $payload), 'post');
         });
@@ -206,7 +200,7 @@ class CreatePost extends Tool
             'social_accounts' => ['required', 'array', 'min:1'],
             'social_accounts.*.id' => ['required', 'string', 'distinct', Rule::in($accounts->keys()->all())],
             'social_accounts.*.content_type' => ['sometimes', 'nullable', 'string', Rule::enum(ContentType::class)],
-            ...collect([...self::TEXT_FIELDS, ...self::TIKTOK_SETTINGS])
+            ...collect([...PostPlatformMetaRules::TEXT_FIELDS, ...self::TIKTOK_SETTINGS])
                 ->mapWithKeys(fn (string $key): array => ["social_accounts.*.{$key}" => ['sometimes']])
                 ->all(),
         ], [
@@ -285,7 +279,7 @@ class CreatePost extends Tool
         foreach ((array) data_get($validated, 'social_accounts', []) as $index => $entry) {
             $contentType = $this->contentType($entry, $accounts->get(data_get($entry, 'id')), $mediaItems);
 
-            foreach (self::TEXT_FIELDS as $field) {
+            foreach (PostPlatformMetaRules::TEXT_FIELDS as $field) {
                 if (filled(data_get($entry, $field)) && ! in_array($field, $contentType->textFields(), true)) {
                     $errors["social_accounts.{$index}.{$field}"] = __('mcp.post.text_field_unused', [
                         'field' => $field,
@@ -310,24 +304,5 @@ class CreatePost extends Tool
     {
         return ContentType::tryFrom((string) data_get($entry, 'content_type'))
             ?? ContentType::defaultForMedia($account->platform, $mediaItems);
-    }
-
-    /**
-     * A validator built from UpdatePostRequest's rules, messages and after-hook,
-     * bound to the new Post the way the composer's PUT route binds it.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    private function composerValidator(Post $post, array $payload): ValidationValidator
-    {
-        $formRequest = UpdatePostRequest::create("/{$post->id}", 'PUT', $payload);
-        $route = (new Route('PUT', '{post}', []))->bind($formRequest);
-        $route->setParameter('post', $post);
-        $formRequest->setRouteResolver(fn (): Route => $route);
-
-        $validator = Validator::make($formRequest->all(), $formRequest->rules(), $formRequest->messages(), $formRequest->attributes());
-        $formRequest->withValidator($validator);
-
-        return $validator;
     }
 }

@@ -215,7 +215,8 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0006-share-the-chord-book-server.md`; the Content library is
 `docs/adr/0007-content-library-of-ready-posts.md`; the TikTok handoff through Telegram is
 `docs/adr/0009-hand-tiktok-posts-off-through-telegram.md` (it supersedes
-`docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`). Read them
+`docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`); the Android app is
+`docs/adr/0010-android-app-on-a-token-guarded-mobile-api.md`. Read them
 before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
@@ -243,6 +244,43 @@ before adding anything.
 - `delete_post`, `delete_content_idea` and `delete_library_item` reuse the web
   delete actions. `delete_post` refuses what the web refuses
   (`PostStatusRules::blocksDeletion()`: publishing or published Posts).
+
+## Mobile app API (ADR 0010)
+
+- `/mobile/v1` (`routes/mobile.php`, controllers in `App\Http\Controllers\Mobile\V1`)
+  is the Owner's Android app (`android/`) way in. It sits outside the web
+  group: no session, cookies or CSRF.
+- `AuthenticateMobileToken` guards it with one bearer secret, `MOBILE_TOKEN`
+  (`config('trypost.mobile.token')`; empty = 404, wrong = 401), and acts as the
+  Owner. It shares `AuthenticatesWithOwnerToken` with `AuthenticateMcpToken`;
+  the two secrets stay separate so each can be rotated alone.
+- The app views Posts, edits their texts, and Reschedules or Unschedules them.
+  It never creates Posts, changes media, Social accounts or Content types, or
+  publishes now. Every change goes through `UpdatePost` and the shared rules
+  (`PostStatusRules`, `PostPlatformMetaRules`); a finalized Post is 409.
+- `ReschedulePost` / `UnschedulePost` rebuild the stored Post as a composer
+  payload (`PostComposerValidator::storedPayload()`, every enabled Post
+  platform with its Content type and meta, since `UpdatePost` disables the ones
+  left out) and run the composer's own checks
+  (`PostComposerValidator::make()`, shared with the MCP `create_post` tool)
+  before `UpdatePost`. The resources list enabled Post platforms in the same
+  order (`PostPlatform::inComposerOrder()`), so a `platforms.N.*` error names
+  the app's Nth Social account. A new `scheduled_at` must carry its UTC offset;
+  Unschedule keeps the planned time only as the next Reschedule's start.
+- `PUT /mobile/v1/posts/{post}` (`UpdatePostTexts`) edits only the content and
+  each Post platform's Title, Description, caption and Tags, through the same
+  stored payload and composer checks. A text the Content type does not publish
+  is refused (`ContentType::textFields()`, which the resource sends as
+  `text_fields`, so the app keeps no copy of that map); a null text clears it.
+- The release APK is signed only by the manual **Android release** workflow
+  (`.github/workflows/android-release.yml`) or locally from
+  `android/keystore.properties`; `AndroidReleaseTest` checks both. Never commit
+  a keystore or its passwords.
+- Responses are the `App\Http\Resources\Mobile\V1` resources, with times in
+  ISO 8601 UTC. Treat their fields as a contract with an installed app: add
+  fields freely, but rename or remove one only in a new `/mobile/v2`.
+- The list tabs are `App\Enums\Mobile\PostTab`, not Post statuses: Scheduled
+  includes Publishing, Failed includes Partially published.
 
 ## Content library (ADR 0007)
 
