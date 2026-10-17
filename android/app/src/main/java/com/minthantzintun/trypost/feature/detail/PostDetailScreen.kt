@@ -82,7 +82,6 @@ fun PostDetailRoute(
                 isSaving = state.isSaving,
                 actionError = state.actionError,
                 onReschedule = viewModel::reschedule,
-                onUnschedule = viewModel::unschedule,
                 extraActions = { extraActions(post) },
             )
         },
@@ -201,7 +200,6 @@ private fun Post.whenLine(zone: ZoneId): String {
     return when {
         publishedAt != null && (status == PostStatus.Published || status == PostStatus.PartiallyPublished) ->
             stringResource(R.string.detail_published_at, publishedAt.formatted(zone))
-        status == PostStatus.Draft -> stringResource(R.string.detail_not_scheduled)
         scheduledAt != null -> stringResource(R.string.detail_scheduled_for, scheduledAt.formatted(zone))
         else -> stringResource(R.string.detail_not_scheduled)
     }

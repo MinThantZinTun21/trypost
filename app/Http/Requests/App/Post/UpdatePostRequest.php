@@ -41,7 +41,7 @@ class UpdatePostRequest extends FormRequest
         );
 
         return [
-            'status' => ['required', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
+            'status' => ['required', 'string', Rule::in([Status::Scheduled->value, Status::Publishing->value])],
             'content' => [
                 'nullable',
                 'string',
@@ -99,7 +99,7 @@ class UpdatePostRequest extends FormRequest
                 is_string($content) ? $content : null,
             );
 
-            if ($this->isPublishingOrScheduling()) {
+            if ($this->isPublishingOrScheduling() && is_array($platforms)) {
                 PostPlatformMetaRules::addRequiredOnPublishErrors($validator, $platforms, $resolvePlatform);
             }
         });

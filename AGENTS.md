@@ -252,19 +252,19 @@ before adding anything.
   (`config('trypost.mobile.token')`; empty = 404, wrong = 401), and acts as the
   Owner. It shares `AuthenticatesWithOwnerToken` with `AuthenticateMcpToken`;
   the two secrets stay separate so each can be rotated alone.
-- The app views Posts, edits their texts, and Reschedules or Unschedules them.
-  It never creates Posts, changes media, Social accounts or Content types, or
-  publishes now. Every change goes through `UpdatePost` and the shared rules
+- The app views Posts, edits their texts, and Reschedules them. It never
+  creates Posts or changes media, Social accounts or Content types. There is
+  no Unschedule (ADR 0011): `DELETE /mobile/v1/posts/{post}/schedule` and the
+  Drafts tab are gone. Every change goes through `UpdatePost` and the shared rules
   (`PostStatusRules`, `PostPlatformMetaRules`); a finalized Post is 409.
-- `ReschedulePost` / `UnschedulePost` rebuild the stored Post as a composer
+- `ReschedulePost` rebuilds the stored Post as a composer
   payload (`PostComposerValidator::storedPayload()`, every enabled Post
   platform with its Content type and meta, since `UpdatePost` disables the ones
   left out) and run the composer's own checks
   (`PostComposerValidator::make()`, shared with the MCP `create_post` tool)
   before `UpdatePost`. The resources list enabled Post platforms in the same
   order (`PostPlatform::inComposerOrder()`), so a `platforms.N.*` error names
-  the app's Nth Social account. A new `scheduled_at` must carry its UTC offset;
-  Unschedule keeps the planned time only as the next Reschedule's start.
+  the app's Nth Social account. A new `scheduled_at` must carry its UTC offset.
 - `PUT /mobile/v1/posts/{post}` (`UpdatePostTexts`) edits only the content and
   each Post platform's Title, Description, caption and Tags, through the same
   stored payload and composer checks. A text the Content type does not publish
@@ -319,6 +319,17 @@ before adding anything.
   the one worker that also publishes Posts. Any other 4xx fails the target
   with Telegram's reason, and the usual `PostFailed` Notification follows.
   `php artisan telegram:test` sends a test message and explains a refusal.
+
+## No Drafts (ADR 0011)
+
+- A Post exists only once it is Scheduled or going out. There is no Draft
+  status, Drafts list or Unschedule anywhere (web, MCP, Mobile app);
+  `tests/Feature/Removed/DraftsRemovedTest.php` guards it.
+- New post and Duplicate open the composer on an unsaved Post
+  (`GET /posts/create`, `UnsavedPost`); nothing is stored until Schedule or Post
+  now, which `POST /posts` saves through `CreateComposedPost`, the same action
+  the MCP `create_post` tool uses. A Scheduled post is edited in place and kept
+  with Save; nothing autosaves.
 
 ## Single Owner
 

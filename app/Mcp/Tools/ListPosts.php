@@ -20,11 +20,11 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Name('list_posts')]
-#[Description('Lists the Owner\'s Posts, newest scheduled time first, one page per call. Filter by status: draft, scheduled or published (published includes partially published). Call get_post for one Post\'s per-account results.')]
+#[Description('Lists the Owner\'s Posts, newest scheduled time first, one page per call. Filter by status: scheduled or published (published includes partially published). Call get_post for one Post\'s per-account results.')]
 #[IsReadOnly]
 class ListPosts extends Tool
 {
-    private const array STATUSES = [Status::Draft, Status::Scheduled, Status::Published];
+    private const array STATUSES = [Status::Scheduled, Status::Published];
 
     private const int EXCERPT_LENGTH = 200;
 
@@ -40,13 +40,12 @@ class ListPosts extends Tool
             ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount')]);
 
         $query = match (Status::tryFrom((string) data_get($validated, 'status'))) {
-            Status::Draft => $query->draft(),
             Status::Scheduled => $query->scheduled(),
             Status::Published => $query->published(),
             default => $query,
         };
 
-        // PostgreSQL sorts nulls first on a descending order and MySQL last; undated drafts go last on both.
+        // PostgreSQL sorts nulls first on a descending order and MySQL last; undated Posts go last on both.
         $posts = $query->orderByRaw('scheduled_at is null')
             ->latest('scheduled_at')
             ->latest('created_at')

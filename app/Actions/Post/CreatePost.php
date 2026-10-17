@@ -43,7 +43,7 @@ class CreatePost
                 'user_id' => $user->id,
                 'content' => data_get($data, 'content', ''),
                 'media' => data_get($data, 'media', []),
-                'status' => PostStatus::Draft,
+                'status' => PostStatus::Scheduled,
                 'created_via' => data_get($data, 'created_via'),
                 'scheduled_at' => $scheduledAt,
             ]);

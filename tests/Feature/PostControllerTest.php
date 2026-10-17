@@ -198,37 +198,6 @@ test('calendar rejects a social account filter outside the workspace', function 
     'not a uuid' => [fn () => 'facebook'],
 ]);
 
-test('calendar does not include unscheduled drafts', function () {
-    $scheduledAt = now('UTC')->startOfWeek()->addDays(2)->setTime(12, 0);
-
-    Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'content' => 'Unscheduled draft stays off the calendar',
-        'status' => PostStatus::Draft,
-        'scheduled_at' => null,
-    ]);
-
-    Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'content' => 'Scheduled post appears on the calendar',
-        'status' => PostStatus::Scheduled,
-        'scheduled_at' => $scheduledAt,
-    ]);
-
-    $dateKey = $scheduledAt->format('Y-m-d');
-
-    $this->actingAs($this->user)
-        ->get(route('app.calendar'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->has("posts.{$dateKey}", 1)
-            ->where("posts.{$dateKey}.0.content", 'Scheduled post appears on the calendar')
-        );
-});
-
-// Create tests
 test('new post opens the composer without saving a Post and with no AI', function () {
     $this->actingAs($this->user)
         ->get(route('app.posts.create'))
@@ -455,7 +424,7 @@ test('edit post shows edit page', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
     ]);
 
     PostPlatform::factory()->create([
@@ -471,28 +440,6 @@ test('edit post shows edit page', function () {
         ->has('post')
         ->has('socialAccounts')
     );
-});
-
-test('edit exposes null scheduled_at for an unscheduled draft', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-        'scheduled_at' => null,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $this->actingAs($this->user)
-        ->get(route('app.posts.edit', $post))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('posts/Edit')
-            ->where('post.scheduled_at', null)
-        );
 });
 
 test('edit post returns 404 for post from different workspace', function () {
@@ -526,23 +473,21 @@ test('edit redirects to show for non-editable statuses', function () {
     }
 });
 
-test('edit allows draft and scheduled posts', function () {
-    foreach ([PostStatus::Draft, PostStatus::Scheduled] as $status) {
-        $post = Post::factory()->create([
-            'workspace_id' => $this->workspace->id,
-            'user_id' => $this->user->id,
-            'status' => $status,
-        ]);
+test('edit allows scheduled posts', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Scheduled,
+    ]);
 
-        PostPlatform::factory()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $this->socialAccount->id,
-        ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
 
-        $this->actingAs($this->user)
-            ->get(route('app.posts.edit', $post))
-            ->assertOk();
-    }
+    $this->actingAs($this->user)
+        ->get(route('app.posts.edit', $post))
+        ->assertOk();
 });
 
 // Update tests
@@ -561,7 +506,7 @@ test('update post saves changes', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'content' => 'Original content',
     ]);
 
@@ -571,7 +516,8 @@ test('update post saves changes', function () {
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
         'content' => 'Updated content',
         'platforms' => [
             [
@@ -602,7 +548,8 @@ test('update post cannot update published posts', function () {
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
         'content' => 'Test content',
         'platforms' => [
             [
@@ -663,7 +610,8 @@ test('cannot update a post in publishing state', function () {
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
         'content' => 'Test content',
         'platforms' => [
             [
@@ -754,7 +702,7 @@ test('publish now updates scheduled_at to current time', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'content' => 'Test content',
         'scheduled_at' => now()->addDays(7),
     ]);
@@ -781,16 +729,16 @@ test('publish now updates scheduled_at to current time', function () {
     expect($post->scheduled_at->toDateTimeString())->toBe(now()->toDateTimeString());
 });
 
-test('publish now is allowed when the draft has no scheduled_at', function () {
+test('publish now is allowed when the stored scheduled_at has passed', function () {
     Bus::fake();
     $this->freezeTime();
 
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'content' => 'Test content',
-        'scheduled_at' => null,
+        'scheduled_at' => now()->subHour(),
     ]);
 
     $postPlatform = PostPlatform::factory()->create([
@@ -819,7 +767,7 @@ test('update rejects scheduled status without a future scheduled_at', function (
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'scheduled_at' => $existingScheduledAt,
         'content' => 'Test content',
     ]);
@@ -851,7 +799,7 @@ test('update rejects scheduled status without a future scheduled_at', function (
         ])
         ->assertSessionHasErrors('scheduled_at');
 
-    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
 })->with([
     'missing schedule' => [null],
     'past schedule' => [now()->subDay()->toDateTimeString()],
@@ -863,7 +811,7 @@ test('update accepts scheduled status reusing an existing future scheduled_at', 
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'scheduled_at' => $scheduledAt,
         'content' => 'Test content',
     ]);
@@ -889,14 +837,14 @@ test('update accepts scheduled status reusing an existing future scheduled_at', 
         ->and($post->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
 });
 
-test('update schedules an unscheduled draft with an explicit future scheduled_at', function () {
+test('update moves a scheduled post to an explicit future scheduled_at', function () {
     $scheduledAt = now()->addDay()->startOfSecond();
 
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-        'scheduled_at' => null,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDays(3),
         'content' => 'Test content',
     ]);
 
@@ -922,38 +870,6 @@ test('update schedules an unscheduled draft with an explicit future scheduled_at
         ->and($post->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
 });
 
-test('update keeps an unscheduled draft when saving as draft without scheduled_at', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-        'scheduled_at' => null,
-        'content' => 'Original',
-    ]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
-        'content' => 'Still a draft',
-        'platforms' => [
-            [
-                'id' => $postPlatform->id,
-                'content_type' => ContentType::FacebookPost->value,
-            ],
-        ],
-    ])->assertRedirect();
-
-    $post->refresh();
-    expect($post->status)->toBe(PostStatus::Draft)
-        ->and($post->scheduled_at)->toBeNull()
-        ->and($post->content)->toBe('Still a draft');
-});
-
-// Destroy tests
 test('destroy post requires authentication', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -1067,18 +983,16 @@ test('show page exposes the content type of each platform', function () {
         );
 });
 
-test('show page redirects editable posts to edit', function () {
-    foreach ([PostStatus::Draft, PostStatus::Scheduled] as $status) {
-        $post = Post::factory()->create([
-            'workspace_id' => $this->workspace->id,
-            'user_id' => $this->user->id,
-            'status' => $status,
-        ]);
+test('show page redirects scheduled posts to edit', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Scheduled,
+    ]);
 
-        $this->actingAs($this->user)
-            ->get(route('app.posts.show', $post))
-            ->assertRedirect(route('app.posts.edit', $post));
-    }
+    $this->actingAs($this->user)
+        ->get(route('app.posts.show', $post))
+        ->assertRedirect(route('app.posts.edit', $post));
 });
 
 test('failed posts render show without redirecting to edit', function () {
@@ -1125,7 +1039,7 @@ test('update post redirects to show page after publishing', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'content' => 'Test',
     ]);
 
@@ -1154,7 +1068,7 @@ test('update post rejects scheduling youtube short with image', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'content' => 'Test',
     ]);
 
@@ -1195,7 +1109,7 @@ test('update post rejects scheduling facebook reel with no media', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'content' => 'Test',
     ]);
 
@@ -1227,7 +1141,7 @@ test('update post rejects invalid facebook aspect_ratio meta', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
     ]);
 
     $postPlatform = PostPlatform::factory()->create([
@@ -1236,7 +1150,8 @@ test('update post rejects invalid facebook aspect_ratio meta', function () {
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
         'platforms' => [
             [
                 'id' => $postPlatform->id,
@@ -1258,7 +1173,7 @@ test('update post accepts valid facebook aspect_ratio meta', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
     ]);
 
     $postPlatform = PostPlatform::factory()->create([
@@ -1267,7 +1182,8 @@ test('update post accepts valid facebook aspect_ratio meta', function () {
     ]);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
+        'status' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
         'platforms' => [
             [
                 'id' => $postPlatform->id,
@@ -1291,7 +1207,7 @@ test('scheduling without content_type per platform fails', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
         'content' => 'Test',
     ]);
 
@@ -1309,45 +1225,6 @@ test('scheduling without content_type per platform fails', function () {
     ]);
 
     $response->assertSessionHasErrors('platforms.0.content_type');
-});
-
-test('draft post does not enforce media-vs-content-type compatibility', function () {
-    $youtubeAccount = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::YouTube,
-    ]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-
-    $postPlatform = PostPlatform::factory()->youtube()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $youtubeAccount->id,
-    ]);
-
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
-        'media' => [
-            [
-                'id' => 'media-1',
-                'path' => 'media/foo.jpg',
-                'url' => 'https://example.com/foo.jpg',
-                'type' => 'image',
-                'mime_type' => 'image/jpeg',
-            ],
-        ],
-        'platforms' => [
-            [
-                'id' => $postPlatform->id,
-                'content_type' => ContentType::YouTubeShort->value,
-            ],
-        ],
-    ]);
-
-    $response->assertSessionDoesntHaveErrors('platforms.0.content_type');
 });
 
 // Member authorization tests

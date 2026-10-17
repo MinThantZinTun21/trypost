@@ -12,7 +12,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.core.designsystem.asLabel
 import com.minthantzintun.trypost.core.model.Post
-import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.ui.message
 import java.time.Instant
@@ -44,11 +42,11 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
-private enum class ScheduleStep { None, Date, Time, ConfirmUnschedule }
+private enum class ScheduleStep { None, Date, Time }
 
 /**
- * Schedule or Reschedule (a date, then a time, in the phone's timezone) and
- * Unschedule after a confirmation. Only a Draft or Scheduled post shows them.
+ * Reschedule: a date, then a time, in the phone's timezone. Only a Scheduled
+ * post shows it.
  */
 @Composable
 fun ScheduleActions(
@@ -56,7 +54,6 @@ fun ScheduleActions(
     isSaving: Boolean,
     actionError: ApiError?,
     onReschedule: (Instant) -> Unit,
-    onUnschedule: () -> Unit,
     extraActions: @Composable () -> Unit = {},
 ) {
     if (!post.isEditable) {
@@ -75,16 +72,7 @@ fun ScheduleActions(
                 enabled = !isSaving,
                 modifier = Modifier.testTag("reschedule"),
             ) {
-                Text(stringResource(if (post.status == PostStatus.Scheduled) R.string.reschedule else R.string.schedule).asLabel())
-            }
-            if (post.status == PostStatus.Scheduled) {
-                OutlinedButton(
-                    onClick = { step = ScheduleStep.ConfirmUnschedule },
-                    enabled = !isSaving,
-                    modifier = Modifier.testTag("unschedule"),
-                ) {
-                    Text(stringResource(R.string.unschedule).asLabel())
-                }
+                Text(stringResource(R.string.reschedule).asLabel())
             }
             extraActions()
             if (isSaving) {
@@ -117,23 +105,6 @@ fun ScheduleActions(
                 onReschedule(LocalDateTime.of(date, time).atZone(zone).toInstant())
             },
             onDismiss = { step = ScheduleStep.None },
-        )
-        ScheduleStep.ConfirmUnschedule -> AlertDialog(
-            onDismissRequest = { step = ScheduleStep.None },
-            title = { Text(stringResource(R.string.unschedule_confirm_title)) },
-            text = { Text(stringResource(R.string.unschedule_confirm_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        step = ScheduleStep.None
-                        onUnschedule()
-                    },
-                    modifier = Modifier.testTag("unschedule-confirm"),
-                ) { Text(stringResource(R.string.unschedule).asLabel()) }
-            },
-            dismissButton = {
-                TextButton(onClick = { step = ScheduleStep.None }) { Text(stringResource(R.string.cancel).asLabel()) }
-            },
         )
     }
 }

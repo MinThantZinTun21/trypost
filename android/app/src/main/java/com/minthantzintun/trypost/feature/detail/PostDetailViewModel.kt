@@ -74,10 +74,6 @@ class PostDetailViewModel @Inject constructor(
         runAction { postsRepository.reschedule(postId, at) }
     }
 
-    fun unschedule() {
-        runAction { postsRepository.unschedule(postId) }
-    }
-
     fun dismissActionError() {
         _state.update { it.copy(actionError = null) }
     }

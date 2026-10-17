@@ -84,11 +84,6 @@ class Post extends Model
         return $query->scheduled()->where('scheduled_at', '<=', now());
     }
 
-    public function scopeDraft(Builder $query): Builder
-    {
-        return $query->where('status', PostStatus::Draft);
-    }
-
     public function scopePublished(Builder $query): Builder
     {
         return $query->whereIn('status', [PostStatus::Published, PostStatus::PartiallyPublished]);

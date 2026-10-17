@@ -12,7 +12,6 @@ return [
         'goes_out_now' => 'It is publishing now. Check its result with get_post.',
         'goes_out_at' => 'It will publish at :time.',
         'cannot_delete' => 'This Post is :status and already on its Social accounts, so it cannot be deleted. Remove it on each platform instead.',
-        'goes_out_never' => 'It is a draft and will not publish until it is scheduled in the composer.',
     ],
     'insights' => [
         'no_facebook_page' => 'The Owner has no Facebook Page connected, and only Facebook Pages have Insights.',

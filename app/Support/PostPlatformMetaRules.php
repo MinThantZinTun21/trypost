@@ -141,7 +141,7 @@ class PostPlatformMetaRules
     /**
      * Adds validation errors for Titles, Descriptions and captions that break
      * their Platform's length or character limits. Unlike the required-on-publish
-     * meta, these hold for drafts too, so a saved Post never fails at publish
+     * meta, these hold for every save, so a saved Post never fails at publish
      * time over text length.
      *
      * @param  array<int, mixed>  $platforms

@@ -102,14 +102,14 @@ class PostDetailViewModelTest {
 
     @Test
     fun `rescheduling sends the time in utc and shows the scheduled post`() = runTest {
-        server.enqueue(json(postJson("p1", status = "draft", scheduledAt = null)))
+        server.enqueue(json(postJson("p1", status = "scheduled", scheduledAt = "2030-01-01T09:00:00+00:00")))
         val viewModel = viewModel()
         viewModel.state.first { !it.isLoading }
         server.takeRequest()
 
         server.enqueue(json(postJson("p1", status = "scheduled", scheduledAt = "2030-03-04T05:06:00+00:00")))
         viewModel.reschedule(Instant.parse("2030-03-04T05:06:00Z"))
-        val state = viewModel.state.first { !it.isSaving && it.post?.status == PostStatus.Scheduled }
+        val state = viewModel.state.first { !it.isSaving && it.post?.scheduledAt == Instant.parse("2030-03-04T05:06:00Z") }
 
         val request = server.takeRequest()
         assertEquals("PUT", request.method)
@@ -121,7 +121,7 @@ class PostDetailViewModelTest {
 
     @Test
     fun `a refused reschedule keeps the post and names the account`() = runTest {
-        server.enqueue(json(postJson("p1", status = "draft")))
+        server.enqueue(json(postJson("p1", status = "scheduled")))
         val viewModel = viewModel()
         viewModel.state.first { !it.isLoading }
 
@@ -134,7 +134,7 @@ class PostDetailViewModelTest {
         viewModel.reschedule(Instant.parse("2030-03-04T05:06:00Z"))
         val state = viewModel.state.first { !it.isSaving && it.actionError != null }
 
-        assertEquals(PostStatus.Draft, state.post?.status)
+        assertEquals(PostStatus.Scheduled, state.post?.status)
         val error = state.actionError as ApiError.Validation
         val line = error.messagesFor(state.post!!).single()
         assertEquals("My Page", line.accountName)
@@ -143,20 +143,20 @@ class PostDetailViewModelTest {
     }
 
     @Test
-    fun `unscheduling turns the post into a draft and tells the list`() = runTest {
+    fun `rescheduling tells the list`() = runTest {
         val changes = PostChanges()
-        server.enqueue(json(postJson("p1", status = "scheduled")))
+        server.enqueue(json(postJson("p1", status = "scheduled", scheduledAt = "2030-01-01T09:00:00+00:00")))
         val viewModel = PostDetailViewModel(SavedStateHandle(mapOf("id" to "p1")), PostsRepository(testClient(store), changes))
         viewModel.state.first { !it.isLoading }
         server.takeRequest()
 
         val announced = async(start = CoroutineStart.UNDISPATCHED) { changes.posts.first() }
-        server.enqueue(json(postJson("p1", status = "draft")))
-        viewModel.unschedule()
-        val state = viewModel.state.first { !it.isSaving && it.post?.status == PostStatus.Draft }
+        server.enqueue(json(postJson("p1", status = "scheduled", scheduledAt = "2030-03-04T05:06:00+00:00")))
+        viewModel.reschedule(Instant.parse("2030-03-04T05:06:00Z"))
+        val state = viewModel.state.first { !it.isSaving && it.post?.scheduledAt == Instant.parse("2030-03-04T05:06:00Z") }
 
-        assertEquals("DELETE", server.takeRequest().method)
-        assertEquals(PostStatus.Draft, announced.await().status)
+        assertEquals("PUT", server.takeRequest().method)
+        assertEquals(Instant.parse("2030-03-04T05:06:00Z"), announced.await().scheduledAt)
         assertNull(state.actionError)
     }
 

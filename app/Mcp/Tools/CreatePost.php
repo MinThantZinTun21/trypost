@@ -37,11 +37,10 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('create_post')]
-#[Description('Creates a Post for one or more Social accounts from list_social_accounts. mode "draft" saves it, "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. Content types default to Reel, TikTok Video and YouTube Short for a video, and Facebook Post and TikTok Photo for images. When TikTok delivery is Telegram, a TikTok Post is not uploaded to TikTok: its video (with a Download link) or photos and then its TikTok caption are sent to the Owner\'s Telegram channel to post by hand, and privacy_level is not needed. Otherwise every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
+#[Description('Creates a Post for one or more Social accounts from list_social_accounts. mode "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. Content types default to Reel, TikTok Video and YouTube Short for a video, and Facebook Post and TikTok Photo for images. When TikTok delivery is Telegram, a TikTok Post is not uploaded to TikTok: its video (with a Download link) or photos and then its TikTok caption are sent to the Owner\'s Telegram channel to post by hand, and privacy_level is not needed. Otherwise every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
 class CreatePost extends Tool
 {
     public const MODE_STATUSES = [
-        'draft' => PostStatus::Draft,
         'scheduled' => PostStatus::Scheduled,
         'now' => PostStatus::Publishing,
     ];
@@ -114,8 +113,7 @@ class CreatePost extends Tool
             'scheduled_at' => $post->scheduled_at?->toIso8601String(),
             'goes_out' => match ($post->status) {
                 PostStatus::Publishing => __('mcp.post.goes_out_now'),
-                PostStatus::Scheduled => __('mcp.post.goes_out_at', ['time' => $post->scheduled_at->toIso8601String()]),
-                default => __('mcp.post.goes_out_never'),
+                default => __('mcp.post.goes_out_at', ['time' => $post->scheduled_at->toIso8601String()]),
             },
         ];
     }
@@ -135,7 +133,7 @@ class CreatePost extends Tool
         return [
             'content' => $schema->string()->description('The Post\'s text. It is the Facebook Post text, and the TikTok caption, Reel description and YouTube title when those are not given.'),
             'media_ids' => $schema->array()->items($schema->string())->description('Media ids from complete_media_upload, in order. One video, or up to the Platform\'s image limit.'),
-            'mode' => $schema->string()->enum(array_keys(self::MODE_STATUSES))->description('draft saves it, scheduled publishes it at scheduled_at, now publishes it right away.')->required(),
+            'mode' => $schema->string()->enum(array_keys(self::MODE_STATUSES))->description('scheduled publishes it at scheduled_at, now publishes it right away.')->required(),
             'scheduled_at' => $schema->string()->description('When to publish, as ISO 8601 with an offset, e.g. 2026-10-09T18:00:00+07:00. Required for scheduled.'),
             'social_accounts' => $schema->array()->items($schema->object([
                 'id' => $schema->string()->description('The Social account\'s id from list_social_accounts.')->required(),

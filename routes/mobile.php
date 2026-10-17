@@ -21,5 +21,4 @@ Route::prefix('mobile/v1')
         Route::get('posts/{post}', [PostController::class, 'show'])->name('posts.show');
         Route::put('posts/{post}', [PostController::class, 'update'])->name('posts.update');
         Route::put('posts/{post}/schedule', [PostController::class, 'reschedule'])->name('posts.reschedule');
-        Route::delete('posts/{post}/schedule', [PostController::class, 'unschedule'])->name('posts.unschedule');
     });

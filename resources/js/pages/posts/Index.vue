@@ -149,12 +149,8 @@ const getEnabledPlatforms = (post: Post) =>
 const getPostPreview = (post: Post): string =>
     post.content?.trim() || trans('calendar.no_content');
 
-const EDITABLE_STATUSES: readonly string[] = [
-    PostStatus.Draft,
-    PostStatus.Scheduled,
-];
+const EDITABLE_STATUSES: readonly string[] = [PostStatus.Scheduled];
 const DELETABLE_STATUSES: readonly string[] = [
-    PostStatus.Draft,
     PostStatus.Scheduled,
     PostStatus.Failed,
 ];

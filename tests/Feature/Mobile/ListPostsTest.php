@@ -48,18 +48,10 @@ test('the scheduled tab lists scheduled and publishing posts, soonest first', fu
     $later = mobilePost(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDays(3)]);
     $sooner = mobilePost(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addHour()]);
     $publishing = mobilePost(['status' => PostStatus::Publishing, 'scheduled_at' => now()->subMinute()]);
-    mobilePost(['status' => PostStatus::Draft]);
+    mobilePost(['status' => PostStatus::Failed, 'scheduled_at' => now()->subHour()]);
     mobilePost(['status' => PostStatus::Published, 'published_at' => now()]);
 
     expect(mobilePostIds('scheduled'))->toBe([$publishing->id, $sooner->id, $later->id]);
-});
-
-test('the draft tab lists drafts, newest first', function () {
-    $older = mobilePost(['status' => PostStatus::Draft, 'created_at' => now()->subDays(2)]);
-    $newer = mobilePost(['status' => PostStatus::Draft, 'created_at' => now()->subDay()]);
-    mobilePost(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
-
-    expect(mobilePostIds('draft'))->toBe([$newer->id, $older->id]);
 });
 
 test('the published tab lists fully published posts, newest first', function () {
@@ -79,10 +71,10 @@ test('the failed tab lists failed and partially published posts, newest first', 
 });
 
 test('another workspace\'s posts never appear', function () {
-    $mine = mobilePost(['status' => PostStatus::Draft]);
-    Post::factory()->draft()->create();
+    $mine = mobilePost(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
+    Post::factory()->scheduled()->create();
 
-    expect(mobilePostIds('draft'))->toBe([$mine->id]);
+    expect(mobilePostIds('scheduled'))->toBe([$mine->id]);
 });
 
 test('the list is paginated with the app page size', function () {

@@ -329,21 +329,18 @@ private fun PostRow(post: Post, tab: PostTab, zone: ZoneId, onClick: () -> Unit)
 
 private fun PostTab.titleRes(): Int = when (this) {
     PostTab.Scheduled -> R.string.tab_scheduled
-    PostTab.Draft -> R.string.tab_draft
     PostTab.Published -> R.string.tab_published
     PostTab.Failed -> R.string.tab_failed
 }
 
 private fun PostTab.emptyTitleRes(): Int = when (this) {
     PostTab.Scheduled -> R.string.empty_scheduled_title
-    PostTab.Draft -> R.string.empty_draft_title
     PostTab.Published -> R.string.empty_published_title
     PostTab.Failed -> R.string.empty_failed_title
 }
 
 private fun PostTab.emptyBodyRes(): Int = when (this) {
     PostTab.Scheduled -> R.string.empty_scheduled_body
-    PostTab.Draft -> R.string.empty_draft_body
     PostTab.Published -> R.string.empty_published_body
     PostTab.Failed -> R.string.empty_failed_body
 }

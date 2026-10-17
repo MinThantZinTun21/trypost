@@ -170,7 +170,6 @@ return [
 
     'status' => [
         'pending' => 'Pending',
-        'draft' => 'Draft',
         'scheduled' => 'Scheduled',
         'publishing' => 'Publishing',
         'retrying' => 'Retrying',
@@ -180,7 +179,6 @@ return [
     ],
 
     'descriptions' => [
-        'draft' => 'Posts waiting to be scheduled',
         'scheduled' => 'Posts scheduled for publishing',
         'published' => 'Posts already published',
     ],
@@ -195,7 +193,6 @@ return [
         'view_on_platform' => 'View on platform',
         'published_on' => 'Published on :date',
         'scheduled_for' => 'Scheduled for :date',
-        'draft' => 'Draft',
         'status_pending' => 'Pending',
     ],
 
@@ -376,7 +373,6 @@ return [
     'flash' => [
         'scheduled' => 'Post scheduled successfully!',
         'deleted' => 'Post deleted successfully!',
-        'duplicated' => 'Post duplicated as a draft.',
         'cannot_edit_finalized' => 'This post has already been processed and cannot be re-published. Duplicate it to try again.',
         'cannot_delete_published' => 'Published posts cannot be deleted.',
         'connect_first' => 'Connect at least one social network before creating a post.',

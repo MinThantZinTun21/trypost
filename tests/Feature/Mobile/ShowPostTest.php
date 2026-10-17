@@ -72,7 +72,7 @@ test('a post handed off to telegram is published without a link', function () {
 });
 
 test('an empty meta is an object, not a list', function () {
-    $post = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->owner->id]);
+    $post = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->owner->id]);
     PostPlatform::factory()->facebook()->create([
         'post_id' => $post->id,
         'social_account_id' => SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id])->id,
@@ -84,13 +84,13 @@ test('an empty meta is an object, not a list', function () {
 });
 
 test('another workspace\'s post is not found', function () {
-    $post = Post::factory()->draft()->create();
+    $post = Post::factory()->scheduled()->create();
 
     $this->getJson(route('mobile.v1.posts.show', $post), $this->headers)->assertNotFound();
 });
 
 test('a post needs the mobile token', function () {
-    $post = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->owner->id]);
+    $post = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->owner->id]);
 
     $this->getJson(route('mobile.v1.posts.show', $post))->assertUnauthorized();
 });

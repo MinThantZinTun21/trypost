@@ -1,7 +1,6 @@
 package com.minthantzintun.trypost.core.network
 
 import retrofit2.http.Body
-import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -26,7 +25,4 @@ interface MobileApi {
 
     @PUT("mobile/v1/posts/{post}/schedule")
     suspend fun reschedule(@Path("post") id: String, @Body body: RescheduleBody): PostDto
-
-    @DELETE("mobile/v1/posts/{post}/schedule")
-    suspend fun unschedule(@Path("post") id: String): PostDto
 }

@@ -40,7 +40,7 @@ class PostsRepository @Inject constructor(
 
     suspend fun post(id: String): ApiResult<Post> = client.call { post(id) }.map { it.toPost() }
 
-    /** Schedules a Draft or moves a Scheduled post; the server runs the composer's checks. */
+    /** Moves a Scheduled post; the server runs the composer's checks. */
     suspend fun reschedule(id: String, at: Instant): ApiResult<Post> =
         client.call { reschedule(id, RescheduleBody(at.toString())) }.map { it.toPost() }.announced()
 
@@ -74,10 +74,6 @@ class PostsRepository @Inject constructor(
         value.isBlank() -> JsonNull
         else -> JsonPrimitive(value)
     }
-
-    /** Turns a Scheduled post back into a Draft. */
-    suspend fun unschedule(id: String): ApiResult<Post> =
-        client.call { unschedule(id) }.map { it.toPost() }.announced()
 
     private fun ApiResult<Post>.announced(): ApiResult<Post> = also {
         if (it is ApiResult.Success) {

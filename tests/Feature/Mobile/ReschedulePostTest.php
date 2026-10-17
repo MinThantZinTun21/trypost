@@ -89,7 +89,7 @@ test('a time in another timezone is stored in utc', function () {
 });
 
 test('a time without its utc offset is refused', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Draft]);
+    $post = ($this->makePost)(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
 
     foreach (['2030-03-04T12:36:00', '04-03-2030'] as $withoutOffset) {
         $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => $withoutOffset], $this->headers)
@@ -106,20 +106,9 @@ test('a time without its utc offset is refused', function () {
         ->assertJsonPath('scheduled_at', '2030-03-04T06:06:00+00:00');
 });
 
-test('rescheduling a draft schedules it', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Draft]);
-    $platformsBefore = ($this->platformsOf)($post);
-
-    $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => '2030-03-04T05:06:00+00:00'], $this->headers)
-        ->assertOk()
-        ->assertJsonPath('status', 'scheduled');
-
-    expect($post->refresh()->status)->toBe(PostStatus::Scheduled)
-        ->and(($this->platformsOf)($post))->toEqual($platformsBefore);
-});
-
 test('a time in the past is refused', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Draft]);
+    $scheduledAt = now()->addDay()->startOfMinute();
+    $post = ($this->makePost)(['status' => PostStatus::Scheduled, 'scheduled_at' => $scheduledAt]);
 
     $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => now()->subMinute()->toIso8601String()], $this->headers)
         ->assertUnprocessable()
@@ -129,11 +118,14 @@ test('a time in the past is refused', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors('scheduled_at');
 
-    expect($post->refresh()->status)->toBe(PostStatus::Draft);
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->equalTo($scheduledAt))->toBeTrue();
 });
 
-test('a draft that fails the publish checks stays a draft with the account\'s message', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Draft]);
+test('a post that fails the publish checks keeps its time, with the account\'s message', function () {
+    $scheduledAt = now()->addDay()->startOfMinute();
+    $post = ($this->makePost)(['status' => PostStatus::Scheduled, 'scheduled_at' => $scheduledAt]);
     $tiktok = PostPlatform::factory()->tiktok()->create([
         'post_id' => $post->id,
         'social_account_id' => SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id])->id,
@@ -147,12 +139,13 @@ test('a draft that fails the publish checks stays a draft with the account\'s me
         ->search(fn (array $platform): bool => $platform['id'] === $tiktok->id);
     $response->assertJsonValidationErrors(["platforms.{$index}.meta.privacy_level" => __('posts.form.tiktok.privacy_required')]);
 
-    expect($post->refresh()->status)->toBe(PostStatus::Draft)
-        ->and($post->scheduled_at)->toBeNull();
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->equalTo($scheduledAt))->toBeTrue();
 });
 
-test('a tiktok account with its privacy level schedules', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Draft]);
+test('a tiktok account with its privacy level reschedules', function () {
+    $post = ($this->makePost)(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
     PostPlatform::factory()->tiktok()->create([
         'post_id' => $post->id,
         'social_account_id' => SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id])->id,
@@ -160,49 +153,28 @@ test('a tiktok account with its privacy level schedules', function () {
 
     $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => '2030-03-04T05:06:00+00:00'], $this->headers)
         ->assertOk()
-        ->assertJsonPath('status', 'scheduled');
+        ->assertJsonPath('status', 'scheduled')
+        ->assertJsonPath('scheduled_at', '2030-03-04T05:06:00+00:00');
 });
 
 test('a content type that does not fit the media is refused', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Draft, 'media' => []]);
+    $scheduledAt = now()->addDay()->startOfMinute();
+    $post = ($this->makePost)(['status' => PostStatus::Scheduled, 'scheduled_at' => $scheduledAt, 'media' => []]);
 
     $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => '2030-03-04T05:06:00+00:00'], $this->headers)
         ->assertUnprocessable();
 
-    expect($post->refresh()->status)->toBe(PostStatus::Draft);
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->equalTo($scheduledAt))->toBeTrue();
 });
 
-test('unscheduling turns a scheduled post into a draft', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
-    $platformsBefore = ($this->platformsOf)($post);
-
-    $this->deleteJson(route('mobile.v1.posts.unschedule', $post), [], $this->headers)
-        ->assertOk()
-        ->assertJsonPath('status', 'draft')
-        ->assertJsonPath('editable', true);
-
-    expect($post->refresh()->status)->toBe(PostStatus::Draft)
-        ->and($post->media)->toEqual([$this->video])
-        ->and(($this->platformsOf)($post))->toEqual($platformsBefore);
-});
-
-test('unscheduling a draft leaves it a draft', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Draft]);
-
-    $this->deleteJson(route('mobile.v1.posts.unschedule', $post), [], $this->headers)
-        ->assertOk()
-        ->assertJsonPath('status', 'draft');
-});
-
-test('a post that is publishing or finished cannot be rescheduled or unscheduled', function (PostStatus $status) {
+test('a post that is publishing or finished cannot be rescheduled', function (PostStatus $status) {
     $post = ($this->makePost)(['status' => $status, 'scheduled_at' => now()->subMinute()]);
 
     $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => '2030-03-04T05:06:00+00:00'], $this->headers)
         ->assertConflict()
         ->assertJsonPath('message', __('posts.cannot_edit_finalized'));
-
-    $this->deleteJson(route('mobile.v1.posts.unschedule', $post), [], $this->headers)
-        ->assertConflict();
 
     expect($post->refresh()->status)->toBe($status);
 })->with([
@@ -217,15 +189,11 @@ test('another workspace\'s post is not found', function () {
 
     $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => '2030-03-04T05:06:00+00:00'], $this->headers)
         ->assertNotFound();
-    $this->deleteJson(route('mobile.v1.posts.unschedule', $post), [], $this->headers)
-        ->assertNotFound();
 });
 
 test('scheduling needs the token', function () {
-    $post = ($this->makePost)(['status' => PostStatus::Draft]);
+    $post = ($this->makePost)(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
 
     $this->putJson(route('mobile.v1.posts.reschedule', $post), ['scheduled_at' => '2030-03-04T05:06:00+00:00'])
-        ->assertUnauthorized();
-    $this->deleteJson(route('mobile.v1.posts.unschedule', $post))
         ->assertUnauthorized();
 });

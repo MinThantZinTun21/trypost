@@ -45,7 +45,6 @@ class PostController extends Controller
 
         if ($status) {
             $query = match ($status) {
-                PostStatus::Draft->value => $query->draft(),
                 PostStatus::Scheduled->value => $query->scheduled(),
                 PostStatus::Published->value => $query->published(),
                 default => $query,
@@ -191,7 +190,7 @@ class PostController extends Controller
 
         $this->authorize('view', $post);
 
-        if (in_array($post->status, [PostStatus::Draft, PostStatus::Scheduled], true)) {
+        if ($post->status === PostStatus::Scheduled) {
             return redirect()->route('app.posts.edit', $post);
         }
 

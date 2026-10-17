@@ -79,7 +79,7 @@ const scheduleLabelKey = computed(() =>
 
                 <Tooltip>
                     <TooltipTrigger as-child>
-                        <span tabindex="0">
+                        <span tabindex="0" class="min-w-0">
                             <PickTimePopover
                                 v-model="scheduledDateTime"
                                 :disabled="isPostActionDisabled"
@@ -88,10 +88,14 @@ const scheduleLabelKey = computed(() =>
                                 <Button
                                     type="button"
                                     variant="outline"
+                                    class="max-w-full"
+                                    data-testid="post-pick-time"
                                     :disabled="isPostActionDisabled"
                                 >
                                     <IconCalendar class="size-4" />
-                                    {{ pickTimeLabel }}
+                                    <span class="truncate">{{
+                                        pickTimeLabel
+                                    }}</span>
                                 </Button>
                             </PickTimePopover>
                         </span>

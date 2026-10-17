@@ -52,7 +52,7 @@ class PostPolicy
 
     /**
      * Authorize duplicating a post into the user's current workspace as a
-     * fresh draft. The post must live in the user's current workspace
+     * new unsaved Post. The post must live in the user's current workspace
      * (404 otherwise — tenancy guard, see `view()`) AND the user must
      * have permission to create posts there (403 otherwise).
      */

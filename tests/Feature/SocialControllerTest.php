@@ -123,13 +123,13 @@ test('disconnect removes social account', function () {
     expect(SocialAccount::find($account->id))->toBeNull();
 });
 
-test('disconnect deletes pending platform rows from drafts and keeps published history', function () {
+test('disconnect deletes pending platform rows from scheduled posts and keeps published history', function () {
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $draftPost = Post::factory()->create([
+    $scheduledPost = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => Status::Draft,
+        'status' => Status::Scheduled,
     ]);
     $publishedPost = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -138,7 +138,7 @@ test('disconnect deletes pending platform rows from drafts and keeps published h
     ]);
 
     $pendingPlatform = PostPlatform::factory()->create([
-        'post_id' => $draftPost->id,
+        'post_id' => $scheduledPost->id,
         'social_account_id' => $account->id,
         'status' => PlatformStatus::Pending,
     ]);

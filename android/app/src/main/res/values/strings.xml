@@ -32,13 +32,10 @@
     <string name="sign_out_confirm_body">The token is removed from this phone. You\'ll need it again to sign back in.</string>
     <string name="cancel">Cancel</string>
     <string name="tab_scheduled">Scheduled</string>
-    <string name="tab_draft">Drafts</string>
     <string name="tab_published">Published</string>
     <string name="tab_failed">Failed</string>
     <string name="empty_scheduled_title">Nothing scheduled</string>
     <string name="empty_scheduled_body">Scheduled posts show here, soonest first.</string>
-    <string name="empty_draft_title">No drafts</string>
-    <string name="empty_draft_body">Drafts you save on the web show here.</string>
     <string name="empty_published_title">Nothing published yet</string>
     <string name="empty_published_body">Posts that went out show here, newest first.</string>
     <string name="empty_failed_title">Nothing failed</string>
@@ -82,11 +79,8 @@
     <!-- Schedule -->
     <string name="schedule">Schedule</string>
     <string name="reschedule">Reschedule</string>
-    <string name="unschedule">Unschedule</string>
     <string name="next">Next</string>
     <string name="schedule_pick_time">Pick a time</string>
-    <string name="unschedule_confirm_title">Unschedule this post?</string>
-    <string name="unschedule_confirm_body">It becomes a Draft and won\'t publish until you schedule it again.</string>
     <string name="action_error_title">Couldn\'t save</string>
 
     <!-- Edit -->
@@ -97,7 +91,6 @@
     <string name="edit_tags_hint">Separate tags with commas.</string>
 
     <!-- Statuses -->
-    <string name="status_draft">Draft</string>
     <string name="status_scheduled">Scheduled</string>
     <string name="status_publishing">Publishing</string>
     <string name="status_published">Published</string>

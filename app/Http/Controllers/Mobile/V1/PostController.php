@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Mobile\V1;
 
 use App\Actions\Post\ReschedulePost;
-use App\Actions\Post\UnschedulePost;
 use App\Actions\Post\UpdatePostTexts;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Mobile\ListPostsRequest;
@@ -17,7 +16,6 @@ use App\Support\PostStatusRules;
 use Closure;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -55,12 +53,6 @@ class PostController extends Controller
     {
         return $this->editRefusal($post)
             ?? $this->show(ReschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post, $request->scheduledAt())->refresh());
-    }
-
-    public function unschedule(Request $request, Post $post): PostResource|JsonResponse
-    {
-        return $this->editRefusal($post)
-            ?? $this->show(UnschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post)->refresh());
     }
 
     /**

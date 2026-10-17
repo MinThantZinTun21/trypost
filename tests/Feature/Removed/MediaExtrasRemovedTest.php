@@ -73,7 +73,7 @@ test('the post editor no longer receives labels or signatures', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->owner->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
     ]);
 
     $this->actingAs($this->owner)

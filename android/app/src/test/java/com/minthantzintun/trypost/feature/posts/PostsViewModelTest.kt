@@ -85,19 +85,19 @@ class PostsViewModelTest {
     @Test
     fun `each tab asks for its own posts once`() = runTest {
         server.enqueue(postsPage(listOf(postJson("s1"))))
-        server.enqueue(postsPage(listOf(postJson("d1", status = "draft", scheduledAt = null))))
+        server.enqueue(postsPage(listOf(postJson("p1", status = "published"))))
         val viewModel = viewModel()
         viewModel.settled(PostTab.Scheduled)
 
-        viewModel.selectTab(PostTab.Draft)
-        val drafts = viewModel.settled(PostTab.Draft)
+        viewModel.selectTab(PostTab.Published)
+        val published = viewModel.settled(PostTab.Published)
         viewModel.selectTab(PostTab.Scheduled)
-        viewModel.selectTab(PostTab.Draft)
+        viewModel.selectTab(PostTab.Published)
 
-        assertEquals(listOf("d1"), drafts.posts.map { it.id })
+        assertEquals(listOf("p1"), published.posts.map { it.id })
         assertEquals(2, server.requestCount)
         server.takeRequest()
-        assertEquals("draft", server.takeRequest().url.queryParameter("status"))
+        assertEquals("published", server.takeRequest().url.queryParameter("status"))
     }
 
     @Test

@@ -27,15 +27,9 @@ class PostFactory extends Factory
             'user_id' => User::factory(),
             'content' => '',
             'media' => [],
-            'status' => PostStatus::Draft,
+            'status' => PostStatus::Scheduled,
+            'scheduled_at' => now()->addDay(),
         ];
-    }
-
-    public function draft(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => PostStatus::Draft,
-        ]);
     }
 
     public function scheduled(): static
