@@ -29,7 +29,7 @@ A Post with a set publish time that has not started publishing yet.
 _Avoid_: Queued post, pending post
 
 **Draft**:
-A Post with no publish time that is not yet scheduled.
+A Post that is not scheduled, so it does not publish. It may keep the time it was once planned for.
 
 **Reschedule**:
 Give a Post a new publish time: move a Scheduled post, or schedule a Draft. The time must be in the future.

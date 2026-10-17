@@ -20,7 +20,7 @@ class ReschedulePostRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'scheduled_at' => ['required', 'date', 'regex:/(Z|[+-]\d{2}:?\d{2})$/i', 'after:now'],
+            'scheduled_at' => ['required', 'date', 'regex:/\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i', 'after:now'],
         ];
     }
 
