@@ -53,6 +53,7 @@ import com.minthantzintun.trypost.core.designsystem.MessageState
 import com.minthantzintun.trypost.core.designsystem.PlatformTag
 import com.minthantzintun.trypost.core.designsystem.StatusBadge
 import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.download.DownloadProgress
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.MediaItem
 import com.minthantzintun.trypost.core.model.MediaType
@@ -63,6 +64,7 @@ import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.model.shownTexts
 import com.minthantzintun.trypost.core.model.toPlainText
 import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
+import com.minthantzintun.trypost.core.ui.DownloadProgressIndicator
 import com.minthantzintun.trypost.core.ui.color
 import com.minthantzintun.trypost.core.ui.contentTypeLabel
 import com.minthantzintun.trypost.core.ui.label
@@ -81,9 +83,11 @@ fun PostDetailRoute(
     viewModel: PostDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val downloads by viewModel.downloads.collectAsStateWithLifecycle()
 
     PostDetailScreen(
         state = state,
+        downloads = downloads,
         onBack = onBack,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
@@ -115,6 +119,7 @@ fun PostDetailRoute(
 @Composable
 fun PostDetailScreen(
     state: PostDetailUiState,
+    downloads: Map<String, DownloadProgress>,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
@@ -159,7 +164,14 @@ fun PostDetailScreen(
                     )
                 }
                 else -> PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                    PostDetailContent(post = post, error = error?.message(), actions = actions, onDownload = download, onCopy = copy)
+                    PostDetailContent(
+                        post = post,
+                        error = error?.message(),
+                        actions = actions,
+                        downloads = downloads,
+                        onDownload = download,
+                        onCopy = copy,
+                    )
                 }
             }
         }
@@ -171,6 +183,7 @@ private fun PostDetailContent(
     post: Post,
     error: String?,
     actions: @Composable (Post) -> Unit,
+    downloads: Map<String, DownloadProgress>,
     onDownload: (DownloadLink) -> Unit,
     onCopy: (label: String, text: String) -> Unit,
 ) {
@@ -226,7 +239,7 @@ private fun PostDetailContent(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    post.media.forEach { MediaThumbnail(it, onDownload) }
+                    post.media.forEach { MediaThumbnail(it, downloads, onDownload) }
                 }
             }
         }
@@ -272,13 +285,18 @@ private fun Section(title: String, trailing: (@Composable () -> Unit)? = null, c
 }
 
 @Composable
-private fun MediaThumbnail(item: MediaItem, onDownload: (DownloadLink) -> Unit) {
+private fun MediaThumbnail(item: MediaItem, downloads: Map<String, DownloadProgress>, onDownload: (DownloadLink) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         MediaPreview(item)
         // Photos and videos; the platforms here publish no PDFs.
         item.download?.takeIf { item.type != MediaType.Document }?.let { link ->
-            TextButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-media-${item.id}")) {
-                Text(stringResource(R.string.download).asLabel())
+            val progress = downloads[link.url]
+            if (progress != null) {
+                DownloadProgressIndicator(progress, Modifier.padding(vertical = 8.dp).testTag("download-progress-${item.id}"))
+            } else {
+                TextButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-media-${item.id}")) {
+                    Text(stringResource(R.string.download).asLabel())
+                }
             }
         }
     }

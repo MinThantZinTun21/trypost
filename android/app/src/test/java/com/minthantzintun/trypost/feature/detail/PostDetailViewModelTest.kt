@@ -4,9 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import com.minthantzintun.trypost.core.data.PostChanges
 import com.minthantzintun.trypost.core.data.PostsRepository
 import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.download.DownloadRow
+import com.minthantzintun.trypost.core.download.DownloadTracker
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.network.ApiError
+import com.minthantzintun.trypost.testing.FakeDownloadRows
 import com.minthantzintun.trypost.testing.FakeMediaDownloader
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
@@ -34,6 +37,7 @@ class PostDetailViewModelTest {
     private val server = MockWebServer()
     private lateinit var store: FakeSessionStore
     private val downloader = FakeMediaDownloader()
+    private val downloadRows = FakeDownloadRows()
 
     @Before
     fun setUp() {
@@ -47,7 +51,7 @@ class PostDetailViewModelTest {
     }
 
     private fun viewModel(id: String = "p1"): PostDetailViewModel =
-        PostDetailViewModel(SavedStateHandle(mapOf("id" to id)), PostsRepository(testClient(store), PostChanges()), downloader)
+        PostDetailViewModel(SavedStateHandle(mapOf("id" to id)), PostsRepository(testClient(store), PostChanges()), downloader, DownloadTracker(downloadRows))
 
     @Test
     fun `it loads the post by its id`() = runTest {
@@ -68,8 +72,11 @@ class PostDetailViewModelTest {
         val link = viewModel.state.first { !it.isLoading }.post?.media?.single()?.download
 
         assertEquals(DownloadLink("https://app.example.com/media/m1/download?signature=abc", "clip.mp4", "video/mp4"), link)
+        downloadRows.rows = listOf(DownloadRow(id = 7, url = link!!.url, fileName = "clip.mp4", bytesSoFar = 30, totalBytes = 100))
 
-        viewModel.download(link!!)
+        viewModel.download(link)
+
+        assertEquals(30, viewModel.downloads.value.getValue(link.url).percent)
 
         assertEquals(listOf(link), downloader.started)
         assertEquals(DownloadOutcome.Started, viewModel.state.value.downloadOutcome)
@@ -179,7 +186,7 @@ class PostDetailViewModelTest {
     fun `rescheduling tells the list`() = runTest {
         val changes = PostChanges()
         server.enqueue(json(postJson("p1", status = "scheduled", scheduledAt = "2030-01-01T09:00:00+00:00")))
-        val viewModel = PostDetailViewModel(SavedStateHandle(mapOf("id" to "p1")), PostsRepository(testClient(store), changes), downloader)
+        val viewModel = PostDetailViewModel(SavedStateHandle(mapOf("id" to "p1")), PostsRepository(testClient(store), changes), downloader, DownloadTracker(downloadRows))
         viewModel.state.first { !it.isLoading }
         server.takeRequest()
 

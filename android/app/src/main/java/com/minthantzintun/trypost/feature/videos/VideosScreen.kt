@@ -52,9 +52,11 @@ import com.minthantzintun.trypost.core.data.VideoSource
 import com.minthantzintun.trypost.core.designsystem.MessageState
 import com.minthantzintun.trypost.core.designsystem.UnderlinedField
 import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.download.DownloadProgress
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.Video
 import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
+import com.minthantzintun.trypost.core.ui.DownloadProgressIndicator
 import com.minthantzintun.trypost.core.ui.LoadMoreWhenNearEnd
 import com.minthantzintun.trypost.core.ui.message
 import com.minthantzintun.trypost.core.ui.rememberDownloadAction
@@ -67,9 +69,11 @@ import kotlin.math.roundToLong
 @Composable
 fun VideosRoute(viewModel: VideosViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val downloads by viewModel.downloads.collectAsStateWithLifecycle()
 
     VideosScreen(
         state = state,
+        downloads = downloads,
         onPickVideo = viewModel::pickVideo,
         onNameChange = viewModel::updateName,
         onUpload = viewModel::upload,
@@ -88,6 +92,7 @@ fun VideosRoute(viewModel: VideosViewModel = hiltViewModel()) {
 @Composable
 fun VideosScreen(
     state: VideosUiState,
+    downloads: Map<String, DownloadProgress>,
     onPickVideo: (VideoSource) -> Unit,
     onNameChange: (String) -> Unit,
     onUpload: (String) -> Unit,
@@ -130,6 +135,7 @@ fun VideosScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             VideoList(
                 state = state,
+                downloads = downloads,
                 onRefresh = onRefresh,
                 onRetry = onRetry,
                 onLoadMore = onLoadMore,
@@ -236,6 +242,7 @@ private fun UploadDialog(
 @Composable
 private fun VideoList(
     state: VideosUiState,
+    downloads: Map<String, DownloadProgress>,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
@@ -279,6 +286,7 @@ private fun VideoList(
                             zone = zone,
                             isDeleting = state.deletingId == video.id,
                             onDelete = { onDelete(video) },
+                            download = video.download?.let { downloads[it.url] },
                             onDownload = onDownload,
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -305,7 +313,14 @@ private fun VideoList(
 }
 
 @Composable
-private fun VideoRow(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete: () -> Unit, onDownload: (DownloadLink) -> Unit) {
+private fun VideoRow(
+    video: Video,
+    zone: ZoneId,
+    isDeleting: Boolean,
+    onDelete: () -> Unit,
+    download: DownloadProgress?,
+    onDownload: (DownloadLink) -> Unit,
+) {
     val context = LocalContext.current
     val details = listOfNotNull(
         video.size?.let { Formatter.formatShortFileSize(context, it) },
@@ -323,7 +338,9 @@ private fun VideoRow(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete: 
                 Text(details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        video.download?.let { link ->
+        if (download != null) {
+            DownloadProgressIndicator(download, Modifier.padding(horizontal = 8.dp).testTag("download-progress-${video.id}"))
+        } else video.download?.let { link ->
             IconButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-video-${video.id}")) {
                 Icon(painterResource(R.drawable.ic_download), contentDescription = stringResource(R.string.download))
             }

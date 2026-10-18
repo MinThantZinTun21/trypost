@@ -5,7 +5,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,12 +19,16 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.download.DownloadProgress
 import com.minthantzintun.trypost.core.model.DownloadLink
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 /**
@@ -83,3 +92,21 @@ private val DownloadLinkSaver = listSaver<DownloadLink?, String?>(
     save = { link -> if (link == null) emptyList() else listOf(link.url, link.fileName, link.mimeType) },
     restore = { saved -> saved.takeIf { it.size == 3 }?.let { (url, fileName, mimeType) -> DownloadLink(url!!, fileName!!, mimeType) } },
 )
+
+/** Takes a Download button's place while its file downloads: the percent over a small bar. */
+@Composable
+fun DownloadProgressIndicator(progress: DownloadProgress, modifier: Modifier = Modifier) {
+    val fraction = progress.fraction
+
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = progress.percent?.let { stringResource(R.string.download_percent, it) } ?: stringResource(R.string.download_running),
+            style = MaterialTheme.typography.labelSmall,
+        )
+        if (fraction == null) {
+            LinearProgressIndicator(modifier = Modifier.width(56.dp))
+        } else {
+            LinearProgressIndicator(progress = { fraction }, modifier = Modifier.width(56.dp))
+        }
+    }
+}

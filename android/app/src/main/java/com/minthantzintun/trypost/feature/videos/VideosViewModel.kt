@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.VideoSource
 import com.minthantzintun.trypost.core.data.VideosRepository
 import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.download.DownloadProgress
+import com.minthantzintun.trypost.core.download.DownloadTracker
 import com.minthantzintun.trypost.core.download.MediaDownloader
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.Video
@@ -55,7 +57,11 @@ data class VideosUiState(
 class VideosViewModel @Inject constructor(
     private val videosRepository: VideosRepository,
     private val downloader: MediaDownloader,
+    private val downloadTracker: DownloadTracker,
 ) : ViewModel() {
+
+    /** Progress of the app's running downloads, keyed by Download link. */
+    val downloads: StateFlow<Map<String, DownloadProgress>> = downloadTracker.progress
 
     private val _state = MutableStateFlow(VideosUiState())
     val state: StateFlow<VideosUiState> = _state.asStateFlow()
@@ -164,7 +170,11 @@ class VideosViewModel @Inject constructor(
 
     /** Saves a Video's file to Downloads under the Video's name. */
     fun download(link: DownloadLink) {
-        _state.update { it.copy(downloadOutcome = downloader.start(link)) }
+        val outcome = downloader.start(link)
+        if (outcome == DownloadOutcome.Started) {
+            downloadTracker.refresh()
+        }
+        _state.update { it.copy(downloadOutcome = outcome) }
     }
 
     fun dismissDownloadOutcome() {
