@@ -90,7 +90,7 @@ class VideosViewModelTest {
         assertEquals(DownloadLink("https://app.example.com/media/f-v1/download?signature=abc", "Beach day.mp4", null), videos[0].download)
         assertNull(videos[1].download)
 
-        downloadRows.rows = listOf(DownloadRow(id = 3, url = videos[0].download!!.url, fileName = "Beach day.mp4", bytesSoFar = 0, totalBytes = -1))
+        downloadRows.rows = listOf(DownloadRow(url = videos[0].download!!.url, fileName = "Beach day.mp4", bytesSoFar = 0, totalBytes = -1))
         viewModel.download(videos[0].download!!)
 
         assertEquals(listOf(videos[0].download), downloader.started)

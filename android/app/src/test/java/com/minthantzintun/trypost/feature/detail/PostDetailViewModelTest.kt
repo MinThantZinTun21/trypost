@@ -72,7 +72,7 @@ class PostDetailViewModelTest {
         val link = viewModel.state.first { !it.isLoading }.post?.media?.single()?.download
 
         assertEquals(DownloadLink("https://app.example.com/media/m1/download?signature=abc", "clip.mp4", "video/mp4"), link)
-        downloadRows.rows = listOf(DownloadRow(id = 7, url = link!!.url, fileName = "clip.mp4", bytesSoFar = 30, totalBytes = 100))
+        downloadRows.rows = listOf(DownloadRow(url = link!!.url, fileName = "clip.mp4", bytesSoFar = 30, totalBytes = 100))
 
         viewModel.download(link)
 

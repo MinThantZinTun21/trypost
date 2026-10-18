@@ -2,7 +2,6 @@ package com.minthantzintun.trypost.core.download
 
 /** One of the app's DownloadManager downloads. `totalBytes` is -1 while the size is unknown. */
 data class DownloadRow(
-    val id: Long,
     val url: String,
     val fileName: String,
     val bytesSoFar: Long,

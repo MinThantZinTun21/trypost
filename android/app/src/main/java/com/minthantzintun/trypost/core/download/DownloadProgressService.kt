@@ -35,10 +35,15 @@ class DownloadProgressService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var watching: Job? = null
 
+    /** The latest start, so the watcher only stops a service no new Download has restarted. */
+    @Volatile
+    private var lastStartId = 0
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     @SuppressLint("InlinedApi") // ServiceCompat drops the type below Android 10.
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         ServiceCompat.startForeground(
             this,
             DownloadNotifications.PROGRESS_ID,
@@ -56,19 +61,25 @@ class DownloadProgressService : Service() {
     private suspend fun watch() {
         val notifications = NotificationManagerCompat.from(this)
 
-        while (scope.isActive && tracker.refresh()) {
-            if (notifications.areNotificationsEnabled()) {
-                @Suppress("MissingPermission") // areNotificationsEnabled() is the check.
-                notifications.notify(
-                    DownloadNotifications.PROGRESS_ID,
-                    DownloadNotifications.progress(this, DownloadSummary.of(tracker.progress.value.values)),
-                )
-            }
-            delay(REFRESH_MS)
-        }
+        while (scope.isActive) {
+            val startId = lastStartId
 
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        stopSelf()
+            while (tracker.refresh()) {
+                if (notifications.areNotificationsEnabled()) {
+                    @Suppress("MissingPermission") // areNotificationsEnabled() is the check.
+                    notifications.notify(
+                        DownloadNotifications.PROGRESS_ID,
+                        DownloadNotifications.progress(this, DownloadSummary.of(tracker.progress.value.values)),
+                    )
+                }
+                delay(REFRESH_MS)
+            }
+
+            // A Download pressed since this pass began keeps the service, and the watcher, going.
+            if (stopSelfResult(startId)) {
+                return
+            }
+        }
     }
 
     /** Android 15+ caps a dataSync service; DownloadManager keeps going without it. */

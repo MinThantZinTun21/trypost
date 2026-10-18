@@ -340,9 +340,11 @@ private fun VideoRow(
         }
         if (download != null) {
             DownloadProgressIndicator(download, Modifier.padding(horizontal = 8.dp).testTag("download-progress-${video.id}"))
-        } else video.download?.let { link ->
-            IconButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-video-${video.id}")) {
-                Icon(painterResource(R.drawable.ic_download), contentDescription = stringResource(R.string.download))
+        } else {
+            video.download?.let { link ->
+                IconButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-video-${video.id}")) {
+                    Icon(painterResource(R.drawable.ic_download), contentDescription = stringResource(R.string.download))
+                }
             }
         }
         if (isDeleting) {

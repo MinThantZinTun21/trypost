@@ -16,7 +16,6 @@ class SystemDownloadRows @Inject constructor(
         )
 
         return manager.query(query)?.use { cursor ->
-            val id = cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID)
             val uri = cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_URI)
             val title = cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE)
             val soFar = cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
@@ -26,7 +25,6 @@ class SystemDownloadRows @Inject constructor(
                 while (cursor.moveToNext()) {
                     add(
                         DownloadRow(
-                            id = cursor.getLong(id),
                             url = cursor.getString(uri),
                             fileName = cursor.getString(title).orEmpty(),
                             bytesSoFar = cursor.getLong(soFar),

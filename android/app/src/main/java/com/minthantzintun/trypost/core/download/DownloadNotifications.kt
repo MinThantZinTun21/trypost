@@ -57,8 +57,8 @@ object DownloadNotifications {
             .build()
     }
 
-    /** "Saved to Downloads" (a tap opens [file]) or "Download failed", for one finished download. */
-    fun complete(context: Context, downloadId: Long, fileName: String, file: Uri?, mimeType: String?) {
+    /** "Saved to Downloads" (a tap opens [file] when there is one) or "Download failed", for one finished download. */
+    fun complete(context: Context, downloadId: Long, fileName: String, saved: Boolean, file: Uri?, mimeType: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -70,15 +70,17 @@ object DownloadNotifications {
             .setContentText(fileName)
             .setAutoCancel(true)
 
-        if (file != null) {
+        if (!saved) {
+            builder.setContentTitle(context.getString(R.string.download_failed_title))
+        } else if (file == null) {
+            builder.setContentTitle(context.getString(R.string.download_saved))
+        } else {
             val open = Intent(Intent.ACTION_VIEW)
                 .setDataAndType(file, mimeType)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             builder
                 .setContentTitle(context.getString(R.string.download_saved))
                 .setContentIntent(PendingIntent.getActivity(context, downloadId.toInt(), open, PendingIntent.FLAG_IMMUTABLE))
-        } else {
-            builder.setContentTitle(context.getString(R.string.download_failed_title))
         }
 
         NotificationManagerCompat.from(context).notify(COMPLETE_TAG, downloadId.toInt(), builder.build())

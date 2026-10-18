@@ -92,7 +92,7 @@
 
     <!-- Download and copy -->
     <string name="download">Download</string>
-    <string name="download_started">Downloading to Downloads. A notification shows when it\'s done.</string>
+    <string name="download_started">Downloading to Downloads.</string>
     <string name="download_failed">Couldn\'t start the download.</string>
     <string name="download_needs_storage">Saving to Downloads needs storage access on this version of Android.</string>
     <string name="downloads_channel">Downloads</string>

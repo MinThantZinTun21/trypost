@@ -14,8 +14,8 @@ class DownloadTrackerTest {
     @Test
     fun `unfinished downloads are tracked by their url with their progress`() {
         rows.rows = listOf(
-            DownloadRow(id = 1, url = "https://app.example.com/a", fileName = "a.mp4", bytesSoFar = 42, totalBytes = 100),
-            DownloadRow(id = 2, url = "https://app.example.com/b", fileName = "b.jpg", bytesSoFar = 0, totalBytes = -1),
+            DownloadRow(url = "https://app.example.com/a", fileName = "a.mp4", bytesSoFar = 42, totalBytes = 100),
+            DownloadRow(url = "https://app.example.com/b", fileName = "b.jpg", bytesSoFar = 0, totalBytes = -1),
         )
 
         assertTrue(tracker.refresh())
@@ -33,7 +33,7 @@ class DownloadTrackerTest {
 
     @Test
     fun `a finished download leaves the tracker`() {
-        rows.rows = listOf(DownloadRow(id = 1, url = "https://app.example.com/a", fileName = "a.mp4", bytesSoFar = 99, totalBytes = 100))
+        rows.rows = listOf(DownloadRow(url = "https://app.example.com/a", fileName = "a.mp4", bytesSoFar = 99, totalBytes = 100))
         tracker.refresh()
 
         rows.rows = emptyList()

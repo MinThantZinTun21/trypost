@@ -34,6 +34,7 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
                         context = context,
                         downloadId = id,
                         fileName = fileName,
+                        saved = saved,
                         file = if (saved) manager.getUriForDownloadedFile(id) else null,
                         mimeType = if (saved) manager.getMimeTypeForDownloadedFile(id) else null,
                     )
