@@ -1,11 +1,11 @@
 import { router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
-import { store as storePost } from '@/routes/app/posts';
+import { create as createPostPage } from '@/routes/app/posts';
 
 /**
- * "New post" creates a Draft and lands on the editor. When a calendar day
- * (YYYY-MM-DD) is given, the Draft is pre-scheduled on that day.
+ * "New post" opens the composer without saving anything (ADR 0011). When a
+ * calendar day (YYYY-MM-DD) is given, the composer starts on that day.
  */
 export const useCreatePost = () => {
     const creatingPost = ref(false);
@@ -17,7 +17,7 @@ export const useCreatePost = () => {
 
         creatingPost.value = true;
 
-        router.post(storePost.url(), date ? { date } : {}, {
+        router.visit(createPostPage.url(date ? { query: { date } } : {}), {
             onFinish: () => {
                 creatingPost.value = false;
             },

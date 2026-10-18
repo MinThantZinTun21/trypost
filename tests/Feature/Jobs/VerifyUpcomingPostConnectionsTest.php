@@ -258,12 +258,12 @@ test('ignores posts outside the 1-hour window', function () {
     expect(postAtRiskNotificationCount())->toBe(0);
 });
 
-test('ignores draft posts even with a scheduled_at inside the window', function () {
+test('ignores failed posts even with a scheduled_at inside the window', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->draft()->create([
+    $post = Post::factory()->failed()->create([
         'workspace_id' => $workspace->id,
         'scheduled_at' => now()->addMinutes(30),
     ]);

@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\Post\CreatePost;
+use App\Actions\Post\CreateComposedPost;
 use App\Actions\Post\DeletePost;
-use App\Actions\Post\DuplicatePost;
 use App\Actions\Post\SyncPostPlatforms;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
@@ -14,6 +13,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\Delivery;
+use App\Http\Requests\App\Post\CreatePostRequest;
 use App\Http\Requests\App\Post\ShowCalendarRequest;
 use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
@@ -21,11 +21,14 @@ use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\PostResource;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Models\Workspace;
 use App\Services\Social\TikTokCreatorInfo;
 use App\Support\PostStatusRules;
+use App\Support\UnsavedPost;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,7 +45,6 @@ class PostController extends Controller
 
         if ($status) {
             $query = match ($status) {
-                PostStatus::Draft->value => $query->draft(),
                 PostStatus::Scheduled->value => $query->scheduled(),
                 PostStatus::Published->value => $query->published(),
                 default => $query,
@@ -102,10 +104,7 @@ class PostController extends Controller
 
         $posts = $workspace->posts()
             ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount')])
-            ->when($accountId, fn ($query) => $query->whereHas(
-                'postPlatforms',
-                fn ($target) => $target->enabled()->where('social_account_id', $accountId),
-            ))
+            ->when($accountId, fn ($query) => $query->onSocialAccount($accountId))
             ->whereBetween('scheduled_at', [$rangeStart->copy()->utc(), $rangeEnd->copy()->utc()])
             ->orderBy('scheduled_at')
             ->get()
@@ -133,7 +132,12 @@ class PostController extends Controller
         ]);
     }
 
-    public function store(StorePostRequest $request): RedirectResponse|\Symfony\Component\HttpFoundation\Response
+    /**
+     * Opens the composer for a new Post, optionally on a calendar day or as a
+     * copy of another Post. Nothing is saved until the Owner schedules it or
+     * posts it now (ADR 0011).
+     */
+    public function create(CreatePostRequest $request): Response|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -148,13 +152,33 @@ class PostController extends Controller
             return redirect()->route('app.accounts');
         }
 
-        $post = CreatePost::execute($workspace, $request->user(), [
-            'date' => $request->input('date'),
-            'media' => $request->input('media', []),
-            'created_via' => CreatedVia::Web,
-        ]);
+        $original = $request->original();
 
-        return Inertia::location(route('app.posts.edit', $post));
+        if ($original) {
+            $this->authorize('duplicate', $original);
+        }
+
+        $date = $request->validated('date');
+        $scheduledAt = $date === null ? null : Carbon::parse($date, 'UTC')->setTime(9, 0);
+
+        return $this->composer($workspace, UnsavedPost::make($socialAccounts, $original, $scheduledAt), $socialAccounts);
+    }
+
+    public function store(StorePostRequest $request): RedirectResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        $this->authorize('createPost', $workspace);
+
+        $result = CreateComposedPost::execute($workspace, $request->user(), $request->composerPayload(), CreatedVia::Web);
+        $post = data_get($result, 'post');
+
+        if (data_get($result, 'action') === PostAction::Scheduled) {
+            session()->flash('flash.banner', __('posts.flash.scheduled'));
+            session()->flash('flash.bannerStyle', 'success');
+        }
+
+        return redirect()->route('app.posts.show', $post);
     }
 
     public function show(Request $request, Post $post): Response|RedirectResponse
@@ -163,7 +187,7 @@ class PostController extends Controller
 
         $this->authorize('view', $post);
 
-        if (in_array($post->status, [PostStatus::Draft, PostStatus::Scheduled], true)) {
+        if ($post->status === PostStatus::Scheduled) {
             return redirect()->route('app.posts.edit', $post);
         }
 
@@ -190,8 +214,17 @@ class PostController extends Controller
         }
 
         $post->load('postPlatforms.socialAccount');
-        $socialAccounts = $workspace->socialAccounts()->active()->get();
 
+        return $this->composer($workspace, $post, $workspace->socialAccounts()->active()->get());
+    }
+
+    /**
+     * The composer page for a stored Post or an UnsavedPost.
+     *
+     * @param  Collection<int, SocialAccount>  $socialAccounts
+     */
+    private function composer(Workspace $workspace, Post $post, Collection $socialAccounts): Response
+    {
         $platformConfigs = $socialAccounts->mapWithKeys(fn ($account) => [
             $account->id => new PlatformConfigResource($account),
         ]);
@@ -275,19 +308,5 @@ class PostController extends Controller
         }
 
         return redirect()->route('app.posts.index');
-    }
-
-    public function duplicate(Request $request, Post $post): RedirectResponse
-    {
-        $this->authorize('duplicate', $post);
-
-        $post->load('postPlatforms');
-
-        $copy = DuplicatePost::execute($post, $request->user());
-
-        session()->flash('flash.banner', __('posts.flash.duplicated'));
-        session()->flash('flash.bannerStyle', 'success');
-
-        return redirect()->route('app.posts.edit', $copy);
     }
 }

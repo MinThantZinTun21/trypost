@@ -202,7 +202,6 @@ usePollWhile(() => props.post.status === PostStatus.Publishing, {
                                 })
                             }}
                         </span>
-                        <span v-else>{{ $t('posts.show.draft') }}</span>
                     </span>
                     <Badge :variant="postStatus.variant" class="shrink-0">
                         <component :is="postStatus.icon" class="size-3" />

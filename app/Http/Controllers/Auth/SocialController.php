@@ -66,7 +66,7 @@ class SocialController extends Controller
             abort(403);
         }
 
-        // Drop pending platform rows from drafts/scheduled posts so the account
+        // Drop pending platform rows from scheduled posts so the account
         // disappears cleanly from their UI. Published/failed rows survive via the
         // FK's nullOnDelete cascade and keep their snapshot fields for history.
         DB::transaction(function () use ($account): void {

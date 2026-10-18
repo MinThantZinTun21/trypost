@@ -1,8 +1,10 @@
 package com.minthantzintun.trypost.core.data
 
+import com.minthantzintun.trypost.core.model.Platform
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostPage
 import com.minthantzintun.trypost.core.model.PostTab
+import com.minthantzintun.trypost.core.model.SocialAccount
 import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.core.network.MobileClient
 import com.minthantzintun.trypost.core.model.PlatformText
@@ -28,8 +30,9 @@ class PostsRepository @Inject constructor(
     /** Posts changed through this repository. */
     val changes: SharedFlow<Post> get() = postChanges.posts
 
-    suspend fun page(tab: PostTab, page: Int): ApiResult<PostPage> = client.call {
-        posts(tab = tab.wire, page = page)
+    /** One page of a tab, only Posts on [accountId] when it is set. */
+    suspend fun page(tab: PostTab, page: Int, accountId: String? = null): ApiResult<PostPage> = client.call {
+        posts(tab = tab.wire, page = page, account = accountId)
     }.map { dto ->
         PostPage(
             posts = dto.data.map { it.toPost() },
@@ -38,11 +41,34 @@ class PostsRepository @Inject constructor(
         )
     }
 
+    /** The Social accounts in the calendar's order, disconnected ones included. */
+    suspend fun socialAccounts(): ApiResult<List<SocialAccount>> = client.call { socialAccounts() }.map { dto ->
+        dto.data.map {
+            SocialAccount(
+                id = it.id,
+                platform = Platform.fromWire(it.platform),
+                label = it.displayLabel,
+                isConnected = it.status == "connected",
+            )
+        }
+    }
+
     suspend fun post(id: String): ApiResult<Post> = client.call { post(id) }.map { it.toPost() }
 
-    /** Schedules a Draft or moves a Scheduled post; the server runs the composer's checks. */
+    /** Moves a Scheduled post; the server runs the composer's checks. */
     suspend fun reschedule(id: String, at: Instant): ApiResult<Post> =
         client.call { reschedule(id, RescheduleBody(at.toString())) }.map { it.toPost() }.announced()
+
+    /** Publishes a Scheduled post now through the composer's own path; the server runs its checks. */
+    suspend fun publishNow(id: String): ApiResult<Post> =
+        client.call { publishNow(id) }.map { it.toPost() }.announced()
+
+    /**
+     * Queues Send to Telegram (ADR 0012) and returns the server's message.
+     * The Post does not change, so nothing is announced.
+     */
+    suspend fun sendToTelegram(id: String): ApiResult<String> =
+        client.call { sendToTelegram(id) }.map { it.message }
 
     /**
      * Saves the Post content and each Post platform's texts, keyed by Post
@@ -74,10 +100,6 @@ class PostsRepository @Inject constructor(
         value.isBlank() -> JsonNull
         else -> JsonPrimitive(value)
     }
-
-    /** Turns a Scheduled post back into a Draft. */
-    suspend fun unschedule(id: String): ApiResult<Post> =
-        client.call { unschedule(id) }.map { it.toPost() }.announced()
 
     private fun ApiResult<Post>.announced(): ApiResult<Post> = also {
         if (it is ApiResult.Success) {

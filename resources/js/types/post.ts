@@ -1,5 +1,4 @@
 export const PostStatus = {
-    Draft: 'draft',
     Scheduled: 'scheduled',
     Publishing: 'publishing',
     Published: 'published',

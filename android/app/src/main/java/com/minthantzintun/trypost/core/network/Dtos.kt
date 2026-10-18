@@ -68,6 +68,53 @@ data class SocialAccountDto(
     @SerialName("avatar_url") val avatarUrl: String? = null,
 )
 
+/** An unpaginated `{"data": [...]}` list, such as the Social accounts. */
+@Serializable
+data class ListDto<T>(val data: List<T>)
+
+/** A Social account the post list can be filtered to (`SocialAccountResource`). */
+@Serializable
+data class AccountDto(
+    val id: String,
+    val platform: String,
+    @SerialName("display_label") val displayLabel: String,
+    val status: String,
+)
+
+/** A Video (`App\Http\Resources\Mobile\V1\VideoResource`). */
+@Serializable
+data class VideoDto(
+    val id: String,
+    val name: String,
+    val size: Long? = null,
+    val duration: Double? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
+@Serializable
+data class StartVideoUploadBody(
+    @SerialName("file_name") val fileName: String,
+    val size: Long,
+)
+
+/** Where to PUT the file: a presigned object storage URL with the headers it was signed with. */
+@Serializable
+data class VideoUploadDto(
+    @SerialName("upload_id") val uploadId: String,
+    val url: String,
+    val headers: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class StoreVideoBody(
+    val name: String,
+    @SerialName("upload_id") val uploadId: String,
+)
+
+/** A reply that only says what the server did, such as a queued Send to Telegram. */
+@Serializable
+data class MessageDto(val message: String)
+
 @Serializable
 data class ErrorBodyDto(
     val message: String? = null,

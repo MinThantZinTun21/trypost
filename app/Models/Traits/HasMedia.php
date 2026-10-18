@@ -7,6 +7,7 @@ namespace App\Models\Traits;
 use App\Enums\Media\Type;
 use App\Models\Media;
 use App\Models\User;
+use App\Models\Video;
 use App\Models\Workspace;
 use App\Support\VideoDurationProbe;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -35,6 +36,9 @@ trait HasMedia
         ],
         User::class => [
             'avatar' => 'single',
+        ],
+        Video::class => [
+            Video::FILE_COLLECTION => 'single',
         ],
     ];
 

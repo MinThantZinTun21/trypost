@@ -21,7 +21,7 @@ function seedYouTubeDescriptionEditor(): array
     $user->update(['current_workspace_id' => $workspace->id]);
     Route::get('/__tests/youtube-description-video', fn () => response()->file(base_path('tests/fixtures/sample.mp4')));
     $post = Post::factory()->create([
-        'workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'Short title', 'status' => Status::Draft,
+        'workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'Short title', 'status' => Status::Scheduled, 'scheduled_at' => now()->addDay(),
         'media' => [[
             'id' => 'youtube-video', 'type' => 'video', 'path' => 'medias/video.mp4', 'url' => url('/__tests/youtube-description-video'),
             'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4', 'size' => filesize(base_path('tests/fixtures/sample.mp4')),
@@ -50,11 +50,11 @@ function waitForYouTubeElement(mixed $page, string $testId): void
     JS);
 }
 
-function trackYouTubeAutosave(mixed $page): void
+function trackYouTubeSave(mixed $page): void
 {
     $page->script(<<<'JS'
         (() => {
-            window.__youtubeAutosaveDone = false;
+            window.__youtubeSaveDone = false;
             const open = XMLHttpRequest.prototype.open;
             const send = XMLHttpRequest.prototype.send;
             XMLHttpRequest.prototype.open = function (method) {
@@ -63,7 +63,7 @@ function trackYouTubeAutosave(mixed $page): void
             };
             XMLHttpRequest.prototype.send = function () {
                 this.addEventListener('loadend', () => {
-                    if (this.__youtubeMethod === 'PUT') window.__youtubeAutosaveDone = true;
+                    if (this.__youtubeMethod === 'PUT') window.__youtubeSaveDone = true;
                 });
                 return send.apply(this, arguments);
             };
@@ -71,27 +71,32 @@ function trackYouTubeAutosave(mixed $page): void
     JS);
 }
 
-function waitForYouTubeAutosave(mixed $page): void
+function saveYouTubePost(mixed $page): void
 {
+    trackYouTubeSave($page);
+    $page->script(<<<'JS'
+        Array.from(document.querySelectorAll('[data-testid="post-submit"]'))
+            .find(el => el.getBoundingClientRect().height > 0)
+            .click();
+    JS);
     $page->script(<<<'JS'
         (async () => {
-            for (let i = 0; i < 100 && !window.__youtubeAutosaveDone; i++) {
+            for (let i = 0; i < 100 && !window.__youtubeSaveDone; i++) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
         })();
     JS);
-    expect($page->script('window.__youtubeAutosaveDone'))->toBeTrue();
+    expect($page->script('window.__youtubeSaveDone'))->toBeTrue();
 }
 
 function assertYouTubePublishState(mixed $page, bool $disabled): void
 {
-    $label = json_encode(__('posts.edit.post_now'), JSON_THROW_ON_ERROR);
     $want = $disabled ? 'true' : 'false';
     $state = $page->script(<<<JS
         (async () => {
             for (let i = 0; i < 100; i++) {
-                const button = Array.from(document.querySelectorAll('button')).find(el =>
-                    el.textContent.trim() === {$label} && el.getBoundingClientRect().height > 0);
+                const button = Array.from(document.querySelectorAll('[data-testid="post-submit"]')).find(el =>
+                    el.getBoundingClientRect().height > 0);
                 if (button && button.disabled === {$want}) return true;
                 await new Promise(resolve => setTimeout(resolve, 50));
             }
@@ -134,14 +139,13 @@ test('youtube description editor counts bytes saves independent channels and pre
     waitForYouTubeElement($page, 'youtube-settings-toggle-0');
     $page->click('@youtube-settings-toggle-0');
     waitForYouTubeElement($page, 'youtube-description-0');
-    trackYouTubeAutosave($page);
     $description = "First channel description 😀 ação\nhttps://example.com\nif (a < b && c > d) {}\n<p>Text about HTML</p>";
     $page->fill('@youtube-description-0', "  {$description}  ")
         ->fill('@youtube-description-1', 'Second channel description');
     $page->assertValue('@youtube-description-0', "  {$description}  ");
     assertYouTubePublishState($page, false);
     $page->assertAttributeMissing('@youtube-description-0', 'aria-invalid');
-    waitForYouTubeAutosave($page);
+    saveYouTubePost($page);
     $page->screenshot(filename: 'youtube-description-settings-'.$width);
     expect(data_get($first->fresh()->meta, 'description'))->toBe($description)
         ->and(data_get($second->fresh()->meta, 'description'))->toBe('Second channel description')
@@ -175,9 +179,8 @@ test('youtube description clearing restores content fallback without changing an
     $initial = $page->script('document.querySelector("[data-testid=youtube-description-0]").value');
     $first = $platforms->first(fn (PostPlatform $row): bool => $row->meta['description'] === $initial);
     $second = $platforms->first(fn (PostPlatform $row): bool => $row->id !== $first->id);
-    trackYouTubeAutosave($page);
     $page->fill('@youtube-description-0', $description);
-    waitForYouTubeAutosave($page);
+    saveYouTubePost($page);
     expect(data_get($first->fresh()->meta, 'description'))->toBeNull()
         ->and($second->fresh()->meta)->toEqual($second->meta);
     $page->click('@editor-nav-preview');

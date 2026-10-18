@@ -20,7 +20,6 @@ return [
         'all' => 'All',
         'scheduled' => 'Scheduled',
         'posted' => 'Posted',
-        'drafts' => 'Drafts',
     ],
     'insights' => 'Insights',
     'notifications' => 'Notifications',

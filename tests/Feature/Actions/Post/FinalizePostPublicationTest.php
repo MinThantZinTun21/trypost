@@ -125,13 +125,13 @@ test('a publishing post with no enabled targets is failed', function () {
     Queue::assertPushed(SendNotification::class, fn (SendNotification $job) => $job->type === Type::PostFailed);
 });
 
-test('a draft with no enabled targets is left alone', function () {
+test('a scheduled post with no enabled targets is left alone', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $post = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $owner->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
     ]);
     PostPlatform::factory()->facebook()->disabled()->create([
         'post_id' => $post->id,
@@ -142,7 +142,7 @@ test('a draft with no enabled targets is left alone', function () {
 
     app(FinalizePostPublication::class)->handle($post);
 
-    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
     Queue::assertNotPushed(SendNotification::class);
 });
 

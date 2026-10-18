@@ -242,6 +242,9 @@ before adding anything.
   publish through a separate path.
 - `delete_post` reuses the web delete action and refuses what the web refuses
   (`PostStatusRules::blocksDeletion()`: publishing or published Posts).
+- `list_videos`, `get_video` and `delete_video` reach the Owner's Videos
+  (ADR 0013). `get_video`'s Download link is the permanent signed
+  `media.download` URL of the Video's file.
 
 ## Mobile app API (ADR 0010)
 
@@ -252,19 +255,24 @@ before adding anything.
   (`config('trypost.mobile.token')`; empty = 404, wrong = 401), and acts as the
   Owner. It shares `AuthenticatesWithOwnerToken` with `AuthenticateMcpToken`;
   the two secrets stay separate so each can be rotated alone.
-- The app views Posts, edits their texts, and Reschedules or Unschedules them.
-  It never creates Posts, changes media, Social accounts or Content types, or
-  publishes now. Every change goes through `UpdatePost` and the shared rules
+- The app views Posts, edits their texts, Reschedules them, Posts them now and
+  Sends them to Telegram (ADR 0012). It never creates Posts or changes media, Social
+  accounts or Content types. There is
+  no Unschedule (ADR 0011): `DELETE /mobile/v1/posts/{post}/schedule` and the
+  Drafts tab are gone. Every change goes through `UpdatePost` and the shared rules
   (`PostStatusRules`, `PostPlatformMetaRules`); a finalized Post is 409.
-- `ReschedulePost` / `UnschedulePost` rebuild the stored Post as a composer
+- `ReschedulePost` rebuilds the stored Post as a composer
   payload (`PostComposerValidator::storedPayload()`, every enabled Post
   platform with its Content type and meta, since `UpdatePost` disables the ones
   left out) and run the composer's own checks
   (`PostComposerValidator::make()`, shared with the MCP `create_post` tool)
   before `UpdatePost`. The resources list enabled Post platforms in the same
   order (`PostPlatform::inComposerOrder()`), so a `platforms.N.*` error names
-  the app's Nth Social account. A new `scheduled_at` must carry its UTC offset;
-  Unschedule keeps the planned time only as the next Reschedule's start.
+  the app's Nth Social account. A new `scheduled_at` must carry its UTC offset.
+- `POST /mobile/v1/posts/{post}/publish` (`PublishPostNow`) is Post now: the
+  same stored payload and composer checks, then `UpdatePost` with
+  `status=publishing`, the web's own publish path. Only a Scheduled post; a
+  finalized one is 409.
 - `PUT /mobile/v1/posts/{post}` (`UpdatePostTexts`) edits only the content and
   each Post platform's Title, Description, caption and Tags, through the same
   stored payload and composer checks. A text the Content type does not publish
@@ -279,6 +287,22 @@ before adding anything.
   fields freely, but rename or remove one only in a new `/mobile/v2`.
 - The list tabs are `App\Enums\Mobile\PostTab`, not Post statuses: Scheduled
   includes Publishing, Failed includes Partially published.
+- `?account=<id>` filters every tab to Posts with an enabled Post platform on
+  that Social account (`Post::onSocialAccount()`, the calendar's own filter);
+  an unknown or another workspace's account is 422. `GET social-accounts`
+  lists the accounts for the picker in the calendar's order, disconnected ones
+  included, wrapped in `data` like the paginated lists.
+- **Videos** (ADR 0013) are a name and a video file, not Posts and not the
+  removed Content library. `/mobile/v1/videos` lists them newest first,
+  `POST videos/uploads` hands out a presigned PUT through
+  `DirectAssetReceiver` (object storage only), `POST videos` registers the
+  upload with a name (`CreateVideo`), and `DELETE videos/{video}` removes the
+  Video with its file. The file is a Media row attached to the Video
+  (collection `file`), never a workspace asset, so the composer and
+  `create_post` cannot use it. There is no web page for Videos; the Android
+  app's Videos tab (bottom navigation) lists, uploads and deletes them. Its
+  upload PUTs the file straight to the presigned URL without the bearer token,
+  while the app is open (no WorkManager).
 
 ## TikTok handoff through Telegram (ADR 0009)
 
@@ -292,9 +316,20 @@ before adding anything.
   connect flow (`PlatformsRemovedTest` still forbids `telegram` routes). It is
   one channel from `.env`: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHANNEL_ID`
   (`config('trypost.telegram')`); a handoff without them fails the target.
-- Only TikTok targets go to Telegram. The old mirror of every published Post
-  (`SendPostToTelegram`, `posts.telegram_sent_at`, the `TelegramFailed`
-  Notification) was removed; do not bring it back.
+- Scheduled sends go to Telegram only for TikTok targets. The old mirror of
+  every published Post (`SendPostToTelegram`, `posts.telegram_sent_at`, the
+  `TelegramFailed` Notification) was removed; do not bring it back.
+- **Send to Telegram** (ADR 0012) is the Owner's manual copy of one Post from
+  the Mobile app: `POST /mobile/v1/posts/{post}/telegram` (route name
+  `mobile.v1.posts.send`, since route names may not say `telegram`) answers
+  202 and queues `App\Jobs\SendToTelegram`, in any status; 422 when Telegram
+  is not set up or the Post has no video or photo. The job sends the first
+  enabled TikTok target's handoff steps (`TikTokHandoff::steps()`), else the
+  videos, the photos and the Post content, through the same `TelegramSteps`.
+  It never changes the Post or its platforms. Each press has its own send id,
+  so a retry skips the steps already sent but a second press sends again. A
+  refusal or running out of retries stores a `TelegramSendFailed`
+  Notification.
 - The handoff sends, in order: each video with its Download link as the
   caption (the link alone over the Bot API's 50 MB limit), or the photos as
   albums of up to 10 items and 50 MB; then the TikTok caption as its own
@@ -319,6 +354,17 @@ before adding anything.
   the one worker that also publishes Posts. Any other 4xx fails the target
   with Telegram's reason, and the usual `PostFailed` Notification follows.
   `php artisan telegram:test` sends a test message and explains a refusal.
+
+## No Drafts (ADR 0011)
+
+- A Post exists only once it is Scheduled or going out. There is no Draft
+  status, Drafts list or Unschedule anywhere (web, MCP, Mobile app);
+  `tests/Feature/Removed/DraftsRemovedTest.php` guards it.
+- New post and Duplicate open the composer on an unsaved Post
+  (`GET /posts/create`, `UnsavedPost`); nothing is stored until Schedule or Post
+  now, which `POST /posts` saves through `CreateComposedPost`, the same action
+  the MCP `create_post` tool uses. A Scheduled post is edited in place and kept
+  with Save; nothing autosaves.
 
 ## Single Owner
 
@@ -396,8 +442,9 @@ before adding anything.
   notification preferences, and `MAIL_MAILER` stays `log`. Do not add a mail
   provider.
 - `App\Jobs\SendNotification` stores an in-app `Notification` row. There are
-  three types: `PostFailed` (full or partial failure; a fully published post
-  sends nothing), `AccountDisconnected` and `PostAtRisk`. Titles and bodies
+  four types: `PostFailed` (full or partial failure; a fully published post
+  sends nothing), `AccountDisconnected`, `PostAtRisk` and `TelegramSendFailed`
+  (a manual Send to Telegram that Telegram refused or that ran out of retries). Titles and bodies
   resolve through `lang/en/notifications.php`.
 
 ## Language (English only)

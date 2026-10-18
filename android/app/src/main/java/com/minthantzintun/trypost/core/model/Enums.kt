@@ -2,7 +2,6 @@ package com.minthantzintun.trypost.core.model
 
 /** A Post's status, as the server names it. */
 enum class PostStatus(val wire: String) {
-    Draft("draft"),
     Scheduled("scheduled"),
     Publishing("publishing"),
     Published("published"),
@@ -11,7 +10,8 @@ enum class PostStatus(val wire: String) {
     ;
 
     companion object {
-        fun fromWire(value: String): PostStatus = entries.firstOrNull { it.wire == value } ?: Draft
+        /** An unknown status reads as Publishing: it offers no action, and the server decides what is editable. */
+        fun fromWire(value: String): PostStatus = entries.firstOrNull { it.wire == value } ?: Publishing
     }
 }
 
@@ -65,7 +65,6 @@ enum class MediaType {
  */
 enum class PostTab(val wire: String) {
     Scheduled("scheduled"),
-    Draft("draft"),
     Published("published"),
     Failed("failed"),
 }

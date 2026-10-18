@@ -20,7 +20,7 @@ beforeEach(function () {
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
 });
 
-function ownerPost(array $attributes = [], string $state = 'draft'): Post
+function ownerPost(array $attributes = [], string $state = 'scheduled'): Post
 {
     return Post::factory()->{$state}()->create([
         'workspace_id' => test()->workspace->id,
@@ -30,11 +30,11 @@ function ownerPost(array $attributes = [], string $state = 'draft'): Post
 }
 
 test('list_posts filters by status', function (string $status, array $expected) {
-    $draft = ownerPost(['content' => 'Draft post']);
+    $failed = ownerPost(['content' => 'Failed post'], 'failed');
     $scheduled = ownerPost(['content' => 'Scheduled post'], 'scheduled');
     $published = ownerPost(['content' => 'Published post'], 'published');
     $partial = ownerPost(['content' => 'Partial post', 'status' => Status::PartiallyPublished], 'published');
-    $ids = ['draft' => $draft->id, 'scheduled' => $scheduled->id, 'published' => $published->id, 'partial' => $partial->id];
+    $ids = ['failed' => $failed->id, 'scheduled' => $scheduled->id, 'published' => $published->id, 'partial' => $partial->id];
 
     SchedulerServer::actingAs($this->owner)
         ->tool(ListPosts::class, ['status' => $status])
@@ -45,18 +45,17 @@ test('list_posts filters by status', function (string $status, array $expected) 
             $json->etc();
         });
 })->with([
-    'draft' => ['draft', ['draft']],
     'scheduled' => ['scheduled', ['scheduled']],
     'published includes partially published' => ['published', ['published', 'partial']],
 ]);
 
-test('list_posts puts the newest scheduled time first and undated drafts last', function () {
-    $undated = ownerPost(['scheduled_at' => null]);
+test('list_posts puts the newest scheduled time first and undated posts last', function () {
+    $undated = ownerPost(['scheduled_at' => null], 'published');
     $earlier = ownerPost(['scheduled_at' => now()->addDay()]);
     $later = ownerPost(['scheduled_at' => now()->addDays(2)]);
 
     SchedulerServer::actingAs($this->owner)
-        ->tool(ListPosts::class, ['status' => 'draft'])
+        ->tool(ListPosts::class)
         ->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) use ($undated, $earlier, $later) {
             expect(array_column($json->toArray()['posts'], 'id'))->toBe([$later->id, $earlier->id, $undated->id]);
@@ -148,7 +147,7 @@ test('delete_post deletes a post that has not gone out', function (string $state
         ->assertStructuredContent(['deleted' => true, 'id' => $post->id]);
 
     $this->assertModelMissing($post);
-})->with(['draft', 'scheduled', 'failed']);
+})->with(['scheduled', 'failed']);
 
 test('delete_post refuses a post that is publishing or published, as the web does', function (Status $status) {
     $post = ownerPost(['status' => $status], 'published');
@@ -165,7 +164,7 @@ test('delete_post refuses a post that is publishing or published, as the web doe
 ]);
 
 test('delete_post does not find a post outside the owner\'s workspace', function (Closure $id) {
-    $other = Post::factory()->draft()->create(['workspace_id' => Workspace::factory()->create()->id]);
+    $other = Post::factory()->scheduled()->create(['workspace_id' => Workspace::factory()->create()->id]);
 
     SchedulerServer::actingAs($this->owner)
         ->tool(DeletePost::class, ['id' => $id($other)])

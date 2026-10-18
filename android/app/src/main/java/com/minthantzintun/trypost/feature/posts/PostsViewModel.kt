@@ -6,6 +6,7 @@ import com.minthantzintun.trypost.core.data.PostsRepository
 import com.minthantzintun.trypost.core.data.SessionRepository
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostTab
+import com.minthantzintun.trypost.core.model.SocialAccount
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,8 +36,15 @@ data class TabState(
 data class PostsUiState(
     val selectedTab: PostTab = PostTab.Scheduled,
     val tabs: Map<PostTab, TabState> = PostTab.entries.associateWith { TabState() },
+    /** The Social account every tab is filtered to, or null for all of them. */
+    val selectedAccountId: String? = null,
+    /** The picker's accounts, loaded when it opens. */
+    val accounts: List<SocialAccount> = emptyList(),
+    val isLoadingAccounts: Boolean = false,
+    val accountsError: ApiError? = null,
 ) {
     val current: TabState get() = tabs.getValue(selectedTab)
+    val selectedAccount: SocialAccount? get() = accounts.firstOrNull { it.id == selectedAccountId }
 }
 
 @HiltViewModel
@@ -67,6 +75,39 @@ class PostsViewModel @Inject constructor(
         }
     }
 
+    /** Loads the picker's Social accounts, keeping the last list while it does. */
+    fun loadAccounts() {
+        if (_state.value.isLoadingAccounts) {
+            return
+        }
+
+        _state.update { it.copy(isLoadingAccounts = true, accountsError = null) }
+
+        viewModelScope.launch {
+            when (val result = postsRepository.socialAccounts()) {
+                is ApiResult.Success -> _state.update { it.copy(accounts = result.value, isLoadingAccounts = false) }
+                is ApiResult.Failure -> _state.update { it.copy(isLoadingAccounts = false, accountsError = result.error) }
+            }
+        }
+    }
+
+    /**
+     * Filters every tab to [accountId], or to all accounts when it is null.
+     * The loaded tabs are dropped, so each one loads again filtered.
+     */
+    fun selectAccount(accountId: String?) {
+        if (accountId == _state.value.selectedAccountId) {
+            return
+        }
+
+        jobs.values.forEach { it.cancel() }
+        jobs.clear()
+        _state.update { state ->
+            state.copy(selectedAccountId = accountId, tabs = PostTab.entries.associateWith { TabState() })
+        }
+        loadFirstPage(_state.value.selectedTab, isRefresh = false)
+    }
+
     /** Pull to refresh: reloads the first page of the selected tab. */
     fun refresh() {
         loadFirstPage(_state.value.selectedTab, isRefresh = true)
@@ -94,7 +135,7 @@ class PostsViewModel @Inject constructor(
         updateTab(tab) { it.copy(isLoadingMore = true, loadMoreError = null) }
 
         jobs[tab] = viewModelScope.launch {
-            when (val result = postsRepository.page(tab, tabState.page + 1)) {
+            when (val result = postsRepository.page(tab, tabState.page + 1, _state.value.selectedAccountId)) {
                 is ApiResult.Success -> updateTab(tab) { current ->
                     val knownIds = current.posts.mapTo(HashSet()) { it.id }
                     current.copy(
@@ -120,7 +161,7 @@ class PostsViewModel @Inject constructor(
         }
 
         jobs[tab] = viewModelScope.launch {
-            when (val result = postsRepository.page(tab, 1)) {
+            when (val result = postsRepository.page(tab, 1, _state.value.selectedAccountId)) {
                 is ApiResult.Success -> updateTab(tab) {
                     TabState(posts = result.value.posts, page = result.value.page, lastPage = result.value.lastPage)
                 }

@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { PostStatus } from '@/types/post';
-
 type MobileView = 'compose' | 'channels' | 'preview';
 
 const props = defineProps<{
-    status: string;
+    isScheduled: boolean;
 }>();
 
 const activeView = defineModel<MobileView>('activeView', { required: true });
@@ -19,7 +17,7 @@ const items: { key: MobileView; label: string }[] = [
 
 // When not scheduled the header is hidden on mobile and this nav is the top bar,
 // so it must clear the floating hamburger.
-const isTopBar = computed(() => props.status !== PostStatus.Scheduled);
+const isTopBar = computed(() => !props.isScheduled);
 </script>
 
 <template>

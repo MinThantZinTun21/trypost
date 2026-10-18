@@ -12,7 +12,6 @@ import com.minthantzintun.trypost.core.model.PostStatus
 @Composable
 fun PostStatus.color(): Color = with(TryPostTheme.statusColors) {
     when (this@color) {
-        PostStatus.Draft -> neutral
         PostStatus.Scheduled -> info
         PostStatus.Publishing -> warning
         PostStatus.Published -> success
@@ -24,7 +23,6 @@ fun PostStatus.color(): Color = with(TryPostTheme.statusColors) {
 @Composable
 fun PostStatus.label(): String = stringResource(
     when (this) {
-        PostStatus.Draft -> R.string.status_draft
         PostStatus.Scheduled -> R.string.status_scheduled
         PostStatus.Publishing -> R.string.status_publishing
         PostStatus.Published -> R.string.status_published

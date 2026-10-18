@@ -77,14 +77,23 @@ fun PostDetailRoute(
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         actions = { post ->
-            ScheduleActions(
-                post = post,
-                isSaving = state.isSaving,
-                actionError = state.actionError,
-                onReschedule = viewModel::reschedule,
-                onUnschedule = viewModel::unschedule,
-                extraActions = { extraActions(post) },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ScheduleActions(
+                    post = post,
+                    isSaving = state.isSaving,
+                    actionError = state.actionError,
+                    onReschedule = viewModel::reschedule,
+                    onPublishNow = viewModel::publishNow,
+                    extraActions = { extraActions(post) },
+                )
+                TelegramAction(
+                    post = post,
+                    isSending = state.isSendingToTelegram,
+                    notice = state.telegramNotice,
+                    error = state.telegramError,
+                    onSend = viewModel::sendToTelegram,
+                )
+            }
         },
     )
 }
@@ -201,7 +210,6 @@ private fun Post.whenLine(zone: ZoneId): String {
     return when {
         publishedAt != null && (status == PostStatus.Published || status == PostStatus.PartiallyPublished) ->
             stringResource(R.string.detail_published_at, publishedAt.formatted(zone))
-        status == PostStatus.Draft -> stringResource(R.string.detail_not_scheduled)
         scheduledAt != null -> stringResource(R.string.detail_scheduled_for, scheduledAt.formatted(zone))
         else -> stringResource(R.string.detail_not_scheduled)
     }

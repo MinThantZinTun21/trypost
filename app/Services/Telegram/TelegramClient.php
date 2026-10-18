@@ -77,6 +77,15 @@ class TelegramClient
     }
 
     /**
+     * Whether a refusal is worth retrying later: a rate limit or a server
+     * error. Any other 4xx is Telegram refusing the call for good.
+     */
+    public static function isTransient(RequestException $exception): bool
+    {
+        return self::retryAfter($exception) !== null || $exception->response->serverError();
+    }
+
+    /**
      * Text length as Telegram counts it: UTF-16 code units, so an emoji
      * outside the Basic Multilingual Plane counts as two.
      */

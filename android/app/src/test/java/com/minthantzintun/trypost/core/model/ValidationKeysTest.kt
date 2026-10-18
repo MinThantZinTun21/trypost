@@ -22,7 +22,7 @@ class ValidationKeysTest {
 
     private val post = Post(
         id = "p1",
-        status = PostStatus.Draft,
+        status = PostStatus.Scheduled,
         content = "",
         scheduledAt = null,
         publishedAt = null,

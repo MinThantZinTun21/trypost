@@ -2,21 +2,24 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
+use App\Models\PostPlatform;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
 /**
- * Flag when the composer's debounced autosave PUT finishes so the test can wait
- * on the real round-trip instead of a fixed sleep. Inertia v3 issues the update
+ * Flag when the composer's Save PUT finishes so the test can wait on the real
+ * round-trip instead of a fixed sleep. Inertia v3 issues the update
  * over the built-in XHR client, so the completion is observable via loadend.
  */
-function trackAutosave(mixed $page): void
+function trackSave(mixed $page): void
 {
     $page->script(<<<'JS'
         (() => {
-            window.__autosaveDone = false;
+            window.__saveDone = false;
             const open = XMLHttpRequest.prototype.open;
             const send = XMLHttpRequest.prototype.send;
             XMLHttpRequest.prototype.open = function (method) {
@@ -26,7 +29,7 @@ function trackAutosave(mixed $page): void
             XMLHttpRequest.prototype.send = function () {
                 this.addEventListener('loadend', () => {
                     if (this.__method === 'PUT') {
-                        window.__autosaveDone = true;
+                        window.__saveDone = true;
                     }
                 });
                 return send.apply(this, arguments);
@@ -36,15 +39,14 @@ function trackAutosave(mixed $page): void
 }
 
 /**
- * Poll on the browser side until the autosave PUT has completed, keeping the
- * in-process server pumped while the debounce (1.5s) elapses and the request
- * round-trips.
+ * Poll on the browser side until the Save PUT has completed, keeping the
+ * in-process server pumped while the request round-trips.
  */
-function waitForAutosave(mixed $page): void
+function waitForSave(mixed $page): void
 {
     $page->script(<<<'JS'
         (async () => {
-            for (let attempt = 0; attempt < 100 && ! window.__autosaveDone; attempt++) {
+            for (let attempt = 0; attempt < 100 && ! window.__saveDone; attempt++) {
                 await new Promise((resolve) => setTimeout(resolve, 100));
             }
         })();
@@ -116,17 +118,25 @@ test('editing alt text on an attached image persists it to the post media', func
         ]],
     ]);
 
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id])->id,
+        'content_type' => ContentType::FacebookPost,
+        'enabled' => true,
+    ]);
+
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post));
 
-    trackAutosave($page);
+    trackSave($page);
 
     $page->click('@alt-text-button')
         ->type('@alt-text-input', 'a golden retriever on a beach')
-        ->click('@alt-text-save');
+        ->click('@alt-text-save')
+        ->click('@post-submit');
 
-    waitForAutosave($page);
+    waitForSave($page);
 
     expect($post->fresh()->media[0]['meta']['alt_text'])
         ->toBe('a golden retriever on a beach');

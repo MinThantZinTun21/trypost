@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Mobile\V1;
 
+use App\Actions\Post\PublishPostNow;
 use App\Actions\Post\ReschedulePost;
-use App\Actions\Post\UnschedulePost;
 use App\Actions\Post\UpdatePostTexts;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Mobile\ListPostsRequest;
 use App\Http\Requests\App\Mobile\ReschedulePostRequest;
+use App\Http\Requests\App\Mobile\SendToTelegramRequest;
 use App\Http\Requests\App\Mobile\UpdatePostTextsRequest;
 use App\Http\Resources\Mobile\V1\PostResource;
+use App\Jobs\SendToTelegram;
 use App\Models\Post;
 use App\Support\PostStatusRules;
 use Closure;
@@ -19,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class PostController extends Controller
@@ -27,7 +30,8 @@ class PostController extends Controller
     {
         $query = $request->user()->resolveCurrentWorkspace()
             ->posts()
-            ->with(self::enabledPlatforms());
+            ->with(self::enabledPlatforms())
+            ->when($request->accountId(), fn ($query, string $accountId) => $query->onSocialAccount($accountId));
 
         $posts = $request->tab()->apply($query->getQuery())
             ->paginate((int) config('app.pagination.default'))
@@ -57,10 +61,24 @@ class PostController extends Controller
             ?? $this->show(ReschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post, $request->scheduledAt())->refresh());
     }
 
-    public function unschedule(Request $request, Post $post): PostResource|JsonResponse
+    /**
+     * Post now (ADR 0012): the composer's own publish of a Scheduled post.
+     */
+    public function publish(Request $request, Post $post): PostResource|JsonResponse
     {
         return $this->editRefusal($post)
-            ?? $this->show(UnschedulePost::execute($request->user()->resolveCurrentWorkspace(), $post)->refresh());
+            ?? $this->show(PublishPostNow::execute($request->user()->resolveCurrentWorkspace(), $post)->refresh());
+    }
+
+    /**
+     * Send to Telegram (ADR 0012): queues a copy of the Post for the channel,
+     * in any status, and leaves the Post as it is.
+     */
+    public function sendToTelegram(SendToTelegramRequest $request, Post $post): JsonResponse
+    {
+        SendToTelegram::dispatch($post, (string) Str::uuid());
+
+        return response()->json(['message' => __('telegram.sending')], Response::HTTP_ACCEPTED);
     }
 
     /**

@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Builder;
 enum PostTab: string
 {
     case Scheduled = 'scheduled';
-    case Draft = 'draft';
     case Published = 'published';
     case Failed = 'failed';
 
@@ -26,7 +25,6 @@ enum PostTab: string
     {
         return match ($this) {
             self::Scheduled => [PostStatus::Publishing, PostStatus::Scheduled],
-            self::Draft => [PostStatus::Draft],
             self::Published => [PostStatus::Published],
             self::Failed => [PostStatus::Failed, PostStatus::PartiallyPublished],
         };
@@ -44,7 +42,7 @@ enum PostTab: string
             self::Scheduled => $query->oldest('scheduled_at')->oldest('created_at'),
             self::Published => $query->latest('published_at')->latest('created_at'),
             // PostgreSQL sorts nulls first on a descending order and MySQL last; undated posts go last on both.
-            self::Draft, self::Failed => $query->orderByRaw('scheduled_at is null')
+            self::Failed => $query->orderByRaw('scheduled_at is null')
                 ->latest('scheduled_at')
                 ->latest('created_at'),
         };

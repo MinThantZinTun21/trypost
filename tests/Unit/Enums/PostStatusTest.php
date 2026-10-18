@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\Post\Status;
 
 test('post status has correct values', function () {
-    expect(Status::Draft->value)->toBe('draft');
     expect(Status::Scheduled->value)->toBe('scheduled');
     expect(Status::Publishing->value)->toBe('publishing');
     expect(Status::Published->value)->toBe('published');
@@ -14,7 +13,6 @@ test('post status has correct values', function () {
 });
 
 test('post status has labels', function () {
-    expect(Status::Draft->label())->toBe('Draft');
     expect(Status::Scheduled->label())->toBe('Scheduled');
     expect(Status::Publishing->label())->toBe('Publishing');
     expect(Status::Published->label())->toBe('Published');
@@ -23,7 +21,6 @@ test('post status has labels', function () {
 });
 
 test('settled statuses are the ones finalize must not rewrite', function () {
-    expect(Status::Draft->isSettled())->toBeFalse();
     expect(Status::Scheduled->isSettled())->toBeFalse();
     expect(Status::Publishing->isSettled())->toBeFalse();
     expect(Status::Published->isSettled())->toBeTrue();
@@ -32,7 +29,6 @@ test('settled statuses are the ones finalize must not rewrite', function () {
 });
 
 test('live statuses are the ones published on at least one platform', function () {
-    expect(Status::Draft->isLive())->toBeFalse();
     expect(Status::Scheduled->isLive())->toBeFalse();
     expect(Status::Publishing->isLive())->toBeFalse();
     expect(Status::Published->isLive())->toBeTrue();
@@ -41,7 +37,6 @@ test('live statuses are the ones published on at least one platform', function (
 });
 
 test('post status has colors', function () {
-    expect(Status::Draft->color())->toBe('gray');
     expect(Status::Scheduled->color())->toBe('blue');
     expect(Status::Publishing->color())->toBe('yellow');
     expect(Status::Published->color())->toBe('green');

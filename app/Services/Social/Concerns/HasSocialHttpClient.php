@@ -16,8 +16,8 @@ trait HasSocialHttpClient
 {
     /**
      * Measures the sanitized content — the exact string the publisher sends —
-     * rather than the stored draft. Every platform strips the HTML the editor
-     * stored, so checking the raw draft would reject posts that fit.
+     * rather than the stored text. Every platform strips the HTML the editor
+     * stored, so checking the raw text would reject posts that fit.
      */
     protected function validateContentLength(PostPlatform $postPlatform): void
     {

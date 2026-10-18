@@ -545,6 +545,7 @@ const onAltTextSave = (alt: string): void => {
                 </div>
                 <textarea
                     v-model="content"
+                    data-testid="post-content"
                     :readonly="readOnly"
                     :placeholder="
                         readOnly ? '' : $t('posts.edit.caption_placeholder')

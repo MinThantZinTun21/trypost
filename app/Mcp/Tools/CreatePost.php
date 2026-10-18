@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Post\CreatePost as CreatePostAction;
-use App\Actions\Post\UpdatePost;
+use App\Actions\Post\CreateComposedPost;
 use App\Dto\MediaItem;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
@@ -17,7 +16,6 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
-use App\Support\PostComposerValidator;
 use App\Support\PostPlatformMetaRules;
 use App\Support\TikTokText;
 use App\Support\YouTubeDescription;
@@ -27,7 +25,6 @@ use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -40,11 +37,10 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('create_post')]
-#[Description('Creates a Post for one or more Social accounts from list_social_accounts. mode "draft" saves it, "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. Content types default to Reel, TikTok Video and YouTube Short for a video, and Facebook Post and TikTok Photo for images. When TikTok delivery is Telegram, a TikTok Post is not uploaded to TikTok: its video (with a Download link) or photos and then its TikTok caption are sent to the Owner\'s Telegram channel to post by hand, and privacy_level is not needed. Otherwise every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
+#[Description('Creates a Post for one or more Social accounts from list_social_accounts. mode "scheduled" publishes it at scheduled_at (ISO 8601 with an offset, in the future), "now" publishes it right away. Content types default to Reel, TikTok Video and YouTube Short for a video, and Facebook Post and TikTok Photo for images. When TikTok delivery is Telegram, a TikTok Post is not uploaded to TikTok: its video (with a Download link) or photos and then its TikTok caption are sent to the Owner\'s Telegram channel to post by hand, and privacy_level is not needed. Otherwise every TikTok account needs a privacy_level; until the TikTok app passes its audit, only SELF_ONLY ("Only me") works.')]
 class CreatePost extends Tool
 {
     public const MODE_STATUSES = [
-        'draft' => PostStatus::Draft,
         'scheduled' => PostStatus::Scheduled,
         'now' => PostStatus::Publishing,
     ];
@@ -64,9 +60,9 @@ class CreatePost extends Tool
     }
 
     /**
-     * Creates the Post through the composer's create and update actions, and
-     * checks it with the composer's update rules, so an Assistant gets the
-     * same errors the composer would show. A rejected Post is rolled back.
+     * Creates the Post through the composer's own create action
+     * (CreateComposedPost), so an Assistant gets the same errors the composer
+     * would show. A rejected Post is rolled back.
      *
      * @param  array<string, mixed>  $input
      *
@@ -87,33 +83,19 @@ class CreatePost extends Tool
         $status = self::MODE_STATUSES[data_get($validated, 'mode')];
         $scheduledAt = data_get($validated, 'scheduled_at');
 
-        $post = DB::transaction(function () use ($workspace, $user, $validated, $accounts, $mediaItems, $status, $scheduledAt): Post {
-            $post = CreatePostAction::execute($workspace, $user, [
-                'content' => data_get($validated, 'content') ?? '',
-                'created_via' => CreatedVia::Mcp,
-            ]);
-
-            $postPlatformIds = $post->postPlatforms()->pluck('id', 'social_account_id');
-
-            $payload = [
-                'status' => $status->value,
-                'content' => data_get($validated, 'content') ?? '',
-                'media' => $mediaItems->map(fn (MediaItem $item): array => $item->toArray())->all(),
-                'scheduled_at' => $scheduledAt ? Carbon::parse($scheduledAt)->utc()->toIso8601String() : null,
-                'platforms' => collect(data_get($validated, 'social_accounts'))
-                    ->map(fn (array $entry): array => $this->platformPayload(
-                        $entry,
-                        $accounts->get(data_get($entry, 'id')),
-                        (string) $postPlatformIds->get(data_get($entry, 'id')),
-                        $mediaItems,
-                    ))
-                    ->all(),
-            ];
-
-            PostComposerValidator::make($post, $payload)->validate();
-
-            return data_get(UpdatePost::execute($workspace, $post, $payload), 'post');
-        });
+        $post = data_get(CreateComposedPost::execute($workspace, $user, [
+            'status' => $status->value,
+            'content' => data_get($validated, 'content') ?? '',
+            'media' => $mediaItems->map(fn (MediaItem $item): array => $item->toArray())->all(),
+            'scheduled_at' => $scheduledAt ? Carbon::parse($scheduledAt)->utc()->toIso8601String() : null,
+            'platforms' => collect(data_get($validated, 'social_accounts'))
+                ->map(fn (array $entry): array => $this->platformPayload(
+                    $entry,
+                    $accounts->get(data_get($entry, 'id')),
+                    $mediaItems,
+                ))
+                ->all(),
+        ], CreatedVia::Mcp), 'post');
 
         return $post->refresh();
     }
@@ -131,8 +113,8 @@ class CreatePost extends Tool
             'scheduled_at' => $post->scheduled_at?->toIso8601String(),
             'goes_out' => match ($post->status) {
                 PostStatus::Publishing => __('mcp.post.goes_out_now'),
-                PostStatus::Scheduled => __('mcp.post.goes_out_at', ['time' => $post->scheduled_at->toIso8601String()]),
-                default => __('mcp.post.goes_out_never'),
+                PostStatus::Scheduled => __('mcp.post.goes_out_at', ['time' => $post->scheduled_at?->toIso8601String()]),
+                default => __('mcp.post.goes_out_done'),
             },
         ];
     }
@@ -152,7 +134,7 @@ class CreatePost extends Tool
         return [
             'content' => $schema->string()->description('The Post\'s text. It is the Facebook Post text, and the TikTok caption, Reel description and YouTube title when those are not given.'),
             'media_ids' => $schema->array()->items($schema->string())->description('Media ids from complete_media_upload, in order. One video, or up to the Platform\'s image limit.'),
-            'mode' => $schema->string()->enum(array_keys(self::MODE_STATUSES))->description('draft saves it, scheduled publishes it at scheduled_at, now publishes it right away.')->required(),
+            'mode' => $schema->string()->enum(array_keys(self::MODE_STATUSES))->description('scheduled publishes it at scheduled_at, now publishes it right away.')->required(),
             'scheduled_at' => $schema->string()->description('When to publish, as ISO 8601 with an offset, e.g. 2026-10-09T18:00:00+07:00. Required for scheduled.'),
             'social_accounts' => $schema->array()->items($schema->object([
                 'id' => $schema->string()->description('The Social account\'s id from list_social_accounts.')->required(),
@@ -236,7 +218,7 @@ class CreatePost extends Tool
      * @param  Collection<int, MediaItem>  $mediaItems
      * @return array{id: string, content_type: string, meta: array<string, mixed>}
      */
-    private function platformPayload(array $entry, SocialAccount $account, string $postPlatformId, Collection $mediaItems): array
+    private function platformPayload(array $entry, SocialAccount $account, Collection $mediaItems): array
     {
         $contentType = $this->contentType($entry, $account, $mediaItems);
 
@@ -246,7 +228,7 @@ class CreatePost extends Tool
         ];
 
         return [
-            'id' => $postPlatformId,
+            'social_account_id' => $account->id,
             'content_type' => $contentType->value,
             'meta' => collect($settings)
                 ->mapWithKeys(fn (string $key): array => [$key => data_get($entry, $key)])

@@ -23,8 +23,12 @@ interface StatusConfig {
     label: string;
 }
 
+const FALLBACK_CONFIG: Pick<StatusConfig, 'variant' | 'icon'> = {
+    variant: 'outline',
+    icon: IconFileText,
+};
+
 const CONFIGS: Record<string, Pick<StatusConfig, 'variant' | 'icon'>> = {
-    draft: { variant: 'outline', icon: IconFileText },
     scheduled: { variant: 'default', icon: IconClock },
     publishing: { variant: 'warning', icon: IconLoader2 },
     retrying: { variant: 'warning', icon: IconLoader2 },
@@ -58,7 +62,7 @@ export const isActivelyPublishing = (
 };
 
 export const getPostStatusConfig = (status: string): StatusConfig => {
-    const config = CONFIGS[status] ?? CONFIGS.draft;
+    const config = CONFIGS[status] ?? FALLBACK_CONFIG;
     return { ...config, label: trans(`posts.status.${status}`) };
 };
 
@@ -70,7 +74,6 @@ export const getPlatformStatusConfig = (status: string): StatusConfig => {
         published: 'published',
         failed: 'failed',
     };
-    const key = map[status] ?? 'draft';
-    const config = CONFIGS[key];
+    const config = CONFIGS[map[status]] ?? FALLBACK_CONFIG;
     return { ...config, label: trans(`posts.edit.status.${status}`) };
 };

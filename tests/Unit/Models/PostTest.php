@@ -98,7 +98,7 @@ test('post can be marked as failed', function () {
 });
 
 test('post scope scheduled returns only scheduled posts', function () {
-    Post::factory()->draft()->create([
+    Post::factory()->failed()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
@@ -133,25 +133,8 @@ test('post scope due returns scheduled posts that are due', function () {
     expect($posts->first()->id)->toBe($due->id);
 });
 
-test('post scope draft returns only draft posts', function () {
-    $draft = Post::factory()->draft()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    $posts = Post::draft()->get();
-
-    expect($posts)->toHaveCount(1);
-    expect($posts->first()->id)->toBe($draft->id);
-});
-
 test('post scope published returns only published posts', function () {
-    Post::factory()->draft()->create([
+    Post::factory()->scheduled()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
@@ -168,7 +151,7 @@ test('post scope published returns only published posts', function () {
 });
 
 test('post scope failed returns only failed posts', function () {
-    Post::factory()->draft()->create([
+    Post::factory()->scheduled()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);

@@ -170,7 +170,6 @@ return [
 
     'status' => [
         'pending' => 'Pending',
-        'draft' => 'Draft',
         'scheduled' => 'Scheduled',
         'publishing' => 'Publishing',
         'retrying' => 'Retrying',
@@ -180,7 +179,6 @@ return [
     ],
 
     'descriptions' => [
-        'draft' => 'Posts waiting to be scheduled',
         'scheduled' => 'Posts scheduled for publishing',
         'published' => 'Posts already published',
     ],
@@ -195,15 +193,19 @@ return [
         'view_on_platform' => 'View on platform',
         'published_on' => 'Published on :date',
         'scheduled_for' => 'Scheduled for :date',
-        'draft' => 'Draft',
         'status_pending' => 'Pending',
     ],
 
     'edit' => [
         'title' => 'Edit Post',
+        'create_title' => 'New Post',
         'view_title' => 'View Post',
         'schedule' => 'Schedule',
+        'save' => 'Save',
+        'new_post' => 'New post',
+        'leave_unsaved' => 'You have unsaved changes. Leave without saving them?',
         'pick_time' => 'Pick time',
+        'clear_time' => 'Clear time',
         'pick_time_past' => 'Pick a future date and time.',
         'post_now' => 'Post now',
         'time' => 'Time',
@@ -211,10 +213,6 @@ return [
         'delete' => 'Delete',
         'schedule_for' => 'Schedule for',
         'schedule_date' => 'Schedule date',
-        'unschedule' => 'Unschedule',
-        'saving' => 'Saving...',
-        'saved' => 'Saved',
-        'draft' => 'Draft',
         'media' => 'Media',
         'add_media' => 'Add media',
         'caption' => 'Caption',
@@ -259,8 +257,7 @@ return [
         'publishing_overlay_title' => 'Your post is being published',
         'publishing_overlay_subtitle' => 'This can take a few moments. You can safely leave this page.',
         'scheduled_overlay_title' => 'This post is scheduled',
-        'scheduled_overlay_subtitle' => 'Scheduled for :date. Unschedule it first to make changes.',
-        'unschedule_cta' => 'Unschedule to edit',
+        'scheduled_overlay_subtitle' => 'Scheduled for :date. Save to keep your changes.',
 
         'tabs' => [
             'compose' => 'Compose',
@@ -376,7 +373,6 @@ return [
     'flash' => [
         'scheduled' => 'Post scheduled successfully!',
         'deleted' => 'Post deleted successfully!',
-        'duplicated' => 'Post duplicated as a draft.',
         'cannot_edit_finalized' => 'This post has already been processed and cannot be re-published. Duplicate it to try again.',
         'cannot_delete_published' => 'Published posts cannot be deleted.',
         'connect_first' => 'Connect at least one social network before creating a post.',

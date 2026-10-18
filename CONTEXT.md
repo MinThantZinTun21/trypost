@@ -17,7 +17,7 @@ A connected Facebook Page, TikTok account or YouTube channel that posts are publ
 _Avoid_: Connection, profile, integration
 
 **Post**:
-A piece of content with media that the Owner writes once and sends to one or more social accounts.
+A piece of content with media that the Owner writes once and sends to one or more social accounts. A Post exists only once it is scheduled or going out; there are no Drafts.
 _Avoid_: Update, content item
 
 **Post platform**:
@@ -28,16 +28,13 @@ _Avoid_: Target, destination
 A Post with a set publish time that has not started publishing yet.
 _Avoid_: Queued post, pending post
 
-**Draft**:
-A Post that is not scheduled, so it does not publish. It may keep the time it was once planned for.
-
 **Reschedule**:
-Give a Post a new publish time: move a Scheduled post, or schedule a Draft. The time must be in the future.
+Move a Scheduled post to a new publish time. The time must be in the future.
 _Avoid_: Move, postpone, edit time
 
-**Unschedule**:
-Turn a Scheduled post back into a Draft, so it no longer publishes. The time it was planned for is kept only as the starting point for a later Reschedule.
-_Avoid_: Cancel, unpublish
+**Post now**:
+Publish a Scheduled post right away instead of at its publish time, through the same path as the composer's Post now.
+_Avoid_: Publish immediately, force publish
 
 **Content type**:
 The form a Post takes on one Platform: a Facebook Post, Reel or Story; a TikTok Video or Photo; or a YouTube Short.
@@ -68,7 +65,7 @@ An AI tool, such as Claude Code, connected to the app over MCP that reads Social
 _Avoid_: Bot, agent, API client
 
 **Mobile app**:
-The Owner's Android app. It views Posts, edits their texts, and Reschedules or Unschedules them; it never creates Posts or changes media.
+The Owner's Android app. It views Posts, edits their texts, Reschedules them, Posts them now and Sends them to Telegram, and it uploads Videos; it never creates Posts or changes a Post's media.
 _Avoid_: Client, API client
 
 **Insights**:
@@ -88,9 +85,17 @@ The Page insights the app stored for one day, so the dashboard shows history wit
 _Avoid_: Cache, sync
 
 **TikTok handoff**:
-How a TikTok Post platform publishes when TikTok delivery is Telegram: at its scheduled time the app sends its video (or photos) and then its TikTok caption to the Owner's one Telegram channel, and the Owner posts it on TikTok by hand. The Post platform then counts as Published, with no live link. Telegram is not a Platform; nothing else is sent there.
+How a TikTok Post platform publishes when TikTok delivery is Telegram: at its scheduled time the app sends its video (or photos) and then its TikTok caption to the Owner's one Telegram channel, and the Owner posts it on TikTok by hand. The Post platform then counts as Published, with no live link. Telegram is not a Platform; nothing else is sent there automatically.
 _Avoid_: Telegram mirror, Telegram platform, Telegram account, cross-post
 
 **Download link**:
 A permanent link in a TikTok handoff that downloads a Post's video file without signing in.
 _Avoid_: Share link, public link
+
+**Send to Telegram**:
+The Owner's manual action that sends one Post's media and then its text to the Owner's Telegram channel right away, the way a TikTok handoff does. It does not change the Post's status, and it can be repeated.
+_Avoid_: Telegram mirror, share, forward
+
+**Video**:
+A video file the Owner uploads from the Mobile app, with a name, for the Assistant to fetch. It is not part of any Post and has no Platform texts.
+_Avoid_: Library item, asset, clip, media

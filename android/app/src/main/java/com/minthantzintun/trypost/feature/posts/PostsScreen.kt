@@ -30,8 +30,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +53,7 @@ import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostTab
 import com.minthantzintun.trypost.core.model.toPlainText
 import com.minthantzintun.trypost.core.ui.color
+import com.minthantzintun.trypost.core.ui.LoadMoreWhenNearEnd
 import com.minthantzintun.trypost.core.ui.label
 import com.minthantzintun.trypost.core.ui.message
 import java.time.LocalDate
@@ -74,6 +73,8 @@ fun PostsRoute(
         state = state,
         ownerName = ownerName,
         onSelectTab = viewModel::selectTab,
+        onOpenAccounts = viewModel::loadAccounts,
+        onSelectAccount = viewModel::selectAccount,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
@@ -88,6 +89,8 @@ fun PostsScreen(
     state: PostsUiState,
     ownerName: String,
     onSelectTab: (PostTab) -> Unit,
+    onOpenAccounts: () -> Unit,
+    onSelectAccount: (String?) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
@@ -122,6 +125,7 @@ fun PostsScreen(
                         )
                     }
                 }
+                AccountFilter(state = state, onOpen = onOpenAccounts, onSelect = onSelectAccount)
             }
         },
     ) { padding ->
@@ -186,7 +190,7 @@ private fun TabContent(
             val sections = remember(tabState.posts, tab, zone) { groupByDay(tabState.posts, tab, zone) }
             val listState = remember(tab) { LazyListState() }
 
-            LoadMoreWhenNearEnd(listState, tabState, onLoadMore)
+            LoadMoreWhenNearEnd(listState, tabState.hasMore, tabState.page, tabState.loadMoreError != null, onLoadMore)
 
             PullToRefreshBox(
                 isRefreshing = tabState.isRefreshing,
@@ -233,24 +237,6 @@ private fun TabContent(
         }
     }
 }
-
-@Composable
-private fun LoadMoreWhenNearEnd(listState: LazyListState, tabState: TabState, onLoadMore: () -> Unit) {
-    val isNearEnd by remember(listState) {
-        derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisible >= listState.layoutInfo.totalItemsCount - LOAD_MORE_THRESHOLD
-        }
-    }
-
-    LaunchedEffect(isNearEnd, tabState.hasMore, tabState.page) {
-        if (isNearEnd && tabState.hasMore && tabState.loadMoreError == null) {
-            onLoadMore()
-        }
-    }
-}
-
-private const val LOAD_MORE_THRESHOLD = 5
 
 @Composable
 private fun DayHeader(day: LocalDate?) {
@@ -329,21 +315,18 @@ private fun PostRow(post: Post, tab: PostTab, zone: ZoneId, onClick: () -> Unit)
 
 private fun PostTab.titleRes(): Int = when (this) {
     PostTab.Scheduled -> R.string.tab_scheduled
-    PostTab.Draft -> R.string.tab_draft
     PostTab.Published -> R.string.tab_published
     PostTab.Failed -> R.string.tab_failed
 }
 
 private fun PostTab.emptyTitleRes(): Int = when (this) {
     PostTab.Scheduled -> R.string.empty_scheduled_title
-    PostTab.Draft -> R.string.empty_draft_title
     PostTab.Published -> R.string.empty_published_title
     PostTab.Failed -> R.string.empty_failed_title
 }
 
 private fun PostTab.emptyBodyRes(): Int = when (this) {
     PostTab.Scheduled -> R.string.empty_scheduled_body
-    PostTab.Draft -> R.string.empty_draft_body
     PostTab.Published -> R.string.empty_published_body
     PostTab.Failed -> R.string.empty_failed_body
 }

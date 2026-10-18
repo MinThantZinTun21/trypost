@@ -11,12 +11,15 @@ return [
         'text_field_unused' => 'A :type post does not use a :field. Leave it out, or pick a Content type that publishes one.',
         'goes_out_now' => 'It is publishing now. Check its result with get_post.',
         'goes_out_at' => 'It will publish at :time.',
+        'goes_out_done' => 'It has finished publishing. Check its result with get_post.',
         'cannot_delete' => 'This Post is :status and already on its Social accounts, so it cannot be deleted. Remove it on each platform instead.',
-        'goes_out_never' => 'It is a draft and will not publish until it is scheduled in the composer.',
     ],
     'insights' => [
         'no_facebook_page' => 'The Owner has no Facebook Page connected, and only Facebook Pages have Insights.',
         'account_not_found' => 'No Facebook Page Social account with that id. Use a Facebook id from list_social_accounts; TikTok and YouTube have no Insights.',
+    ],
+    'video' => [
+        'not_found' => 'No Video with that id exists for the Owner. Use an id from list_videos.',
     ],
     'upload' => [
         'not_object_storage' => 'Uploads from an Assistant need object storage (for example Cloudflare R2 or S3) as the default disk. Upload the file in the composer instead.',
