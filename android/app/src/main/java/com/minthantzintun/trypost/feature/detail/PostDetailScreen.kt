@@ -2,9 +2,7 @@ package com.minthantzintun.trypost.feature.detail
 
 import android.content.ClipData
 import android.os.Build
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,12 +10,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -43,16 +44,19 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.StateMessage
+import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.PlatformLogo
-import com.minthantzintun.trypost.core.ui.PlatformStatusPill
-import com.minthantzintun.trypost.core.ui.PostStatusPill
+import com.minthantzintun.trypost.core.designsystem.SectionHeader
+import com.minthantzintun.trypost.core.designsystem.Skeleton
+import com.minthantzintun.trypost.core.designsystem.Spacing
+import com.minthantzintun.trypost.core.designsystem.StateMessage
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.MediaItem
 import com.minthantzintun.trypost.core.model.MediaType
@@ -62,7 +66,10 @@ import com.minthantzintun.trypost.core.model.PostPlatform
 import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.model.shownTexts
 import com.minthantzintun.trypost.core.model.toPlainText
+import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
+import com.minthantzintun.trypost.core.ui.PlatformStatusPill
+import com.minthantzintun.trypost.core.ui.PostStatusPill
 import com.minthantzintun.trypost.core.ui.contentTypeLabel
 import com.minthantzintun.trypost.core.ui.label
 import com.minthantzintun.trypost.core.ui.message
@@ -73,10 +80,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
+private val MediaSize = 112.dp
+
 @Composable
 fun PostDetailRoute(
     onBack: () -> Unit,
-    extraActions: @Composable (Post) -> Unit = {},
+    onEdit: (String) -> Unit,
     viewModel: PostDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -84,29 +93,14 @@ fun PostDetailRoute(
     PostDetailScreen(
         state = state,
         onBack = onBack,
+        onEdit = onEdit,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onDownload = viewModel::download,
         onDownloadOutcomeShown = viewModel::dismissDownloadOutcome,
-        actions = { post ->
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ScheduleActions(
-                    post = post,
-                    isSaving = state.isSaving,
-                    actionError = state.actionError,
-                    onReschedule = viewModel::reschedule,
-                    onPublishNow = viewModel::publishNow,
-                    extraActions = { extraActions(post) },
-                )
-                TelegramAction(
-                    post = post,
-                    isSending = state.isSendingToTelegram,
-                    notice = state.telegramNotice,
-                    error = state.telegramError,
-                    onSend = viewModel::sendToTelegram,
-                )
-            }
-        },
+        onReschedule = viewModel::reschedule,
+        onPublishNow = viewModel::publishNow,
+        onSendToTelegram = viewModel::sendToTelegram,
     )
 }
 
@@ -115,15 +109,19 @@ fun PostDetailRoute(
 fun PostDetailScreen(
     state: PostDetailUiState,
     onBack: () -> Unit,
+    onEdit: (String) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onDownload: (DownloadLink) -> Unit,
     onDownloadOutcomeShown: () -> Unit,
-    actions: @Composable (Post) -> Unit = {},
+    onReschedule: (Instant) -> Unit,
+    onPublishNow: () -> Unit,
+    onSendToTelegram: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val download = rememberDownloadAction(snackbarHostState, onDownload)
     val copy = rememberCopyAction(snackbarHostState)
+    val post = state.post
 
     DownloadOutcomeSnackbar(state.downloadOutcome, snackbarHostState, onDownloadOutcomeShown)
 
@@ -137,20 +135,38 @@ fun PostDetailScreen(
                         Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
                     }
                 },
+                actions = {
+                    if (post != null) {
+                        TelegramButton(post = post, isSending = state.isSendingToTelegram, onSend = onSendToTelegram)
+                        if (post.isEditable) {
+                            IconButton(onClick = { onEdit(post.id) }, modifier = Modifier.testTag("edit")) {
+                                Icon(painterResource(R.drawable.ic_edit), contentDescription = stringResource(R.string.edit_texts))
+                            }
+                        }
+                    }
+                },
             )
         },
+        bottomBar = {
+            if (post != null) {
+                ScheduleBar(
+                    post = post,
+                    isSaving = state.isSaving,
+                    actionError = state.actionError,
+                    onReschedule = onReschedule,
+                    onPublishNow = onPublishNow,
+                )
+            }
+        },
     ) { padding ->
-        val post = state.post
         val error = state.error
 
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
-                post == null && state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                post == null && state.isLoading -> DetailSkeleton()
                 post == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     StateMessage(
-                icon = R.drawable.ic_info,
+                        icon = R.drawable.ic_cloud_off,
                         title = stringResource(R.string.detail_error_title),
                         body = error?.message().orEmpty(),
                         actionLabel = stringResource(R.string.retry),
@@ -159,7 +175,14 @@ fun PostDetailScreen(
                     )
                 }
                 else -> PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                    PostDetailContent(post = post, error = error?.message(), actions = actions, onDownload = download, onCopy = copy)
+                    PostDetailContent(
+                        post = post,
+                        error = error?.message(),
+                        telegramNotice = state.telegramNotice,
+                        telegramError = state.telegramError,
+                        onDownload = download,
+                        onCopy = copy,
+                    )
                 }
             }
         }
@@ -170,7 +193,8 @@ fun PostDetailScreen(
 private fun PostDetailContent(
     post: Post,
     error: String?,
-    actions: @Composable (Post) -> Unit,
+    telegramNotice: String?,
+    telegramError: ApiError?,
     onDownload: (DownloadLink) -> Unit,
     onCopy: (label: String, text: String) -> Unit,
 ) {
@@ -180,59 +204,63 @@ private fun PostDetailContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(horizontal = Spacing.gutter, vertical = Spacing.sm)
             .testTag("post-detail"),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             PostStatusPill(post.status, modifier = Modifier.testTag("post-status"))
-            Text(text = post.whenLine(zone), style = MaterialTheme.typography.titleLarge)
+            Text(text = post.whenLine(zone), style = MaterialTheme.typography.headlineSmall)
             if (post.status == PostStatus.Publishing) {
                 Text(
                     text = stringResource(R.string.detail_publishing_note),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (error != null) {
                 Text(text = error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
+            TelegramMessages(notice = telegramNotice, error = telegramError)
         }
-
-        actions(post)
 
         val content = post.content.toPlainText()
         val contentLabel = stringResource(R.string.detail_content)
-        Section(
-            title = contentLabel,
-            trailing = {
-                if (content.isNotBlank()) {
-                    CopyButton(contentLabel, "copy-content") { onCopy(contentLabel, content) }
+        Column {
+            SectionHeader(
+                title = contentLabel,
+                trailing = {
+                    if (content.isNotBlank()) {
+                        CopyButton(contentLabel, "copy-content") { onCopy(contentLabel, content) }
+                    }
+                },
+            )
+            Panel {
+                SelectionContainer {
+                    Text(
+                        text = content.ifBlank { stringResource(R.string.posts_no_text) },
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(Spacing.lg).testTag("post-content"),
+                    )
                 }
-            },
-        ) {
-            SelectionContainer {
-                Text(
-                    text = content.ifBlank { stringResource(R.string.posts_no_text) },
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.testTag("post-content"),
-                )
             }
         }
 
         if (post.media.isNotEmpty()) {
-            Section(title = stringResource(R.string.detail_media)) {
+            Column {
+                SectionHeader(stringResource(R.string.detail_media))
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
                     post.media.forEach { MediaThumbnail(it, onDownload) }
                 }
             }
         }
 
-        Section(title = stringResource(R.string.detail_accounts)) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column {
+            SectionHeader(stringResource(R.string.detail_accounts))
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 post.platforms.forEach { PlatformCard(it, zone, onCopy) }
             }
         }
@@ -255,30 +283,30 @@ private fun Post.whenLine(zone: ZoneId): String {
 private fun Instant.formatted(zone: ZoneId): String =
     atZone(zone).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT))
 
+/** A tonal block that groups one part of the Post. */
 @Composable
-private fun Section(title: String, trailing: (@Composable () -> Unit)? = null, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            trailing?.invoke()
-        }
-        content()
-    }
+private fun Panel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.fillMaxWidth(),
+        content = content,
+    )
 }
 
 @Composable
 private fun MediaThumbnail(item: MediaItem, onDownload: (DownloadLink) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(MediaSize)) {
         MediaPreview(item)
         // Photos and videos; the platforms here publish no PDFs.
         item.download?.takeIf { item.type != MediaType.Document }?.let { link ->
-            TextButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-media-${item.id}")) {
-                Text(stringResource(R.string.download))
+            TextButton(
+                onClick = { onDownload(link) },
+                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                modifier = Modifier.testTag("download-media-${item.id}"),
+            ) {
+                Icon(painterResource(R.drawable.ic_download), contentDescription = null, modifier = Modifier.size(IconSize.sm))
+                Text(stringResource(R.string.download), modifier = Modifier.padding(start = Spacing.xs))
             }
         }
     }
@@ -287,8 +315,9 @@ private fun MediaThumbnail(item: MediaItem, onDownload: (DownloadLink) -> Unit) 
 @Composable
 private fun MediaPreview(item: MediaItem) {
     val modifier = Modifier
-        .size(96.dp)
-        .border(1.dp, MaterialTheme.colorScheme.outline)
+        .size(MediaSize)
+        .clip(MaterialTheme.shapes.medium)
+        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
 
     when (item.type) {
         MediaType.Image -> AsyncImage(
@@ -299,19 +328,22 @@ private fun MediaPreview(item: MediaItem) {
         )
         // There are no video thumbnails on the server, so videos and PDFs show their kind and name.
         MediaType.Video, MediaType.Document -> Column(
-            modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant).padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+            modifier = modifier.padding(Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = stringResource(if (item.type == MediaType.Video) R.string.detail_video else R.string.detail_document),
-                style = MaterialTheme.typography.labelMedium,
+            Icon(
+                painter = painterResource(if (item.type == MediaType.Video) R.drawable.ic_play else R.drawable.ic_info),
+                contentDescription = stringResource(if (item.type == MediaType.Video) R.string.detail_video else R.string.detail_document),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(IconSize.md),
             )
             item.originalFilename?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -324,16 +356,12 @@ private fun MediaPreview(item: MediaItem) {
 private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: String, text: String) -> Unit) {
     val uriHandler = LocalUriHandler.current
 
-    Surface(
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        shadowElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth().testTag("platform-${platform.id}"),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                PlatformLogo(platform.platform)
+    Panel(modifier = Modifier.testTag("platform-${platform.id}")) {
+        Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                PlatformLogo(platform.platform, size = IconSize.md)
                 Column(Modifier.weight(1f)) {
-                    Text(platform.accountName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(platform.accountName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val subtitle = listOfNotNull(platform.accountUsername?.let { "@$it" }, contentTypeLabel(platform.contentType))
                     if (subtitle.isNotEmpty()) {
                         Text(
@@ -349,10 +377,10 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: S
             platform.shownTexts().forEach { (text, value) ->
                 val label = text.label()
                 Row(verticalAlignment = Alignment.Top) {
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
                         Text(
                             text = label,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(text = value, style = MaterialTheme.typography.bodyMedium)
@@ -362,12 +390,15 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: S
             }
 
             platform.errorMessage?.takeIf { platform.status == PlatformStatus.Failed || platform.status == PlatformStatus.Retrying }?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.testTag("platform-error-${platform.id}"),
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.testTag("platform-error-${platform.id}")) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_status_failed),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(IconSize.sm),
+                    )
+                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
             }
 
             platform.publishedAt?.let {
@@ -379,11 +410,31 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: S
             }
 
             platform.platformUrl?.let { url ->
-                TextButton(onClick = { uriHandler.openUri(url) }, modifier = Modifier.testTag("platform-link-${platform.id}")) {
-                    Text(stringResource(R.string.detail_view_on, platform.platform.label))
+                TextButton(
+                    onClick = { uriHandler.openUri(url) },
+                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                    modifier = Modifier.testTag("platform-link-${platform.id}"),
+                ) {
+                    Icon(painterResource(R.drawable.ic_external), contentDescription = null, modifier = Modifier.size(IconSize.sm))
+                    Text(stringResource(R.string.detail_view_on, platform.platform.label), modifier = Modifier.padding(start = Spacing.xs))
                 }
             }
         }
+    }
+}
+
+/** Holds the page's shape while the Post loads. */
+@Composable
+private fun DetailSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.gutter, vertical = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        Skeleton(Modifier.width(96.dp).height(24.dp), shape = MaterialTheme.shapes.extraLarge)
+        Skeleton(Modifier.fillMaxWidth(0.7f).height(28.dp))
+        Skeleton(Modifier.fillMaxWidth().height(120.dp), shape = MaterialTheme.shapes.large)
+        Skeleton(Modifier.size(MediaSize), shape = MaterialTheme.shapes.medium)
+        Skeleton(Modifier.fillMaxWidth().height(96.dp), shape = MaterialTheme.shapes.large)
     }
 }
 

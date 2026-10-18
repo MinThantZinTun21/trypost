@@ -131,6 +131,13 @@
     <string name="reschedule">Reschedule</string>
     <string name="next">Next</string>
     <string name="schedule_pick_time">Pick a time</string>
+    <string name="reschedule_sheet_title">Reschedule to…</string>
+    <string name="reschedule_in_one_hour">In 1 hour</string>
+    <string name="reschedule_tonight">Tonight</string>
+    <string name="reschedule_tomorrow_morning">Tomorrow morning</string>
+    <string name="reschedule_one_day_later">Same time, a day later</string>
+    <string name="reschedule_custom">Pick date &amp; time…</string>
+    <string name="edit_texts">Edit texts</string>
     <string name="post_now">Post now</string>
     <string name="post_now_confirm_title">Post now?</string>
     <string name="post_now_confirm_body">The post goes out to every account now instead of at its scheduled time.</string>

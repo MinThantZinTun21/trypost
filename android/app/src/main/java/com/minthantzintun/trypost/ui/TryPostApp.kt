@@ -25,7 +25,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -141,14 +140,7 @@ private fun SignedInGraph(navController: NavHostController, modifier: Modifier) 
         composable<PostDetailDestination> {
             PostDetailRoute(
                 onBack = { navController.popBackStack() },
-                extraActions = { post ->
-                    OutlinedButton(
-                        onClick = { navController.navigate(EditPostDestination(post.id)) },
-                        modifier = Modifier.testTag("edit"),
-                    ) {
-                        Text(stringResource(R.string.edit))
-                    }
-                },
+                onEdit = { id -> navController.navigate(EditPostDestination(id)) },
             )
         }
         composable<EditPostDestination> {
