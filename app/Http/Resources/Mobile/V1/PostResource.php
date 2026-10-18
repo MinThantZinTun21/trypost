@@ -37,6 +37,8 @@ class PostResource extends JsonResource
                 'url' => $item->url,
                 'mime_type' => $item->mime_type,
                 'original_filename' => $item->original_filename,
+                'download_url' => $item->downloadUrl(),
+                'file_name' => $item->filename(),
             ])->values()->all(),
             'platforms' => PostPlatformResource::collection($this->whenLoaded('postPlatforms')),
         ];

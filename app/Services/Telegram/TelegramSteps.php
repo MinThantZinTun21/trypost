@@ -12,7 +12,6 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 
 /**
  * The sends that put a Post's media and text in the Owner's Telegram channel,
@@ -149,9 +148,8 @@ class TelegramSteps
     private function downloadLink(MediaItem $item): string
     {
         $label = __('telegram.download', ['name' => $item->filename()]);
-        $url = URL::signedRoute('media.download', ['media' => $item->id]);
 
-        return "{$label}: {$url}";
+        return "{$label}: {$item->downloadUrl()}";
     }
 
     private function uploadable(MediaItem $item, int $limit): bool

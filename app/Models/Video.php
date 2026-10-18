@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Dto\MediaItem;
 use App\Models\Traits\HasMedia;
 use Database\Factories\VideoFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -55,5 +56,33 @@ class Video extends Model
     public function file(): MorphOne
     {
         return $this->morphOne(Media::class, 'mediable')->where('collection', self::FILE_COLLECTION);
+    }
+
+    /**
+     * The file's permanent signed Download link. Null without a file.
+     */
+    public function downloadUrl(): ?string
+    {
+        return $this->file === null ? null : MediaItem::fromMedia($this->file)->downloadUrl();
+    }
+
+    /**
+     * The name the file downloads under: the Video's name with the file's
+     * extension, unless the name already ends in it. Null without a file.
+     */
+    public function downloadName(): ?string
+    {
+        if ($this->file === null) {
+            return null;
+        }
+
+        $name = str_replace(['/', '\\'], '-', $this->name);
+        $extension = pathinfo(MediaItem::fromMedia($this->file)->filename(), PATHINFO_EXTENSION);
+
+        if ($extension === '' || str_ends_with(strtolower($name), strtolower(".{$extension}"))) {
+            return $name;
+        }
+
+        return "{$name}.{$extension}";
     }
 }

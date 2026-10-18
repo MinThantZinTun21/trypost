@@ -24,6 +24,8 @@ class VideoResource extends JsonResource
             'size' => $this->file?->size,
             'duration' => data_get($this->file?->meta, 'duration'),
             'created_at' => $this->created_at?->toIso8601String(),
+            'download_url' => $this->downloadUrl(),
+            'file_name' => $this->downloadName(),
         ];
     }
 }

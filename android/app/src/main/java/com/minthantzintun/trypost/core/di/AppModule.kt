@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.minthantzintun.trypost.core.download.MediaDownloader
+import com.minthantzintun.trypost.core.download.SystemMediaDownloader
 import com.minthantzintun.trypost.core.session.DataStoreSessionStore
 import com.minthantzintun.trypost.core.session.KeystoreSecretCipher
 import com.minthantzintun.trypost.core.session.SecretCipher
@@ -52,4 +54,11 @@ abstract class SessionModule {
 
     @Binds
     abstract fun bindSecretCipher(cipher: KeystoreSecretCipher): SecretCipher
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class DownloadModule {
+    @Binds
+    abstract fun bindMediaDownloader(downloader: SystemMediaDownloader): MediaDownloader
 }

@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.PostsRepository
+import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.download.MediaDownloader
+import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.network.ApiError
@@ -30,6 +33,7 @@ data class PostDetailUiState(
     /** The server's word that the send was queued. */
     val telegramNotice: String? = null,
     val telegramError: ApiError? = null,
+    val downloadOutcome: DownloadOutcome? = null,
 )
 
 /**
@@ -40,6 +44,7 @@ data class PostDetailUiState(
 class PostDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val postsRepository: PostsRepository,
+    private val downloader: MediaDownloader,
 ) : ViewModel() {
 
     private val postId: String = checkNotNull(savedStateHandle["id"]) { "PostDetailDestination needs an id" }
@@ -100,6 +105,15 @@ class PostDetailViewModel @Inject constructor(
 
     fun dismissTelegramNotice() {
         _state.update { it.copy(telegramNotice = null, telegramError = null) }
+    }
+
+    /** Saves one of the Post's media to Downloads. */
+    fun download(link: DownloadLink) {
+        _state.update { it.copy(downloadOutcome = downloader.start(link)) }
+    }
+
+    fun dismissDownloadOutcome() {
+        _state.update { it.copy(downloadOutcome = null) }
     }
 
     fun dismissActionError() {

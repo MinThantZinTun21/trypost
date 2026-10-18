@@ -35,4 +35,11 @@ class PlatformTextTest {
         assertEquals("a, b", short.text(PlatformText.Tags))
         assertEquals("", short.text(PlatformText.Description))
     }
+
+    @Test
+    fun `the shown texts are the non blank ones in the Content type's order, ready to copy`() {
+        val short = platform(mapOf("tags" to listOf("a", "b"), "title" to "Hi", "description" to "  ", "caption" to "Not published"))
+
+        assertEquals(listOf(PlatformText.Title to "Hi", PlatformText.Tags to "a, b"), short.shownTexts())
+    }
 }

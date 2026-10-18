@@ -303,6 +303,13 @@ before adding anything.
   app's Videos tab (bottom navigation) lists, uploads and deletes them. Its
   upload PUTs the file straight to the presigned URL without the bearer token,
   while the app is open (no WorkManager).
+- **Download and Copy.** Each Post media item and each Video carries
+  `download_url` (the permanent signed `media.download` link, no token) and
+  `file_name` (a media item's original name; a Video's name plus the file's
+  extension, `Video::downloadName()`). The app saves it to Downloads through
+  DownloadManager (`MediaDownloader`), asking for `WRITE_EXTERNAL_STORAGE`
+  only on Android 8–9 (`maxSdkVersion=28`). Post detail copies the content
+  and each shown text (`PostPlatform.shownTexts()`, Tags as `a, b`).
 
 ## TikTok handoff through Telegram (ADR 0009)
 

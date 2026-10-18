@@ -44,6 +44,8 @@ data class MediaDto(
     val url: String,
     @SerialName("mime_type") val mimeType: String? = null,
     @SerialName("original_filename") val originalFilename: String? = null,
+    @SerialName("download_url") val downloadUrl: String? = null,
+    @SerialName("file_name") val fileName: String? = null,
 )
 
 @Serializable
@@ -89,6 +91,8 @@ data class VideoDto(
     val size: Long? = null,
     val duration: Double? = null,
     @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("download_url") val downloadUrl: String? = null,
+    @SerialName("file_name") val fileName: String? = null,
 )
 
 @Serializable

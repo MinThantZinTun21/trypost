@@ -1,8 +1,11 @@
 package com.minthantzintun.trypost.feature.videos
 
 import com.minthantzintun.trypost.core.data.VideosRepository
+import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.testing.BytesVideoSource
+import com.minthantzintun.trypost.testing.FakeMediaDownloader
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
 import com.minthantzintun.trypost.testing.json
@@ -36,6 +39,7 @@ class VideosViewModelTest {
 
     private val server = MockWebServer()
     private lateinit var store: FakeSessionStore
+    private val downloader = FakeMediaDownloader()
 
     @Before
     fun setUp() {
@@ -48,7 +52,7 @@ class VideosViewModelTest {
         server.close()
     }
 
-    private fun viewModel(): VideosViewModel = VideosViewModel(VideosRepository(testClient(store), OkHttpClient()))
+    private fun viewModel(): VideosViewModel = VideosViewModel(VideosRepository(testClient(store), OkHttpClient()), downloader)
 
     private suspend fun VideosViewModel.settled(): VideosUiState =
         state.first { !it.isLoading && !it.isRefreshing && !it.isLoadingMore && !it.isUploading }
@@ -71,6 +75,28 @@ class VideosViewModelTest {
         assertEquals(Instant.parse("2030-01-02T09:30:00Z"), newer.createdAt)
         assertNull(state.videos.last().size)
         assertNull(state.videos.last().durationSeconds)
+    }
+
+    @Test
+    fun `a video downloads under its name`() = runTest {
+        server.enqueue(videosPage(listOf(videoJson("v1", name = "Beach day"), videoJson("v2", downloadUrl = null))))
+        val viewModel = viewModel()
+        val videos = viewModel.settled().videos
+
+        assertEquals(DownloadLink("https://app.example.com/media/f-v1/download?signature=abc", "Beach day.mp4", null), videos[0].download)
+        assertNull(videos[1].download)
+
+        viewModel.download(videos[0].download!!)
+
+        assertEquals(listOf(videos[0].download), downloader.started)
+        assertEquals(DownloadOutcome.Started, viewModel.state.value.downloadOutcome)
+
+        downloader.accepts = false
+        viewModel.download(videos[0].download!!)
+
+        assertEquals(DownloadOutcome.Failed, viewModel.state.value.downloadOutcome)
+        viewModel.dismissDownloadOutcome()
+        assertNull(viewModel.state.value.downloadOutcome)
     }
 
     @Test

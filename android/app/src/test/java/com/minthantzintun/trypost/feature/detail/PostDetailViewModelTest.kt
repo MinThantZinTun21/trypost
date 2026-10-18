@@ -3,8 +3,11 @@ package com.minthantzintun.trypost.feature.detail
 import androidx.lifecycle.SavedStateHandle
 import com.minthantzintun.trypost.core.data.PostChanges
 import com.minthantzintun.trypost.core.data.PostsRepository
+import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.network.ApiError
+import com.minthantzintun.trypost.testing.FakeMediaDownloader
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
 import com.minthantzintun.trypost.testing.json
@@ -30,6 +33,7 @@ class PostDetailViewModelTest {
 
     private val server = MockWebServer()
     private lateinit var store: FakeSessionStore
+    private val downloader = FakeMediaDownloader()
 
     @Before
     fun setUp() {
@@ -43,7 +47,7 @@ class PostDetailViewModelTest {
     }
 
     private fun viewModel(id: String = "p1"): PostDetailViewModel =
-        PostDetailViewModel(SavedStateHandle(mapOf("id" to id)), PostsRepository(testClient(store), PostChanges()))
+        PostDetailViewModel(SavedStateHandle(mapOf("id" to id)), PostsRepository(testClient(store), PostChanges()), downloader)
 
     @Test
     fun `it loads the post by its id`() = runTest {
@@ -55,6 +59,35 @@ class PostDetailViewModelTest {
         assertEquals("Hello", state.post?.content)
         assertEquals("My Page", state.post?.platforms?.single()?.accountName)
         assertNull(state.error)
+    }
+
+    @Test
+    fun `a media item downloads under its file name`() = runTest {
+        server.enqueue(json(postJson("p1")))
+        val viewModel = viewModel()
+        val link = viewModel.state.first { !it.isLoading }.post?.media?.single()?.download
+
+        assertEquals(DownloadLink("https://app.example.com/media/m1/download?signature=abc", "clip.mp4", "video/mp4"), link)
+
+        viewModel.download(link!!)
+
+        assertEquals(listOf(link), downloader.started)
+        assertEquals(DownloadOutcome.Started, viewModel.state.value.downloadOutcome)
+
+        viewModel.dismissDownloadOutcome()
+        assertNull(viewModel.state.value.downloadOutcome)
+    }
+
+    @Test
+    fun `a refused download says so`() = runTest {
+        server.enqueue(json(postJson("p1")))
+        val viewModel = viewModel()
+        val link = viewModel.state.first { !it.isLoading }.post!!.media.single().download!!
+        downloader.accepts = false
+
+        viewModel.download(link)
+
+        assertEquals(DownloadOutcome.Failed, viewModel.state.value.downloadOutcome)
     }
 
     @Test
@@ -146,7 +179,7 @@ class PostDetailViewModelTest {
     fun `rescheduling tells the list`() = runTest {
         val changes = PostChanges()
         server.enqueue(json(postJson("p1", status = "scheduled", scheduledAt = "2030-01-01T09:00:00+00:00")))
-        val viewModel = PostDetailViewModel(SavedStateHandle(mapOf("id" to "p1")), PostsRepository(testClient(store), changes))
+        val viewModel = PostDetailViewModel(SavedStateHandle(mapOf("id" to "p1")), PostsRepository(testClient(store), changes), downloader)
         viewModel.state.first { !it.isLoading }
         server.takeRequest()
 
