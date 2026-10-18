@@ -19,10 +19,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -36,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,9 +52,12 @@ import com.minthantzintun.trypost.core.data.VideoSource
 import com.minthantzintun.trypost.core.designsystem.MessageState
 import com.minthantzintun.trypost.core.designsystem.UnderlinedField
 import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.Video
+import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
 import com.minthantzintun.trypost.core.ui.LoadMoreWhenNearEnd
 import com.minthantzintun.trypost.core.ui.message
+import com.minthantzintun.trypost.core.ui.rememberDownloadAction
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -67,6 +75,8 @@ fun VideosRoute(viewModel: VideosViewModel = hiltViewModel()) {
         onUpload = viewModel::upload,
         onCancelUpload = viewModel::cancelUpload,
         onDelete = viewModel::delete,
+        onDownload = viewModel::download,
+        onDownloadOutcomeShown = viewModel::dismissDownloadOutcome,
         onDismissDeleteError = viewModel::dismissDeleteError,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
@@ -83,6 +93,8 @@ fun VideosScreen(
     onUpload: (String) -> Unit,
     onCancelUpload: () -> Unit,
     onDelete: (String) -> Unit,
+    onDownload: (DownloadLink) -> Unit,
+    onDownloadOutcomeShown: () -> Unit,
     onDismissDeleteError: () -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
@@ -93,8 +105,13 @@ fun VideosScreen(
         uri?.let { onPickVideo(ContentUriVideoSource(context.contentResolver, it)) }
     }
     var confirmingDelete by remember { mutableStateOf<Video?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val download = rememberDownloadAction(snackbarHostState, onDownload)
+
+    DownloadOutcomeSnackbar(state.downloadOutcome, snackbarHostState, onDownloadOutcomeShown)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.videos_title), style = MaterialTheme.typography.titleLarge) },
@@ -117,6 +134,7 @@ fun VideosScreen(
                 onRetry = onRetry,
                 onLoadMore = onLoadMore,
                 onDelete = { confirmingDelete = it },
+                onDownload = download,
             )
         }
     }
@@ -222,6 +240,7 @@ private fun VideoList(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onDelete: (Video) -> Unit,
+    onDownload: (DownloadLink) -> Unit,
 ) {
     val error = state.error
 
@@ -255,7 +274,13 @@ private fun VideoList(
                         }
                     }
                     items(state.videos, key = { it.id }) { video ->
-                        VideoRow(video = video, zone = zone, isDeleting = state.deletingId == video.id, onDelete = { onDelete(video) })
+                        VideoRow(
+                            video = video,
+                            zone = zone,
+                            isDeleting = state.deletingId == video.id,
+                            onDelete = { onDelete(video) },
+                            onDownload = onDownload,
+                        )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     }
                     if (state.isLoadingMore) {
@@ -280,7 +305,7 @@ private fun VideoList(
 }
 
 @Composable
-private fun VideoRow(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete: () -> Unit) {
+private fun VideoRow(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete: () -> Unit, onDownload: (DownloadLink) -> Unit) {
     val context = LocalContext.current
     val details = listOfNotNull(
         video.size?.let { Formatter.formatShortFileSize(context, it) },
@@ -296,6 +321,11 @@ private fun VideoRow(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete: 
             Text(video.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (details.isNotEmpty()) {
                 Text(details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        video.download?.let { link ->
+            IconButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-video-${video.id}")) {
+                Icon(painterResource(R.drawable.ic_download), contentDescription = stringResource(R.string.download))
             }
         }
         if (isDeleting) {

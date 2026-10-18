@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.VideoSource
 import com.minthantzintun.trypost.core.data.VideosRepository
+import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.download.MediaDownloader
+import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.Video
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
@@ -38,6 +41,7 @@ data class VideosUiState(
     val uploadError: ApiError? = null,
     val deletingId: String? = null,
     val deleteError: ApiError? = null,
+    val downloadOutcome: DownloadOutcome? = null,
 ) {
     val hasLoaded: Boolean get() = page > 0
     val hasMore: Boolean get() = hasLoaded && page < lastPage
@@ -45,11 +49,12 @@ data class VideosUiState(
 
 /**
  * Lists the Owner's Videos, uploads one picked from the Photo Picker and
- * deletes them. The upload runs while the app is open (no WorkManager).
+ * deletes and downloads them. The upload runs while the app is open (no WorkManager).
  */
 @HiltViewModel
 class VideosViewModel @Inject constructor(
     private val videosRepository: VideosRepository,
+    private val downloader: MediaDownloader,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(VideosUiState())
@@ -155,6 +160,15 @@ class VideosViewModel @Inject constructor(
                 is ApiResult.Failure -> _state.update { it.copy(deletingId = null, deleteError = result.error) }
             }
         }
+    }
+
+    /** Saves a Video's file to Downloads under the Video's name. */
+    fun download(link: DownloadLink) {
+        _state.update { it.copy(downloadOutcome = downloader.start(link)) }
+    }
+
+    fun dismissDownloadOutcome() {
+        _state.update { it.copy(downloadOutcome = null) }
     }
 
     fun dismissDeleteError() {

@@ -23,6 +23,8 @@ data class MediaItem(
     val type: MediaType,
     val url: String,
     val originalFilename: String?,
+    /** Null from a server that predates Download links. */
+    val download: DownloadLink?,
 )
 
 /** One Social account's part of a Post. */

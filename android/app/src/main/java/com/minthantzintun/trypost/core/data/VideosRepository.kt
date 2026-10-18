@@ -87,6 +87,7 @@ class VideosRepository @Inject constructor(
         size = size,
         durationSeconds = duration,
         createdAt = createdAt.toInstant(),
+        download = downloadLink(downloadUrl, fileName, mimeType = null),
     )
 }
 

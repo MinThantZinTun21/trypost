@@ -9,6 +9,8 @@ data class Video(
     val size: Long?,
     val durationSeconds: Double?,
     val createdAt: Instant?,
+    /** Null for a Video without a file, or from a server that predates Download links. */
+    val download: DownloadLink?,
 )
 
 data class VideoPage(

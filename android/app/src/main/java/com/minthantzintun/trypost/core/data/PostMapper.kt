@@ -1,5 +1,6 @@
 package com.minthantzintun.trypost.core.data
 
+import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.MediaItem
 import com.minthantzintun.trypost.core.model.MediaType
 import com.minthantzintun.trypost.core.model.Platform
@@ -40,7 +41,12 @@ private fun MediaDto.toMediaItem(): MediaItem = MediaItem(
     type = MediaType.classify(type, mimeType),
     url = url,
     originalFilename = originalFilename,
+    download = downloadLink(downloadUrl, fileName, mimeType),
 )
+
+/** A Download link, when the server sent both its URL and its file name. */
+internal fun downloadLink(url: String?, fileName: String?, mimeType: String?): DownloadLink? =
+    if (url != null && fileName != null) DownloadLink(url, fileName, mimeType) else null
 
 private fun PostPlatformDto.toPostPlatform(): PostPlatform = PostPlatform(
     id = id,
