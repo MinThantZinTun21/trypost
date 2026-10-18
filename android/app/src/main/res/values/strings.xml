@@ -95,6 +95,14 @@
     <string name="download_started">Downloading to Downloads. A notification shows when it\'s done.</string>
     <string name="download_failed">Couldn\'t start the download.</string>
     <string name="download_needs_storage">Saving to Downloads needs storage access on this version of Android.</string>
+    <string name="downloads_channel">Downloads</string>
+    <string name="download_progress_one">Downloading %1$s</string>
+    <plurals name="download_progress_many">
+        <item quantity="one">Downloading %1$d file</item>
+        <item quantity="other">Downloading %1$d files</item>
+    </plurals>
+    <string name="download_saved">Saved to Downloads</string>
+    <string name="download_failed_title">Download failed</string>
     <string name="download_percent">%1$d%%</string>
     <string name="download_running">Downloading</string>
     <string name="copy_text">Copy %1$s</string>

@@ -308,7 +308,13 @@ before adding anything.
   `file_name` (a media item's original name; a Video's name plus the file's
   extension, `Video::downloadName()`). The app saves it to Downloads through
   DownloadManager (`MediaDownloader`), asking for `WRITE_EXTERNAL_STORAGE`
-  only on Android 8–9 (`maxSdkVersion=28`). Post detail copies the content
+  only on Android 8–9 (`maxSdkVersion=28`) and for `POST_NOTIFICATIONS` on
+  Android 13+ (a refusal still downloads). The system notification is
+  hidden: `DownloadProgressService` (a `dataSync` foreground service) shows
+  TryPost's own progress on its LOW "Downloads" channel and stops when
+  nothing is left, `DownloadCompleteReceiver` posts "Saved to Downloads" (a
+  tap opens the file) or "Download failed", and the Download buttons show
+  the same `DownloadTracker` progress. Post detail copies the content
   and each shown text (`PostPlatform.shownTexts()`, Tags as `a, b`).
 
 ## TikTok handoff through Telegram (ADR 0009)
