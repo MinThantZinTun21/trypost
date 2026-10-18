@@ -91,6 +91,8 @@
     <string name="videos_delete">Delete</string>
     <string name="videos_delete_confirm_title">Delete this video?</string>
     <string name="videos_delete_confirm_body">“%1$s” and its file are removed from the server.</string>
+    <string name="videos_more_options">More options for %1$s</string>
+    <string name="videos_upload_hint">Keep the app open until the upload finishes.</string>
     <string name="videos_delete_failed">Couldn\'t delete the video.</string>
 
     <!-- Post detail -->
