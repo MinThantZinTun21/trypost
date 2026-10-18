@@ -27,6 +27,17 @@
 
     <!-- Posts -->
     <string name="posts_title">Posts</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme_hint">System follows your phone\'s dark mode.</string>
+    <string name="theme_system">System</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_signed_in_as">Signed in as</string>
+    <string name="settings_server">Server address</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">App version</string>
     <string name="sign_out">Sign out</string>
     <string name="sign_out_confirm_title">Sign out?</string>
     <string name="sign_out_confirm_body">The token is removed from this phone. You\'ll need it again to sign back in.</string>

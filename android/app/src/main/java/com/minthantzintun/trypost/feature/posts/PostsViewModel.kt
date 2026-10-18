@@ -3,7 +3,6 @@ package com.minthantzintun.trypost.feature.posts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.PostsRepository
-import com.minthantzintun.trypost.core.data.SessionRepository
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostTab
 import com.minthantzintun.trypost.core.model.SocialAccount
@@ -50,7 +49,6 @@ data class PostsUiState(
 @HiltViewModel
 class PostsViewModel @Inject constructor(
     private val postsRepository: PostsRepository,
-    private val sessionRepository: SessionRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PostsUiState())
@@ -148,10 +146,6 @@ class PostsViewModel @Inject constructor(
                 is ApiResult.Failure -> updateTab(tab) { it.copy(isLoadingMore = false, loadMoreError = result.error) }
             }
         }
-    }
-
-    fun signOut() {
-        viewModelScope.launch { sessionRepository.signOut() }
     }
 
     private fun loadFirstPage(tab: PostTab, isRefresh: Boolean) {

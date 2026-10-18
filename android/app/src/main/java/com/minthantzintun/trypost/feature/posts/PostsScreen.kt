@@ -16,7 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,6 +65,7 @@ import java.time.format.FormatStyle
 fun PostsRoute(
     ownerName: String,
     onOpenPost: (String) -> Unit,
+    onOpenSettings: () -> Unit,
     viewModel: PostsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -77,7 +80,7 @@ fun PostsRoute(
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
         onOpenPost = onOpenPost,
-        onSignOut = viewModel::signOut,
+        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -93,9 +96,8 @@ fun PostsScreen(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onOpenPost: (String) -> Unit,
-    onSignOut: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
-    var isConfirmingSignOut by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -108,8 +110,8 @@ fun PostsScreen(
                         }
                     },
                     actions = {
-                        TextButton(onClick = { isConfirmingSignOut = true }, modifier = Modifier.testTag("sign-out")) {
-                            Text(stringResource(R.string.sign_out))
+                        IconButton(onClick = onOpenSettings, modifier = Modifier.testTag("settings")) {
+                            Icon(painterResource(R.drawable.ic_settings), contentDescription = stringResource(R.string.settings_title))
                         }
                     },
                 )
@@ -137,23 +139,6 @@ fun PostsScreen(
                 onOpenPost = onOpenPost,
             )
         }
-    }
-
-    if (isConfirmingSignOut) {
-        AlertDialog(
-            onDismissRequest = { isConfirmingSignOut = false },
-            title = { Text(stringResource(R.string.sign_out_confirm_title)) },
-            text = { Text(stringResource(R.string.sign_out_confirm_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    isConfirmingSignOut = false
-                    onSignOut()
-                }) { Text(stringResource(R.string.sign_out)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { isConfirmingSignOut = false }) { Text(stringResource(R.string.cancel)) }
-            },
-        )
     }
 }
 

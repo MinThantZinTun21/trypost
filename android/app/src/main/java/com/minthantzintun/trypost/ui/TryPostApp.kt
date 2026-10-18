@@ -33,6 +33,7 @@ import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.feature.detail.PostDetailRoute
 import com.minthantzintun.trypost.feature.edit.EditPostRoute
 import com.minthantzintun.trypost.feature.posts.PostsRoute
+import com.minthantzintun.trypost.feature.settings.SettingsRoute
 import com.minthantzintun.trypost.feature.signin.SignInRoute
 import com.minthantzintun.trypost.feature.videos.VideosRoute
 import kotlinx.serialization.Serializable
@@ -42,6 +43,9 @@ data object PostsDestination
 
 @Serializable
 data object VideosDestination
+
+@Serializable
+data object SettingsDestination
 
 @Serializable
 data class PostDetailDestination(val id: String)
@@ -124,10 +128,17 @@ private fun NavHostController.switchTo(destination: Any) {
 private fun SignedInGraph(navController: NavHostController, ownerName: String, modifier: Modifier) {
     NavHost(navController = navController, startDestination = PostsDestination, modifier = modifier) {
         composable<PostsDestination> {
-            PostsRoute(ownerName = ownerName, onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) })
+            PostsRoute(
+                ownerName = ownerName,
+                onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) },
+                onOpenSettings = { navController.navigate(SettingsDestination) },
+            )
         }
         composable<VideosDestination> {
             VideosRoute()
+        }
+        composable<SettingsDestination> {
+            SettingsRoute(onBack = { navController.popBackStack() })
         }
         composable<PostDetailDestination> {
             PostDetailRoute(
