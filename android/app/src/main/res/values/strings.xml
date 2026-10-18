@@ -89,6 +89,14 @@
     <string name="detail_document">PDF</string>
     <string name="detail_view_on">View on %1$s</string>
     <string name="detail_publishing_note">Publishing now. This page refreshes until it\'s done.</string>
+
+    <!-- Download and copy -->
+    <string name="download">Download</string>
+    <string name="download_started">Downloading to Downloads. A notification shows when it\'s done.</string>
+    <string name="download_failed">Couldn\'t start the download.</string>
+    <string name="download_needs_storage">Saving to Downloads needs storage access on this version of Android.</string>
+    <string name="copy_text">Copy %1$s</string>
+    <string name="copied">Copied</string>
     <string name="text_title">Title</string>
     <string name="text_description">Description</string>
     <string name="text_caption">Caption</string>

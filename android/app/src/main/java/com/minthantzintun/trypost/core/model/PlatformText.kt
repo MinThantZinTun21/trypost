@@ -19,3 +19,11 @@ fun PostPlatform.text(text: PlatformText): String = when (val value = meta[text.
     is List<*> -> value.filterNotNull().joinToString(", ")
     else -> value.toString()
 }
+
+/**
+ * The texts the Post detail shows for this Post platform, in its Content
+ * type's order, skipping blank ones. Copy uses the same values, so what is
+ * copied is what is shown.
+ */
+fun PostPlatform.shownTexts(): List<Pair<PlatformText, String>> =
+    texts.map { it to text(it) }.filter { (_, value) -> value.isNotBlank() }

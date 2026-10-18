@@ -1,5 +1,7 @@
 package com.minthantzintun.trypost.feature.detail
 
+import android.content.ClipData
+import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +23,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,9 +33,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -46,18 +53,22 @@ import com.minthantzintun.trypost.core.designsystem.MessageState
 import com.minthantzintun.trypost.core.designsystem.PlatformTag
 import com.minthantzintun.trypost.core.designsystem.StatusBadge
 import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.MediaItem
 import com.minthantzintun.trypost.core.model.MediaType
 import com.minthantzintun.trypost.core.model.PlatformStatus
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostPlatform
 import com.minthantzintun.trypost.core.model.PostStatus
-import com.minthantzintun.trypost.core.model.text
+import com.minthantzintun.trypost.core.model.shownTexts
 import com.minthantzintun.trypost.core.model.toPlainText
+import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
 import com.minthantzintun.trypost.core.ui.color
 import com.minthantzintun.trypost.core.ui.contentTypeLabel
 import com.minthantzintun.trypost.core.ui.label
 import com.minthantzintun.trypost.core.ui.message
+import com.minthantzintun.trypost.core.ui.rememberDownloadAction
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -76,6 +87,8 @@ fun PostDetailRoute(
         onBack = onBack,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
+        onDownload = viewModel::download,
+        onDownloadOutcomeShown = viewModel::dismissDownloadOutcome,
         actions = { post ->
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ScheduleActions(
@@ -105,9 +118,18 @@ fun PostDetailScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
+    onDownload: (DownloadLink) -> Unit = {},
+    onDownloadOutcomeShown: () -> Unit = {},
     actions: @Composable (Post) -> Unit = {},
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val download = rememberDownloadAction(snackbarHostState, onDownload)
+    val copy = rememberCopyAction(snackbarHostState)
+
+    DownloadOutcomeSnackbar(state.downloadOutcome, snackbarHostState, onDownloadOutcomeShown)
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.detail_title)) },
@@ -137,7 +159,7 @@ fun PostDetailScreen(
                     )
                 }
                 else -> PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                    PostDetailContent(post = post, error = error?.message(), actions = actions)
+                    PostDetailContent(post = post, error = error?.message(), actions = actions, onDownload = download, onCopy = copy)
                 }
             }
         }
@@ -145,7 +167,13 @@ fun PostDetailScreen(
 }
 
 @Composable
-private fun PostDetailContent(post: Post, error: String?, actions: @Composable (Post) -> Unit) {
+private fun PostDetailContent(
+    post: Post,
+    error: String?,
+    actions: @Composable (Post) -> Unit,
+    onDownload: (DownloadLink) -> Unit,
+    onCopy: (label: String, text: String) -> Unit,
+) {
     val zone = remember { ZoneId.systemDefault() }
 
     Column(
@@ -173,10 +201,15 @@ private fun PostDetailContent(post: Post, error: String?, actions: @Composable (
 
         actions(post)
 
-        Section(title = stringResource(R.string.detail_content)) {
+        val content = post.content.toPlainText()
+        val contentLabel = stringResource(R.string.detail_content)
+        Section(
+            title = contentLabel,
+            trailing = content.takeIf { it.isNotBlank() }?.let { { CopyButton(contentLabel, "copy-content") { onCopy(contentLabel, it) } } },
+        ) {
             SelectionContainer {
                 Text(
-                    text = post.content.toPlainText().ifBlank { stringResource(R.string.posts_no_text) },
+                    text = content.ifBlank { stringResource(R.string.posts_no_text) },
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.testTag("post-content"),
                 )
@@ -189,14 +222,14 @@ private fun PostDetailContent(post: Post, error: String?, actions: @Composable (
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    post.media.forEach { MediaThumbnail(it) }
+                    post.media.forEach { MediaThumbnail(it, onDownload) }
                 }
             }
         }
 
         Section(title = stringResource(R.string.detail_accounts)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                post.platforms.forEach { PlatformCard(it, zone) }
+                post.platforms.forEach { PlatformCard(it, zone, onCopy) }
             }
         }
     }
@@ -219,19 +252,36 @@ private fun Instant.formatted(zone: ZoneId): String =
     atZone(zone).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT))
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+private fun Section(title: String, trailing: (@Composable () -> Unit)? = null, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = title.asLabel(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = title.asLabel(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            trailing?.invoke()
+        }
         content()
     }
 }
 
 @Composable
-private fun MediaThumbnail(item: MediaItem) {
+private fun MediaThumbnail(item: MediaItem, onDownload: (DownloadLink) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        MediaPreview(item)
+        // Photos and videos; the platforms here publish no PDFs.
+        item.download?.takeIf { item.type != MediaType.Document }?.let { link ->
+            TextButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-media-${item.id}")) {
+                Text(stringResource(R.string.download).asLabel())
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaPreview(item: MediaItem) {
     val modifier = Modifier
         .size(96.dp)
         .border(1.dp, MaterialTheme.colorScheme.outline)
@@ -267,7 +317,7 @@ private fun MediaThumbnail(item: MediaItem) {
 }
 
 @Composable
-private fun PlatformCard(platform: PostPlatform, zone: ZoneId) {
+private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: String, text: String) -> Unit) {
     val uriHandler = LocalUriHandler.current
 
     Surface(
@@ -292,17 +342,18 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId) {
                 StatusBadge(label = platform.status.label(), color = platform.status.color())
             }
 
-            platform.texts.forEach { text ->
-                val value = platform.text(text)
-                if (value.isNotBlank()) {
-                    Column {
+            platform.shownTexts().forEach { (text, value) ->
+                val label = text.label()
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
                         Text(
-                            text = text.label().asLabel(),
+                            text = label.asLabel(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(text = value, style = MaterialTheme.typography.bodyMedium)
                     }
+                    CopyButton(label, "copy-${platform.id}-${text.metaKey}") { onCopy("${platform.accountName} $label", value) }
                 }
             }
 
@@ -327,6 +378,33 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId) {
                 TextButton(onClick = { uriHandler.openUri(url) }, modifier = Modifier.testTag("platform-link-${platform.id}")) {
                     Text(stringResource(R.string.detail_view_on, platform.platform.label).asLabel())
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CopyButton(what: String, testTag: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.testTag(testTag)) {
+        Icon(painterResource(R.drawable.ic_copy), contentDescription = stringResource(R.string.copy_text, what))
+    }
+}
+
+/**
+ * Puts a text on the clipboard under [label]. Android 13 and later confirm it
+ * themselves, so only older versions show "Copied".
+ */
+@Composable
+private fun rememberCopyAction(snackbarHostState: SnackbarHostState): (label: String, text: String) -> Unit {
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val copied = stringResource(R.string.copied)
+
+    return { label, text ->
+        scope.launch {
+            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(label, text)))
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                snackbarHostState.showSnackbar(copied)
             }
         }
     }
