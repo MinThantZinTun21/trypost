@@ -39,7 +39,19 @@ data class EditPostUiState(
     val saveError: ApiError? = null,
     val fieldErrors: Map<EditField, String> = emptyMap(),
     val isSaved: Boolean = false,
-)
+) {
+    /** True once the content or a text differs from the stored Post; leaving then asks first. */
+    val hasUnsavedChanges: Boolean
+        get() {
+            val post = post ?: return false
+
+            return !isSaved && (content != post.content.toPlainText() || texts != post.editableTexts())
+        }
+}
+
+/** Each Post platform's texts as the edit screen shows them, keyed by Post platform id. */
+private fun Post.editableTexts(): Map<String, Map<PlatformText, String>> =
+    platforms.associate { platform -> platform.id to platform.texts.associateWith { platform.text(it) } }
 
 /**
  * Edits a Scheduled post's content and each Social account's own
@@ -115,7 +127,7 @@ class EditPostViewModel @Inject constructor(
         post = post,
         // Older Posts may hold HTML; the app edits the content as plain text.
         content = post.content.toPlainText(),
-        texts = post.platforms.associate { platform -> platform.id to platform.texts.associateWith { platform.text(it) } },
+        texts = post.editableTexts(),
         isLoading = false,
         loadError = null,
     )

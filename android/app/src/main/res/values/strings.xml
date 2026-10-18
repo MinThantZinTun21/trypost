@@ -149,6 +149,10 @@
 
     <!-- Edit -->
     <string name="edit">Edit</string>
+    <string name="edit_discard_title">Discard changes?</string>
+    <string name="edit_discard_body">Your edits to this post\'s texts haven\'t been saved.</string>
+    <string name="edit_discard">Discard</string>
+    <string name="edit_keep_editing">Keep editing</string>
     <string name="edit_title">Edit post</string>
     <string name="save">Save</string>
     <string name="edit_content_hint">The Facebook text, and what any blank text below falls back to.</string>
