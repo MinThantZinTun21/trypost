@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.PostsRepository
 import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.download.DownloadProgress
+import com.minthantzintun.trypost.core.download.DownloadTracker
 import com.minthantzintun.trypost.core.download.MediaDownloader
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.Post
@@ -45,7 +47,11 @@ class PostDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val postsRepository: PostsRepository,
     private val downloader: MediaDownloader,
+    private val downloadTracker: DownloadTracker,
 ) : ViewModel() {
+
+    /** Progress of the app's running downloads, keyed by Download link. */
+    val downloads: StateFlow<Map<String, DownloadProgress>> = downloadTracker.progress
 
     private val postId: String = checkNotNull(savedStateHandle["id"]) { "PostDetailDestination needs an id" }
 
@@ -109,7 +115,11 @@ class PostDetailViewModel @Inject constructor(
 
     /** Saves one of the Post's media to Downloads. */
     fun download(link: DownloadLink) {
-        _state.update { it.copy(downloadOutcome = downloader.start(link)) }
+        val outcome = downloader.start(link)
+        if (outcome == DownloadOutcome.Started) {
+            downloadTracker.refresh()
+        }
+        _state.update { it.copy(downloadOutcome = outcome) }
     }
 
     fun dismissDownloadOutcome() {

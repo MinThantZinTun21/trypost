@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.minthantzintun.trypost.core.download.DownloadRows
 import com.minthantzintun.trypost.core.download.MediaDownloader
+import com.minthantzintun.trypost.core.download.SystemDownloadRows
 import com.minthantzintun.trypost.core.download.SystemMediaDownloader
 import com.minthantzintun.trypost.core.session.DataStoreSessionStore
 import com.minthantzintun.trypost.core.session.KeystoreSecretCipher
@@ -61,4 +63,7 @@ abstract class SessionModule {
 abstract class DownloadModule {
     @Binds
     abstract fun bindMediaDownloader(downloader: SystemMediaDownloader): MediaDownloader
+
+    @Binds
+    abstract fun bindDownloadRows(rows: SystemDownloadRows): DownloadRows
 }

@@ -36,7 +36,7 @@ android {
         targetSdk = 36
         // CI passes the run number so every release installs over the last one.
         versionCode = providers.environmentVariable("TRYPOST_VERSION_CODE").orNull?.toIntOrNull() ?: 1
-        versionName = "1.2.0"
+        versionName = "1.3.0"
 
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://trypost21.duckdns.org\"")
     }

@@ -10,7 +10,7 @@ import javax.inject.Inject
 
 /**
  * Hands the file to Android's DownloadManager, which keeps going when the app
- * closes and leaves a notification when it finishes. Android 8–9 need
+ * closes, and starts TryPost's progress notification. Android 8–9 need
  * WRITE_EXTERNAL_STORAGE for Downloads, which the screen asks for first.
  */
 class SystemMediaDownloader @Inject constructor(
@@ -20,13 +20,15 @@ class SystemMediaDownloader @Inject constructor(
         val manager = context.getSystemService(DownloadManager::class.java) ?: return DownloadOutcome.Failed
         val request = DownloadManager.Request(link.url.toUri())
             .setTitle(link.fileName)
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            // TryPost shows its own progress and completion (DownloadProgressService, DownloadCompleteReceiver).
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
 
         link.mimeType?.let { request.setMimeType(it) }
 
         return try {
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, link.fileName.safeFileName())
             manager.enqueue(request)
+            DownloadProgressService.start(context)
             DownloadOutcome.Started
         } catch (_: IllegalStateException) {
             DownloadOutcome.Failed

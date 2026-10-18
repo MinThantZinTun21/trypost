@@ -2,9 +2,12 @@ package com.minthantzintun.trypost.feature.videos
 
 import com.minthantzintun.trypost.core.data.VideosRepository
 import com.minthantzintun.trypost.core.download.DownloadOutcome
+import com.minthantzintun.trypost.core.download.DownloadRow
+import com.minthantzintun.trypost.core.download.DownloadTracker
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.testing.BytesVideoSource
+import com.minthantzintun.trypost.testing.FakeDownloadRows
 import com.minthantzintun.trypost.testing.FakeMediaDownloader
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
@@ -40,6 +43,7 @@ class VideosViewModelTest {
     private val server = MockWebServer()
     private lateinit var store: FakeSessionStore
     private val downloader = FakeMediaDownloader()
+    private val downloadRows = FakeDownloadRows()
 
     @Before
     fun setUp() {
@@ -52,7 +56,7 @@ class VideosViewModelTest {
         server.close()
     }
 
-    private fun viewModel(): VideosViewModel = VideosViewModel(VideosRepository(testClient(store), OkHttpClient()), downloader)
+    private fun viewModel(): VideosViewModel = VideosViewModel(VideosRepository(testClient(store), OkHttpClient()), downloader, DownloadTracker(downloadRows))
 
     private suspend fun VideosViewModel.settled(): VideosUiState =
         state.first { !it.isLoading && !it.isRefreshing && !it.isLoadingMore && !it.isUploading }
@@ -86,9 +90,11 @@ class VideosViewModelTest {
         assertEquals(DownloadLink("https://app.example.com/media/f-v1/download?signature=abc", "Beach day.mp4", null), videos[0].download)
         assertNull(videos[1].download)
 
+        downloadRows.rows = listOf(DownloadRow(url = videos[0].download!!.url, fileName = "Beach day.mp4", bytesSoFar = 0, totalBytes = -1))
         viewModel.download(videos[0].download!!)
 
         assertEquals(listOf(videos[0].download), downloader.started)
+        assertNull(viewModel.downloads.value.getValue(videos[0].download!!.url).percent)
         assertEquals(DownloadOutcome.Started, viewModel.state.value.downloadOutcome)
 
         downloader.accepts = false
