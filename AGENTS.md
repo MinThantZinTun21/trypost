@@ -310,6 +310,11 @@ before adding anything.
   DownloadManager (`MediaDownloader`), asking for `WRITE_EXTERNAL_STORAGE`
   only on Android 8–9 (`maxSdkVersion=28`). Post detail copies the content
   and each shown text (`PostPlatform.shownTexts()`, Tags as `a, b`).
+- **Look** (ADR 0014): Material 3 Expressive with the TryPost lime, not the
+  web's Sera. Colours, type, shapes, spacing and shared components live in
+  `core/designsystem`; screens read its tokens, never raw colours. Dark and
+  light both pass 4.5:1; the theme follows the system unless Settings picks
+  one. Icons are Tabler vector drawables; no icon dependency.
 
 ## TikTok handoff through Telegram (ADR 0009)
 

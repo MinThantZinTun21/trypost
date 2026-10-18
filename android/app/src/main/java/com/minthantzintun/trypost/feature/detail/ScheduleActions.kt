@@ -31,7 +31,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.asLabel
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.network.ApiError
@@ -75,7 +74,7 @@ fun ScheduleActions(
                 enabled = !isSaving,
                 modifier = Modifier.testTag("reschedule"),
             ) {
-                Text(stringResource(R.string.reschedule).asLabel())
+                Text(stringResource(R.string.reschedule))
             }
             if (post.status == PostStatus.Scheduled) {
                 OutlinedButton(
@@ -83,7 +82,7 @@ fun ScheduleActions(
                     enabled = !isSaving,
                     modifier = Modifier.testTag("post-now"),
                 ) {
-                    Text(stringResource(R.string.post_now).asLabel())
+                    Text(stringResource(R.string.post_now))
                 }
             }
             extraActions()
@@ -110,10 +109,10 @@ fun ScheduleActions(
                         onPublishNow()
                     },
                     modifier = Modifier.testTag("post-now-confirm"),
-                ) { Text(stringResource(R.string.post_now).asLabel()) }
+                ) { Text(stringResource(R.string.post_now)) }
             },
             dismissButton = {
-                TextButton(onClick = { step = ScheduleStep.None }) { Text(stringResource(R.string.cancel).asLabel()) }
+                TextButton(onClick = { step = ScheduleStep.None }) { Text(stringResource(R.string.cancel)) }
             },
         )
         ScheduleStep.Date -> DateStep(
@@ -174,10 +173,10 @@ private fun DateStep(initial: LocalDate, zone: ZoneId, onPicked: (LocalDate) -> 
                 },
                 enabled = state.selectedDateMillis != null,
                 modifier = Modifier.testTag("schedule-date-next"),
-            ) { Text(stringResource(R.string.next).asLabel()) }
+            ) { Text(stringResource(R.string.next)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel).asLabel()) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     ) {
         DatePicker(state = state)
@@ -202,10 +201,10 @@ private fun TimeStep(initial: LocalTime, onPicked: (LocalTime) -> Unit, onDismis
             TextButton(
                 onClick = { onPicked(LocalTime.of(state.hour, state.minute)) },
                 modifier = Modifier.testTag("schedule-time-save"),
-            ) { Text(stringResource(R.string.schedule).asLabel()) }
+            ) { Text(stringResource(R.string.schedule)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel).asLabel()) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }
@@ -221,7 +220,7 @@ private fun ActionErrorMessages(post: Post, error: ApiError) {
 
     Column(modifier = Modifier.testTag("action-error")) {
         Text(
-            text = stringResource(R.string.action_error_title).asLabel(),
+            text = stringResource(R.string.action_error_title),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.error,
         )

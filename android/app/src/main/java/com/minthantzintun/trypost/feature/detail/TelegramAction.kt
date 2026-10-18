@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.asLabel
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.canSendToTelegram
 import com.minthantzintun.trypost.core.network.ApiError
@@ -52,7 +51,7 @@ fun TelegramAction(
                 enabled = !isSending,
                 modifier = Modifier.testTag("send-to-telegram"),
             ) {
-                Text(stringResource(R.string.telegram_send).asLabel())
+                Text(stringResource(R.string.telegram_send))
             }
             if (isSending) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -91,10 +90,10 @@ fun TelegramAction(
                         onSend()
                     },
                     modifier = Modifier.testTag("send-to-telegram-confirm"),
-                ) { Text(stringResource(R.string.telegram_send_confirm).asLabel()) }
+                ) { Text(stringResource(R.string.telegram_send_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { isConfirming = false }) { Text(stringResource(R.string.cancel).asLabel()) }
+                TextButton(onClick = { isConfirming = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }

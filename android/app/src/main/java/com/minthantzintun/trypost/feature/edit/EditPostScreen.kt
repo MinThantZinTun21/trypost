@@ -35,10 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.MessageState
-import com.minthantzintun.trypost.core.designsystem.PlatformTag
-import com.minthantzintun.trypost.core.designsystem.UnderlinedField
-import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.designsystem.StateMessage
+import com.minthantzintun.trypost.core.designsystem.PlatformLogo
+import com.minthantzintun.trypost.core.designsystem.FormField
 import com.minthantzintun.trypost.core.model.PlatformText
 import com.minthantzintun.trypost.core.model.PostPlatform
 import com.minthantzintun.trypost.core.ui.contentTypeLabel
@@ -93,7 +92,7 @@ fun EditPostScreen(
                         CircularProgressIndicator(modifier = Modifier.padding(end = 16.dp).size(24.dp), strokeWidth = 2.dp)
                     } else if (state.post != null) {
                         TextButton(onClick = onSave, modifier = Modifier.testTag("edit-save")) {
-                            Text(stringResource(R.string.save).asLabel())
+                            Text(stringResource(R.string.save))
                         }
                     }
                 },
@@ -108,7 +107,8 @@ fun EditPostScreen(
                     CircularProgressIndicator()
                 }
                 post == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    MessageState(
+                    StateMessage(
+                icon = R.drawable.ic_info,
                         title = stringResource(R.string.detail_error_title),
                         body = state.loadError?.message().orEmpty(),
                         actionLabel = stringResource(R.string.retry),
@@ -133,7 +133,7 @@ fun EditPostScreen(
                         )
                     }
 
-                    UnderlinedField(
+                    FormField(
                         value = state.content,
                         onValueChange = onContentChange,
                         label = stringResource(R.string.detail_content),
@@ -172,7 +172,7 @@ private fun PlatformTexts(
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                PlatformTag(platform.platform)
+                PlatformLogo(platform.platform)
                 Text(
                     text = listOfNotNull(platform.accountName, contentTypeLabel(platform.contentType)).joinToString(" · "),
                     style = MaterialTheme.typography.titleSmall,
@@ -184,7 +184,7 @@ private fun PlatformTexts(
             platform.texts.forEach { text ->
                 val error = errors[EditField.Text(platform.id, text)]
 
-                UnderlinedField(
+                FormField(
                     value = values[text].orEmpty(),
                     onValueChange = { onTextChange(platform.id, text, it) },
                     label = text.label(),

@@ -49,10 +49,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.MessageState
-import com.minthantzintun.trypost.core.designsystem.PlatformTag
-import com.minthantzintun.trypost.core.designsystem.StatusBadge
-import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.designsystem.StateMessage
+import com.minthantzintun.trypost.core.designsystem.PlatformLogo
+import com.minthantzintun.trypost.core.ui.PlatformStatusPill
+import com.minthantzintun.trypost.core.ui.PostStatusPill
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.MediaItem
 import com.minthantzintun.trypost.core.model.MediaType
@@ -63,7 +63,6 @@ import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.model.shownTexts
 import com.minthantzintun.trypost.core.model.toPlainText
 import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
-import com.minthantzintun.trypost.core.ui.color
 import com.minthantzintun.trypost.core.ui.contentTypeLabel
 import com.minthantzintun.trypost.core.ui.label
 import com.minthantzintun.trypost.core.ui.message
@@ -150,7 +149,8 @@ fun PostDetailScreen(
                     CircularProgressIndicator()
                 }
                 post == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    MessageState(
+                    StateMessage(
+                icon = R.drawable.ic_info,
                         title = stringResource(R.string.detail_error_title),
                         body = error?.message().orEmpty(),
                         actionLabel = stringResource(R.string.retry),
@@ -185,7 +185,7 @@ private fun PostDetailContent(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatusBadge(label = post.status.label(), color = post.status.color(), modifier = Modifier.testTag("post-status"))
+            PostStatusPill(post.status, modifier = Modifier.testTag("post-status"))
             Text(text = post.whenLine(zone), style = MaterialTheme.typography.titleLarge)
             if (post.status == PostStatus.Publishing) {
                 Text(
@@ -260,7 +260,7 @@ private fun Section(title: String, trailing: (@Composable () -> Unit)? = null, c
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = title.asLabel(),
+                text = title,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
@@ -278,7 +278,7 @@ private fun MediaThumbnail(item: MediaItem, onDownload: (DownloadLink) -> Unit) 
         // Photos and videos; the platforms here publish no PDFs.
         item.download?.takeIf { item.type != MediaType.Document }?.let { link ->
             TextButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-media-${item.id}")) {
-                Text(stringResource(R.string.download).asLabel())
+                Text(stringResource(R.string.download))
             }
         }
     }
@@ -304,7 +304,7 @@ private fun MediaPreview(item: MediaItem) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = stringResource(if (item.type == MediaType.Video) R.string.detail_video else R.string.detail_document).asLabel(),
+                text = stringResource(if (item.type == MediaType.Video) R.string.detail_video else R.string.detail_document),
                 style = MaterialTheme.typography.labelMedium,
             )
             item.originalFilename?.let {
@@ -331,7 +331,7 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: S
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                PlatformTag(platform.platform)
+                PlatformLogo(platform.platform)
                 Column(Modifier.weight(1f)) {
                     Text(platform.accountName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val subtitle = listOfNotNull(platform.accountUsername?.let { "@$it" }, contentTypeLabel(platform.contentType))
@@ -343,7 +343,7 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: S
                         )
                     }
                 }
-                StatusBadge(label = platform.status.label(), color = platform.status.color())
+                PlatformStatusPill(platform.status)
             }
 
             platform.shownTexts().forEach { (text, value) ->
@@ -351,7 +351,7 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: S
                 Row(verticalAlignment = Alignment.Top) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            text = label.asLabel(),
+                            text = label,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -380,7 +380,7 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: S
 
             platform.platformUrl?.let { url ->
                 TextButton(onClick = { uriHandler.openUri(url) }, modifier = Modifier.testTag("platform-link-${platform.id}")) {
-                    Text(stringResource(R.string.detail_view_on, platform.platform.label).asLabel())
+                    Text(stringResource(R.string.detail_view_on, platform.platform.label))
                 }
             }
         }

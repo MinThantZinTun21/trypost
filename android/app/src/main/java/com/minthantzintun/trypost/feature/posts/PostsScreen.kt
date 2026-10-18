@@ -45,14 +45,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.MessageState
-import com.minthantzintun.trypost.core.designsystem.PlatformTag
-import com.minthantzintun.trypost.core.designsystem.StatusBadge
-import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.designsystem.StateMessage
+import com.minthantzintun.trypost.core.designsystem.PlatformLogo
+import com.minthantzintun.trypost.core.ui.PostStatusPill
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostTab
 import com.minthantzintun.trypost.core.model.toPlainText
-import com.minthantzintun.trypost.core.ui.color
 import com.minthantzintun.trypost.core.ui.LoadMoreWhenNearEnd
 import com.minthantzintun.trypost.core.ui.label
 import com.minthantzintun.trypost.core.ui.message
@@ -111,7 +109,7 @@ fun PostsScreen(
                     },
                     actions = {
                         TextButton(onClick = { isConfirmingSignOut = true }, modifier = Modifier.testTag("sign-out")) {
-                            Text(stringResource(R.string.sign_out).asLabel())
+                            Text(stringResource(R.string.sign_out))
                         }
                     },
                 )
@@ -120,7 +118,7 @@ fun PostsScreen(
                         Tab(
                             selected = tab == state.selectedTab,
                             onClick = { onSelectTab(tab) },
-                            text = { Text(stringResource(tab.titleRes()).asLabel(), maxLines = 1) },
+                            text = { Text(stringResource(tab.titleRes()), maxLines = 1) },
                             modifier = Modifier.testTag("tab-${tab.wire}"),
                         )
                     }
@@ -150,10 +148,10 @@ fun PostsScreen(
                 TextButton(onClick = {
                     isConfirmingSignOut = false
                     onSignOut()
-                }) { Text(stringResource(R.string.sign_out).asLabel()) }
+                }) { Text(stringResource(R.string.sign_out)) }
             },
             dismissButton = {
-                TextButton(onClick = { isConfirmingSignOut = false }) { Text(stringResource(R.string.cancel).asLabel()) }
+                TextButton(onClick = { isConfirmingSignOut = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -176,7 +174,8 @@ private fun TabContent(
             CircularProgressIndicator()
         }
         error != null && tabState.posts.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            MessageState(
+            StateMessage(
+                icon = R.drawable.ic_info,
                 title = stringResource(R.string.posts_error_title),
                 body = error.message(),
                 actionLabel = stringResource(R.string.retry),
@@ -200,7 +199,8 @@ private fun TabContent(
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("posts-list")) {
                     if (sections.isEmpty()) {
                         item {
-                            MessageState(
+                            StateMessage(
+                icon = R.drawable.ic_info,
                                 title = stringResource(tab.emptyTitleRes()),
                                 body = stringResource(tab.emptyBodyRes()),
                                 modifier = Modifier.testTag("posts-empty"),
@@ -228,7 +228,7 @@ private fun TabContent(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 Text(loadMoreError.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                                OutlinedButton(onClick = onLoadMore) { Text(stringResource(R.string.retry).asLabel()) }
+                                OutlinedButton(onClick = onLoadMore) { Text(stringResource(R.string.retry)) }
                             }
                         }
                     }
@@ -252,7 +252,7 @@ private fun DayHeader(day: LocalDate?) {
     }
 
     Text(
-        text = label.asLabel(),
+        text = label,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
@@ -288,10 +288,10 @@ private fun PostRow(post: Post, tab: PostTab, zone: ZoneId, onClick: () -> Unit)
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 itemVerticalAlignment = Alignment.CenterVertically,
             ) {
-                StatusBadge(label = post.status.label(), color = post.status.color())
+                PostStatusPill(post.status)
                 post.platforms.forEach { platform ->
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        PlatformTag(platform.platform)
+                        PlatformLogo(platform.platform)
                         Text(
                             text = platform.accountName,
                             style = MaterialTheme.typography.bodySmall,

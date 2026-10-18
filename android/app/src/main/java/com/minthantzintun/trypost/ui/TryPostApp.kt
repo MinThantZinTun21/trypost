@@ -30,7 +30,6 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.asLabel
 import com.minthantzintun.trypost.feature.detail.PostDetailRoute
 import com.minthantzintun.trypost.feature.edit.EditPostRoute
 import com.minthantzintun.trypost.feature.posts.PostsRoute
@@ -138,7 +137,7 @@ private fun SignedInGraph(navController: NavHostController, ownerName: String, m
                         onClick = { navController.navigate(EditPostDestination(post.id)) },
                         modifier = Modifier.testTag("edit"),
                     ) {
-                        Text(stringResource(R.string.edit).asLabel())
+                        Text(stringResource(R.string.edit))
                     }
                 },
             )

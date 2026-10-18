@@ -24,8 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.PlatformTag
-import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.designsystem.PlatformLogo
 import com.minthantzintun.trypost.core.ui.message
 
 /**
@@ -52,9 +51,9 @@ fun AccountFilter(
             modifier = Modifier.testTag("account-filter"),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                selected?.let { PlatformTag(it.platform) }
+                selected?.let { PlatformLogo(it.platform) }
                 Text(
-                    (selected?.label ?: allAccounts.takeIf { state.selectedAccountId == null } ?: stringResource(R.string.account_filter_one)).asLabel(),
+                    (selected?.label ?: allAccounts.takeIf { state.selectedAccountId == null } ?: stringResource(R.string.account_filter_one)),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -74,7 +73,7 @@ fun AccountFilter(
                 DropdownMenuItem(
                     text = {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            PlatformTag(account.platform)
+                            PlatformLogo(account.platform)
                             Text(account.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (!account.isConnected) {
                                 Text(

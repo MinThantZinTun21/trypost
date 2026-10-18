@@ -2,5 +2,6 @@
 <resources>
     <color name="lime">#FF9AE600</color>
     <color name="lime_ink">#FF35530E</color>
-    <color name="ink">#FF0A0A0A</color>
+    <color name="ink">#FF0E100C</color>
+    <color name="paper">#FFF8FAF2</color>
 </resources>

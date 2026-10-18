@@ -49,9 +49,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.core.data.ContentUriVideoSource
 import com.minthantzintun.trypost.core.data.VideoSource
-import com.minthantzintun.trypost.core.designsystem.MessageState
-import com.minthantzintun.trypost.core.designsystem.UnderlinedField
-import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.designsystem.StateMessage
+import com.minthantzintun.trypost.core.designsystem.FormField
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.Video
 import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
@@ -121,7 +120,7 @@ fun VideosScreen(
                         enabled = !state.isUploading,
                         modifier = Modifier.testTag("upload-video"),
                     ) {
-                        Text(stringResource(R.string.videos_upload).asLabel())
+                        Text(stringResource(R.string.videos_upload))
                     }
                 },
             )
@@ -161,10 +160,10 @@ fun VideosScreen(
                         onDelete(video.id)
                     },
                     modifier = Modifier.testTag("delete-video-confirm"),
-                ) { Text(stringResource(R.string.videos_delete).asLabel()) }
+                ) { Text(stringResource(R.string.videos_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmingDelete = null }) { Text(stringResource(R.string.cancel).asLabel()) }
+                TextButton(onClick = { confirmingDelete = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -174,7 +173,7 @@ fun VideosScreen(
             onDismissRequest = onDismissDeleteError,
             title = { Text(stringResource(R.string.videos_delete_failed)) },
             text = { Text(error.message()) },
-            confirmButton = { TextButton(onClick = onDismissDeleteError) { Text(stringResource(R.string.ok).asLabel()) } },
+            confirmButton = { TextButton(onClick = onDismissDeleteError) { Text(stringResource(R.string.ok)) } },
         )
     }
 }
@@ -192,7 +191,7 @@ private fun UploadDialog(
         title = { Text(stringResource(R.string.videos_name_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                UnderlinedField(
+                FormField(
                     value = name,
                     onValueChange = onNameChange,
                     label = stringResource(R.string.videos_name),
@@ -224,10 +223,10 @@ private fun UploadDialog(
                 onClick = { onUpload(name) },
                 enabled = name.isNotBlank() && !state.isUploading,
                 modifier = Modifier.testTag("upload-confirm"),
-            ) { Text(stringResource(R.string.videos_upload).asLabel()) }
+            ) { Text(stringResource(R.string.videos_upload)) }
         },
         dismissButton = {
-            TextButton(onClick = onCancel, enabled = !state.isUploading) { Text(stringResource(R.string.cancel).asLabel()) }
+            TextButton(onClick = onCancel, enabled = !state.isUploading) { Text(stringResource(R.string.cancel)) }
         },
     )
 }
@@ -248,7 +247,8 @@ private fun VideoList(
         state.isLoading && !state.hasLoaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        error != null && !state.hasLoaded -> MessageState(
+        error != null && !state.hasLoaded -> StateMessage(
+                icon = R.drawable.ic_info,
             title = stringResource(R.string.videos_error_title),
             body = error.message(),
             actionLabel = stringResource(R.string.retry),
@@ -266,7 +266,8 @@ private fun VideoList(
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("videos-list")) {
                     if (state.videos.isEmpty()) {
                         item {
-                            MessageState(
+                            StateMessage(
+                icon = R.drawable.ic_info,
                                 title = stringResource(R.string.videos_empty_title),
                                 body = stringResource(R.string.videos_empty_body),
                                 modifier = Modifier.testTag("videos-empty"),
@@ -294,7 +295,7 @@ private fun VideoList(
                         item {
                             Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(loadMoreError.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                                OutlinedButton(onClick = onLoadMore) { Text(stringResource(R.string.retry).asLabel()) }
+                                OutlinedButton(onClick = onLoadMore) { Text(stringResource(R.string.retry)) }
                             }
                         }
                     }
@@ -332,7 +333,7 @@ private fun VideoRow(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete: 
             CircularProgressIndicator(modifier = Modifier.padding(12.dp).size(20.dp), strokeWidth = 2.dp)
         } else {
             TextButton(onClick = onDelete, modifier = Modifier.testTag("delete-video-${video.id}")) {
-                Text(stringResource(R.string.videos_delete).asLabel(), color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.videos_delete), color = MaterialTheme.colorScheme.error)
             }
         }
     }
