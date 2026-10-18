@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Support\PostStatusRules;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\URL;
 
 /**
  * A Post for the Mobile app (ADR 0010). Times are ISO 8601 in UTC; the app
@@ -37,6 +38,8 @@ class PostResource extends JsonResource
                 'url' => $item->url,
                 'mime_type' => $item->mime_type,
                 'original_filename' => $item->original_filename,
+                'download_url' => URL::signedRoute('media.download', ['media' => $item->id]),
+                'file_name' => $item->filename(),
             ])->values()->all(),
             'platforms' => PostPlatformResource::collection($this->whenLoaded('postPlatforms')),
         ];

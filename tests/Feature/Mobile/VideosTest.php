@@ -142,6 +142,33 @@ test('videos are listed newest first', function () {
         ->assertJsonPath('meta.per_page', (int) config('app.pagination.default'));
 });
 
+test('a video carries a download link named after the video', function (string $name, string $fileName) {
+    $video = Video::factory()->for($this->workspace)->withFile()->create(['name' => $name]);
+    Storage::put($video->file->path, 'video bytes');
+
+    $response = $this->getJson(route('mobile.v1.videos.index'), $this->headers)
+        ->assertOk()
+        ->assertJsonPath('data.0.file_name', $fileName);
+
+    $this->get($response->json('data.0.download_url'))
+        ->assertOk()
+        ->assertDownload();
+})->with([
+    'a plain name' => ['Beach day', 'Beach day.mp4'],
+    'a name with the extension' => ['Beach day.MP4', 'Beach day.MP4'],
+    'a name with slashes' => ['Day 1/2\\3', 'Day 1-2-3.mp4'],
+]);
+
+test('a video without a file has no download link', function () {
+    Video::factory()->for($this->workspace)->create();
+
+    $this->getJson(route('mobile.v1.videos.index'), $this->headers)
+        ->assertOk()
+        ->assertJsonStructure(['data' => [['download_url', 'file_name']]])
+        ->assertJsonPath('data.0.download_url', null)
+        ->assertJsonPath('data.0.file_name', null);
+});
+
 test('deleting a video removes it and its file', function () {
     $video = Video::factory()->for($this->workspace)->withFile()->create();
     $path = $video->file->path;

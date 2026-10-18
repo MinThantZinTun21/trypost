@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     config()->set('trypost.mobile.token', 'mobile-test-token');
@@ -81,6 +84,25 @@ test('an empty meta is an object, not a list', function () {
 
     expect($this->getJson(route('mobile.v1.posts.show', $post), $this->headers)->assertOk()->getContent())
         ->toContain('"meta":{}');
+});
+
+test('a post\'s media carry a download link that needs no token', function () {
+    Storage::fake();
+    $video = Media::factory()->video()->for($this->workspace, 'mediable')->create(['original_filename' => 'Beach day.mp4']);
+    Storage::put($video->path, 'video bytes');
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->owner->id,
+        'media' => [MediaItem::fromMedia($video)->toArray()],
+    ]);
+
+    $response = $this->getJson(route('mobile.v1.posts.show', $post), $this->headers)
+        ->assertOk()
+        ->assertJsonPath('media.0.file_name', 'Beach day.mp4');
+
+    $this->get($response->json('media.0.download_url'))
+        ->assertOk()
+        ->assertDownload('Beach day.mp4');
 });
 
 test('another workspace\'s post is not found', function () {
