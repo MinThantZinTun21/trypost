@@ -59,6 +59,14 @@ class Video extends Model
     }
 
     /**
+     * The file's permanent signed Download link. Null without a file.
+     */
+    public function downloadUrl(): ?string
+    {
+        return $this->file === null ? null : MediaItem::fromMedia($this->file)->downloadUrl();
+    }
+
+    /**
      * The name the file downloads under: the Video's name with the file's
      * extension, unless the name already ends in it. Null without a file.
      */
@@ -71,7 +79,7 @@ class Video extends Model
         $name = str_replace(['/', '\\'], '-', $this->name);
         $extension = pathinfo(MediaItem::fromMedia($this->file)->filename(), PATHINFO_EXTENSION);
 
-        if ($extension === '' || str_ends_with(strtolower($name), '.'.strtolower($extension))) {
+        if ($extension === '' || str_ends_with(strtolower($name), strtolower(".{$extension}"))) {
             return $name;
         }
 

@@ -118,8 +118,8 @@ fun PostDetailScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
-    onDownload: (DownloadLink) -> Unit = {},
-    onDownloadOutcomeShown: () -> Unit = {},
+    onDownload: (DownloadLink) -> Unit,
+    onDownloadOutcomeShown: () -> Unit,
     actions: @Composable (Post) -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -205,7 +205,11 @@ private fun PostDetailContent(
         val contentLabel = stringResource(R.string.detail_content)
         Section(
             title = contentLabel,
-            trailing = content.takeIf { it.isNotBlank() }?.let { { CopyButton(contentLabel, "copy-content") { onCopy(contentLabel, it) } } },
+            trailing = {
+                if (content.isNotBlank()) {
+                    CopyButton(contentLabel, "copy-content") { onCopy(contentLabel, content) }
+                }
+            },
         ) {
             SelectionContainer {
                 Text(

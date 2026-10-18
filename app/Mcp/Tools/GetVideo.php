@@ -6,7 +6,6 @@ namespace App\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
-use Illuminate\Support\Facades\URL;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -34,7 +33,7 @@ class GetVideo extends Tool
             'video' => [
                 ...ListVideos::summary($video),
                 'mime_type' => $video->file->mime_type,
-                'download_url' => URL::signedRoute('media.download', ['media' => $video->file->id]),
+                'download_url' => $video->downloadUrl(),
             ],
         ]);
     }

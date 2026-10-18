@@ -10,7 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -31,7 +32,8 @@ fun rememberDownloadAction(snackbarHostState: SnackbarHostState, onDownload: (Do
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val refused = stringResource(R.string.download_needs_storage)
-    var waiting by remember { mutableStateOf<DownloadLink?>(null) }
+    // Saveable, so a press survives the Activity being recreated behind the permission dialog.
+    var waiting by rememberSaveable(stateSaver = DownloadLinkSaver) { mutableStateOf<DownloadLink?>(null) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val link = waiting
         waiting = null
@@ -55,18 +57,29 @@ fun rememberDownloadAction(snackbarHostState: SnackbarHostState, onDownload: (Do
     }
 }
 
-/** Shows how the last download went once, then clears it. */
+/**
+ * Shows how the last download went once. The outcome is cleared before the
+ * snackbar shows, so leaving the screen never replays it and a second press
+ * shows its own message.
+ */
 @Composable
 fun DownloadOutcomeSnackbar(outcome: DownloadOutcome?, snackbarHostState: SnackbarHostState, onShown: () -> Unit) {
-    val started = stringResource(R.string.download_started)
-    val failed = stringResource(R.string.download_failed)
+    val scope = rememberCoroutineScope()
+    val message = when (outcome) {
+        null -> null
+        DownloadOutcome.Started -> stringResource(R.string.download_started)
+        DownloadOutcome.Failed -> stringResource(R.string.download_failed)
+    }
 
     LaunchedEffect(outcome) {
-        when (outcome) {
-            null -> return@LaunchedEffect
-            DownloadOutcome.Started -> snackbarHostState.showSnackbar(started)
-            DownloadOutcome.Failed -> snackbarHostState.showSnackbar(failed)
+        if (message != null) {
+            onShown()
+            scope.launch { snackbarHostState.showSnackbar(message) }
         }
-        onShown()
     }
 }
+
+private val DownloadLinkSaver = listSaver<DownloadLink?, String?>(
+    save = { link -> if (link == null) emptyList() else listOf(link.url, link.fileName, link.mimeType) },
+    restore = { saved -> saved.takeIf { it.size == 3 }?.let { (url, fileName, mimeType) -> DownloadLink(url!!, fileName!!, mimeType) } },
+)

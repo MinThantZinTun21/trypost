@@ -7,6 +7,7 @@ namespace App\Dto;
 use App\Enums\Media\Type;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Media;
+use Illuminate\Support\Facades\URL;
 
 class MediaItem
 {
@@ -77,6 +78,15 @@ class MediaItem
     public function filename(): string
     {
         return $this->original_filename ?: basename($this->path);
+    }
+
+    /**
+     * The permanent signed Download link (`media.download`): it needs no
+     * sign-in, so Telegram and the Mobile app can hand it out (ADR 0009).
+     */
+    public function downloadUrl(): string
+    {
+        return URL::signedRoute('media.download', ['media' => $this->id]);
     }
 
     public function isVideo(): bool

@@ -7,7 +7,6 @@ namespace App\Http\Resources\Mobile\V1;
 use App\Models\Video;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\URL;
 
 /**
  * @mixin Video
@@ -25,7 +24,7 @@ class VideoResource extends JsonResource
             'size' => $this->file?->size,
             'duration' => data_get($this->file?->meta, 'duration'),
             'created_at' => $this->created_at?->toIso8601String(),
-            'download_url' => $this->file === null ? null : URL::signedRoute('media.download', ['media' => $this->file->id]),
+            'download_url' => $this->downloadUrl(),
             'file_name' => $this->downloadName(),
         ];
     }
