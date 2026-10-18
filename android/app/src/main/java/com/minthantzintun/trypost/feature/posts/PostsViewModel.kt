@@ -37,7 +37,7 @@ data class PostsUiState(
     val tabs: Map<PostTab, TabState> = PostTab.entries.associateWith { TabState() },
     /** The Social account every tab is filtered to, or null for all of them. */
     val selectedAccountId: String? = null,
-    /** The picker's accounts, loaded when it opens. */
+    /** The filter's accounts, loaded each time the Posts screen opens. */
     val accounts: List<SocialAccount> = emptyList(),
     val isLoadingAccounts: Boolean = false,
     val accountsError: ApiError? = null,
@@ -73,7 +73,7 @@ class PostsViewModel @Inject constructor(
         }
     }
 
-    /** Loads the picker's Social accounts, keeping the last list while it does. */
+    /** Loads the filter's Social accounts, keeping the last list while it does. */
     fun loadAccounts() {
         if (_state.value.isLoadingAccounts) {
             return

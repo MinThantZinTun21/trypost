@@ -58,16 +58,16 @@ fun TryPostApp(viewModel: RootViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        when (val current = state) {
+        when (state) {
             RootState.Loading -> Box(Modifier.fillMaxSize())
             RootState.SignedOut -> SignInRoute()
-            is RootState.SignedIn -> SignedInNavHost(ownerName = current.ownerName)
+            is RootState.SignedIn -> SignedInNavHost()
         }
     }
 }
 
 @Composable
-private fun SignedInNavHost(ownerName: String) {
+private fun SignedInNavHost() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
@@ -98,7 +98,6 @@ private fun SignedInNavHost(ownerName: String) {
     ) { padding ->
         SignedInGraph(
             navController = navController,
-            ownerName = ownerName,
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         )
     }
@@ -125,11 +124,10 @@ private fun NavHostController.switchTo(destination: Any) {
 }
 
 @Composable
-private fun SignedInGraph(navController: NavHostController, ownerName: String, modifier: Modifier) {
+private fun SignedInGraph(navController: NavHostController, modifier: Modifier) {
     NavHost(navController = navController, startDestination = PostsDestination, modifier = modifier) {
         composable<PostsDestination> {
             PostsRoute(
-                ownerName = ownerName,
                 onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) },
                 onOpenSettings = { navController.navigate(SettingsDestination) },
             )

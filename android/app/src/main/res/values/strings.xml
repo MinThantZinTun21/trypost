@@ -62,6 +62,13 @@
     <string name="posts_tomorrow">Tomorrow</string>
     <string name="posts_yesterday">Yesterday</string>
     <string name="posts_no_text">(No text)</string>
+    <string name="posts_in_minutes">in %1$d min</string>
+    <string name="posts_in_hours">in %1$d h</string>
+    <string name="posts_in_hours_minutes">in %1$d h %2$d min</string>
+    <string name="posts_in_days">in %1$d d</string>
+    <string name="posts_video_thumbnail">Video</string>
+    <string name="posts_accounts_retry">Couldn\'t load accounts. Try again</string>
+    <string name="posts_more_accounts">+%1$d</string>
     <plurals name="posts_media_count">
         <item quantity="one">%1$d media file</item>
         <item quantity="other">%1$d media files</item>
