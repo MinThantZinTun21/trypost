@@ -2,7 +2,6 @@ package com.minthantzintun.trypost.feature.detail
 
 import java.time.Duration
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
@@ -22,7 +21,7 @@ private const val ROUND_TO_SECONDS = 5 * 60L
  * saving change keeps 09:00 at 09:00. A pick not in the future is dropped.
  */
 fun quickReschedulePicks(now: Instant, current: Instant?, zone: ZoneId): List<QuickPick> {
-    val today = LocalDate.ofInstant(now, zone)
+    val today = now.atZone(zone).toLocalDate()
     val inAnHour = now.plus(Duration.ofHours(1)).epochSecond.let { seconds ->
         Instant.ofEpochSecond((seconds + ROUND_TO_SECONDS - 1) / ROUND_TO_SECONDS * ROUND_TO_SECONDS)
     }
