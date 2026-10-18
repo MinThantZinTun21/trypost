@@ -22,7 +22,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -42,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.core.designsystem.ConfirmDialog
 import com.minthantzintun.trypost.core.designsystem.IconSize
+import com.minthantzintun.trypost.core.designsystem.Panel
 import com.minthantzintun.trypost.core.designsystem.SectionHeader
 import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.settings.ThemeMode
@@ -173,13 +173,7 @@ private fun ThemePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
 
 @Composable
 private fun SettingsCard(content: @Composable () -> Unit) {
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column { content() }
-    }
+    Panel { Column { content() } }
 }
 
 @Composable

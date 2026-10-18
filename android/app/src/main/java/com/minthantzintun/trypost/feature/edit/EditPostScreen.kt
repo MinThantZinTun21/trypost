@@ -15,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,7 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
+import com.minthantzintun.trypost.core.designsystem.ButtonLabel
 import com.minthantzintun.trypost.core.designsystem.ConfirmDialog
+import com.minthantzintun.trypost.core.designsystem.ErrorMessage
 import com.minthantzintun.trypost.core.designsystem.FormField
 import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.PlatformLogo
@@ -115,12 +116,7 @@ fun EditPostScreen(
                             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                             modifier = Modifier.padding(end = Spacing.sm).testTag("edit-save"),
                         ) {
-                            if (state.isSaving) {
-                                CircularProgressIndicator(modifier = Modifier.size(IconSize.sm), strokeWidth = 2.dp)
-                            } else {
-                                Icon(painterResource(R.drawable.ic_check), contentDescription = null, modifier = Modifier.size(IconSize.sm))
-                            }
-                            Text(stringResource(R.string.save), modifier = Modifier.padding(start = Spacing.sm))
+                            ButtonLabel(icon = R.drawable.ic_check, label = stringResource(R.string.save), isBusy = state.isSaving)
                         }
                     }
                 },
@@ -157,15 +153,7 @@ fun EditPostScreen(
                     verticalArrangement = Arrangement.spacedBy(Spacing.lg),
                 ) {
                     state.saveError?.let {
-                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.testTag("edit-error")) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_status_failed),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(IconSize.sm),
-                            )
-                            Text(text = it.message(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-                        }
+                        ErrorMessage(lines = listOf(it.message()), modifier = Modifier.testTag("edit-error"))
                     }
 
                     FormField(

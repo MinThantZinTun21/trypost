@@ -167,7 +167,7 @@ class PostsViewModelTest {
         """{"id":"a2","platform":"tiktok","display_label":"@me","status":"disconnected"}]}"""
 
     @Test
-    fun `opening the account picker lists the social accounts, disconnected ones marked`() = runTest {
+    fun `opening Posts loads the social accounts for the filter, disconnected ones marked`() = runTest {
         server.enqueue(postsPage(emptyList()))
         val viewModel = viewModel()
         viewModel.settled(PostTab.Scheduled)

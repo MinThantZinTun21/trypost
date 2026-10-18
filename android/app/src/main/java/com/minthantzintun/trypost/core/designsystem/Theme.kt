@@ -61,7 +61,6 @@ object IconSize {
     val xs = 14.dp
     val sm = 18.dp
     val md = 24.dp
-    val lg = 40.dp
     val touchTarget = 48.dp
 }
 

@@ -2,6 +2,7 @@ package com.minthantzintun.trypost.feature.detail
 
 import android.text.format.DateFormat
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,11 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,9 +46,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import com.minthantzintun.trypost.R
+import com.minthantzintun.trypost.core.designsystem.ButtonLabel
 import com.minthantzintun.trypost.core.designsystem.ConfirmDialog
+import com.minthantzintun.trypost.core.designsystem.ErrorMessage
 import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.model.Post
@@ -107,12 +107,7 @@ fun ScheduleBar(
                     contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     modifier = Modifier.weight(1f).height(IconSize.touchTarget).testTag("reschedule"),
                 ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(modifier = Modifier.size(IconSize.sm), strokeWidth = 2.dp)
-                    } else {
-                        Icon(painterResource(R.drawable.ic_reschedule), contentDescription = null, modifier = Modifier.size(IconSize.sm))
-                    }
-                    Text(stringResource(R.string.reschedule), modifier = Modifier.padding(start = Spacing.sm))
+                    ButtonLabel(icon = R.drawable.ic_reschedule, label = stringResource(R.string.reschedule), isBusy = isSaving)
                 }
                 if (post.status == PostStatus.Scheduled) {
                     FilledTonalButton(
@@ -121,8 +116,7 @@ fun ScheduleBar(
                         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                         modifier = Modifier.weight(1f).height(IconSize.touchTarget).testTag("post-now"),
                     ) {
-                        Icon(painterResource(R.drawable.ic_send), contentDescription = null, modifier = Modifier.size(IconSize.sm))
-                        Text(stringResource(R.string.post_now), modifier = Modifier.padding(start = Spacing.sm))
+                        ButtonLabel(icon = R.drawable.ic_send, label = stringResource(R.string.post_now))
                     }
                 }
             }
@@ -217,7 +211,7 @@ private fun RescheduleSheet(
                     leadingContent = { Icon(painterResource(pick.kind.icon()), contentDescription = null) },
                     colors = colors,
                     modifier = Modifier
-                        .clickableRow { onPick(pick.at) }
+                        .clickable(role = Role.Button) { onPick(pick.at) }
                         .testTag("reschedule-pick-${pick.kind.name}"),
                 )
             }
@@ -226,14 +220,11 @@ private fun RescheduleSheet(
                 headlineContent = { Text(stringResource(R.string.reschedule_custom)) },
                 leadingContent = { Icon(painterResource(R.drawable.ic_calendar), contentDescription = null) },
                 colors = colors,
-                modifier = Modifier.clickableRow(onCustom).testTag("reschedule-custom"),
+                modifier = Modifier.clickable(role = Role.Button, onClick = onCustom).testTag("reschedule-custom"),
             )
         }
     }
 }
-
-private fun Modifier.clickableRow(onClick: () -> Unit): Modifier =
-    this.then(Modifier.clickable(role = Role.Button, onClick = onClick))
 
 @DrawableRes
 private fun QuickPickKind.icon(): Int = when (this) {
@@ -243,6 +234,7 @@ private fun QuickPickKind.icon(): Int = when (this) {
     QuickPickKind.OneDayLater -> R.drawable.ic_repeat
 }
 
+@StringRes
 private fun QuickPickKind.label(): Int = when (this) {
     QuickPickKind.InOneHour -> R.string.reschedule_in_one_hour
     QuickPickKind.Tonight -> R.string.reschedule_tonight
@@ -323,25 +315,9 @@ private fun ActionErrorMessages(post: Post, error: ApiError) {
         else -> listOf(error.message())
     }
 
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ErrorMessage(
+        lines = lines,
+        title = stringResource(R.string.action_error_title),
         modifier = Modifier.testTag("action-error"),
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_status_failed),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(IconSize.sm),
-        )
-        Column {
-            Text(
-                text = stringResource(R.string.action_error_title),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.error,
-            )
-            lines.forEach {
-                Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            }
-        }
-    }
+    )
 }

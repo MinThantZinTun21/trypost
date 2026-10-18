@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -51,7 +50,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.minthantzintun.trypost.R
+import com.minthantzintun.trypost.core.designsystem.ActionIconButton
+import com.minthantzintun.trypost.core.designsystem.ErrorMessage
 import com.minthantzintun.trypost.core.designsystem.IconSize
+import com.minthantzintun.trypost.core.designsystem.Panel
 import com.minthantzintun.trypost.core.designsystem.PlatformLogo
 import com.minthantzintun.trypost.core.designsystem.SectionHeader
 import com.minthantzintun.trypost.core.designsystem.Skeleton
@@ -66,7 +68,6 @@ import com.minthantzintun.trypost.core.model.PostPlatform
 import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.model.shownTexts
 import com.minthantzintun.trypost.core.model.toPlainText
-import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
 import com.minthantzintun.trypost.core.ui.PlatformStatusPill
 import com.minthantzintun.trypost.core.ui.PostStatusPill
@@ -101,6 +102,7 @@ fun PostDetailRoute(
         onReschedule = viewModel::reschedule,
         onPublishNow = viewModel::publishNow,
         onSendToTelegram = viewModel::sendToTelegram,
+        onTelegramResultShown = viewModel::dismissTelegramNotice,
     )
 }
 
@@ -117,6 +119,7 @@ fun PostDetailScreen(
     onReschedule: (Instant) -> Unit,
     onPublishNow: () -> Unit,
     onSendToTelegram: () -> Unit,
+    onTelegramResultShown: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val download = rememberDownloadAction(snackbarHostState, onDownload)
@@ -124,6 +127,7 @@ fun PostDetailScreen(
     val post = state.post
 
     DownloadOutcomeSnackbar(state.downloadOutcome, snackbarHostState, onDownloadOutcomeShown)
+    TelegramResultSnackbar(state.telegramNotice, state.telegramError, snackbarHostState, onTelegramResultShown)
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -139,9 +143,12 @@ fun PostDetailScreen(
                     if (post != null) {
                         TelegramButton(post = post, isSending = state.isSendingToTelegram, onSend = onSendToTelegram)
                         if (post.isEditable) {
-                            IconButton(onClick = { onEdit(post.id) }, modifier = Modifier.testTag("edit")) {
-                                Icon(painterResource(R.drawable.ic_edit), contentDescription = stringResource(R.string.edit_texts))
-                            }
+                            ActionIconButton(
+                                icon = R.drawable.ic_edit,
+                                label = stringResource(R.string.edit_texts),
+                                onClick = { onEdit(post.id) },
+                                modifier = Modifier.testTag("edit"),
+                            )
                         }
                     }
                 },
@@ -178,8 +185,6 @@ fun PostDetailScreen(
                     PostDetailContent(
                         post = post,
                         error = error?.message(),
-                        telegramNotice = state.telegramNotice,
-                        telegramError = state.telegramError,
                         onDownload = download,
                         onCopy = copy,
                     )
@@ -193,8 +198,6 @@ fun PostDetailScreen(
 private fun PostDetailContent(
     post: Post,
     error: String?,
-    telegramNotice: String?,
-    telegramError: ApiError?,
     onDownload: (DownloadLink) -> Unit,
     onCopy: (label: String, text: String) -> Unit,
 ) {
@@ -221,7 +224,6 @@ private fun PostDetailContent(
             if (error != null) {
                 Text(text = error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            TelegramMessages(notice = telegramNotice, error = telegramError)
         }
 
         val content = post.content.toPlainText()
@@ -282,17 +284,6 @@ private fun Post.whenLine(zone: ZoneId): String {
 
 private fun Instant.formatted(zone: ZoneId): String =
     atZone(zone).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT))
-
-/** A tonal block that groups one part of the Post. */
-@Composable
-private fun Panel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = modifier.fillMaxWidth(),
-        content = content,
-    )
-}
 
 @Composable
 private fun MediaThumbnail(item: MediaItem, onDownload: (DownloadLink) -> Unit) {
@@ -390,15 +381,7 @@ private fun PlatformCard(platform: PostPlatform, zone: ZoneId, onCopy: (label: S
             }
 
             platform.errorMessage?.takeIf { platform.status == PlatformStatus.Failed || platform.status == PlatformStatus.Retrying }?.let {
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.testTag("platform-error-${platform.id}")) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_status_failed),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(IconSize.sm),
-                    )
-                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                }
+                ErrorMessage(lines = listOf(it), modifier = Modifier.testTag("platform-error-${platform.id}"))
             }
 
             platform.publishedAt?.let {

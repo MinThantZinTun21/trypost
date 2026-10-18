@@ -1,7 +1,5 @@
 package com.minthantzintun.trypost.feature.signin
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -32,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentType
@@ -46,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
+import com.minthantzintun.trypost.core.designsystem.AppMark
 import com.minthantzintun.trypost.core.designsystem.FormField
 import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.Spacing
@@ -99,13 +97,7 @@ fun SignInScreen(
                 modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_launcher_foreground),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(colorResource(R.color.lime), MaterialTheme.shapes.large),
-                )
+                AppMark()
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
                     text = stringResource(R.string.sign_in_title),

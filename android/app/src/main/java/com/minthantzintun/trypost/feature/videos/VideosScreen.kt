@@ -31,7 +31,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
@@ -66,7 +65,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.core.data.ContentUriVideoSource
 import com.minthantzintun.trypost.core.data.VideoSource
+import com.minthantzintun.trypost.core.designsystem.ActionIconButton
+import com.minthantzintun.trypost.core.designsystem.ButtonLabel
 import com.minthantzintun.trypost.core.designsystem.ConfirmDialog
+import com.minthantzintun.trypost.core.designsystem.ErrorMessage
 import com.minthantzintun.trypost.core.designsystem.FormField
 import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.Skeleton
@@ -256,19 +258,11 @@ private fun UploadSheet(
                 }
             }
             state.uploadError?.let { error ->
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.testTag("upload-error")) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_status_failed),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(IconSize.sm),
-                    )
-                    Text(
-                        "${stringResource(R.string.videos_upload_failed)} ${error.message()}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+                ErrorMessage(
+                    lines = listOf(error.message()),
+                    title = stringResource(R.string.videos_upload_failed),
+                    modifier = Modifier.testTag("upload-error"),
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -281,12 +275,7 @@ private fun UploadSheet(
                     contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     modifier = Modifier.testTag("upload-confirm"),
                 ) {
-                    if (state.isUploading) {
-                        CircularProgressIndicator(modifier = Modifier.size(IconSize.sm), strokeWidth = 2.dp)
-                    } else {
-                        Icon(painterResource(R.drawable.ic_upload), contentDescription = null, modifier = Modifier.size(IconSize.sm))
-                    }
-                    Text(stringResource(R.string.videos_upload), modifier = Modifier.padding(start = Spacing.sm))
+                    ButtonLabel(icon = R.drawable.ic_upload, label = stringResource(R.string.videos_upload), isBusy = state.isUploading)
                 }
             }
         }
@@ -415,12 +404,12 @@ private fun VideoCard(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete:
                 }
             } else {
                 Box {
-                    IconButton(onClick = { isMenuOpen = true }, modifier = Modifier.testTag("video-menu-${video.id}")) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_more),
-                            contentDescription = stringResource(R.string.videos_more_options, video.name),
-                        )
-                    }
+                    ActionIconButton(
+                        icon = R.drawable.ic_more,
+                        label = stringResource(R.string.videos_more_options, video.name),
+                        onClick = { isMenuOpen = true },
+                        modifier = Modifier.testTag("video-menu-${video.id}"),
+                    )
                     DropdownMenu(expanded = isMenuOpen, onDismissRequest = { isMenuOpen = false }) {
                         video.download?.let { link ->
                             DropdownMenuItem(

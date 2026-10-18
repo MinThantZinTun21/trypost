@@ -8,7 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.core.designsystem.TryPostTheme
@@ -29,12 +29,11 @@ class MainActivity : ComponentActivity() {
             val darkTheme = themeMode?.isDark(isSystemInDarkTheme()) ?: isSystemInDarkTheme()
 
             // The system bar icons follow the app's theme, not the phone's.
-            DisposableEffect(darkTheme) {
+            LaunchedEffect(darkTheme) {
                 enableEdgeToEdge(
                     statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { darkTheme },
                     navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { darkTheme },
                 )
-                onDispose {}
             }
 
             if (themeMode != null) {

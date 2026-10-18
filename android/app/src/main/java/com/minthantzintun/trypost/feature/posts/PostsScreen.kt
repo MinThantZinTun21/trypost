@@ -23,7 +23,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -49,9 +48,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import coil3.compose.AsyncImage
 import com.minthantzintun.trypost.R
+import com.minthantzintun.trypost.core.designsystem.ActionIconButton
 import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.PlatformLogo
 import com.minthantzintun.trypost.core.designsystem.Skeleton
@@ -116,9 +119,12 @@ fun PostsScreen(
                 TopAppBar(
                     title = { Text(stringResource(R.string.posts_title)) },
                     actions = {
-                        IconButton(onClick = onOpenSettings, modifier = Modifier.testTag("settings")) {
-                            Icon(painterResource(R.drawable.ic_settings), contentDescription = stringResource(R.string.settings_title))
-                        }
+                        ActionIconButton(
+                            icon = R.drawable.ic_settings,
+                            label = stringResource(R.string.settings_title),
+                            onClick = onOpenSettings,
+                            modifier = Modifier.testTag("settings"),
+                        )
                     },
                 )
                 PrimaryTabRow(selectedTabIndex = state.selectedTab.ordinal) {
@@ -177,10 +183,13 @@ private fun TabContent(
             val zone = remember { ZoneId.systemDefault() }
             val sections = remember(tabState.posts, tab, zone) { groupByDay(tabState.posts, tab, zone) }
             val listState = remember(tab) { LazyListState() }
-            val now by produceState(Instant.now()) {
-                while (true) {
-                    delay(30_000)
-                    value = Instant.now()
+            val lifecycle = LocalLifecycleOwner.current.lifecycle
+            val now by produceState(Instant.now(), lifecycle) {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    while (true) {
+                        value = Instant.now()
+                        delay(30_000)
+                    }
                 }
             }
 
@@ -339,7 +348,7 @@ private fun Accounts(post: Post) {
     val first = post.platforms.firstOrNull() ?: return
 
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-        post.platforms.distinctBy { it.platform }.forEach { PlatformLogo(it.platform, size = IconSize.xs + 2.dp) }
+        post.platforms.distinctBy { it.platform }.forEach { PlatformLogo(it.platform, size = IconSize.sm) }
         Spacer(Modifier.width(Spacing.xxs))
         Text(
             text = first.accountName,
