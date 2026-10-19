@@ -105,7 +105,7 @@ A video file the Owner uploads from the Mobile app, with a name, for the Assista
 _Avoid_: Library item, asset, clip, media
 
 **Task**:
-One of the Owner's to-dos in the Mobile app: a title, a status (To do, In progress, Done), a priority and an optional due. Not a Post and never published.
+One of the Owner's to-dos in the Mobile app: a title or a Markdown body (or both; the body may hold checkboxes), a status (To do, In progress, Done), a priority, an optional due, an optional colour and a pin. Not a Post and never published.
 _Avoid_: Todo, job, ticket
 
 **Task tag**:

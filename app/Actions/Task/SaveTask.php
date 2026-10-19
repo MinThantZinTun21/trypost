@@ -15,7 +15,7 @@ class SaveTask
      * Creates the Task, or replaces an existing one's fields, and gives it
      * exactly the given Task tags.
      *
-     * @param  array{title: string, description: ?string, priority: int, due_at: mixed, due_all_day: bool}  $attributes
+     * @param  array{title: ?string, description: ?string, priority: int, color: ?string, pinned: bool, due_at: mixed, due_all_day: bool}  $attributes
      * @param  list<string>  $taskTagIds
      */
     public static function execute(Workspace $workspace, User $user, ?Task $task, array $attributes, array $taskTagIds): Task
@@ -27,6 +27,8 @@ class SaveTask
                 'title' => data_get($attributes, 'title'),
                 'description' => data_get($attributes, 'description'),
                 'priority' => data_get($attributes, 'priority'),
+                'color' => data_get($attributes, 'color'),
+                'pinned' => data_get($attributes, 'pinned', false),
                 'due_at' => data_get($attributes, 'due_at'),
                 'due_all_day' => data_get($attributes, 'due_all_day'),
             ])->save();

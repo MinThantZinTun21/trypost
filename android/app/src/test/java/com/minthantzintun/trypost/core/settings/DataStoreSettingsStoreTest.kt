@@ -40,4 +40,17 @@ class DataStoreSettingsStoreTest {
 
         assertEquals(ThemeMode.System, DataStoreSettingsStore(dataStore).themeMode.first())
     }
+
+    @Test
+    fun `the Tasks layout is a grid until one is chosen, then keeps it`() = runTest(UnconfinedTestDispatcher()) {
+        val dataStore = store()
+        val settings = DataStoreSettingsStore(dataStore)
+
+        assertEquals(TaskLayout.Grid, settings.taskLayout.first())
+
+        settings.setTaskLayout(TaskLayout.List)
+
+        assertEquals(TaskLayout.List, DataStoreSettingsStore(dataStore).taskLayout.first())
+        assertEquals(ThemeMode.System, DataStoreSettingsStore(dataStore).themeMode.first())
+    }
 }

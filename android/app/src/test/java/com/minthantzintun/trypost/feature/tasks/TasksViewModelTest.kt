@@ -4,7 +4,9 @@ import com.minthantzintun.trypost.core.data.TasksRepository
 import com.minthantzintun.trypost.core.model.TaskStatus
 import com.minthantzintun.trypost.core.model.TaskTab
 import com.minthantzintun.trypost.core.network.ApiError
+import com.minthantzintun.trypost.core.settings.TaskLayout
 import com.minthantzintun.trypost.testing.FakeSessionStore
+import com.minthantzintun.trypost.testing.FakeSettingsStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
 import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.session
@@ -29,6 +31,7 @@ class TasksViewModelTest {
 
     private val server = MockWebServer()
     private lateinit var repository: TasksRepository
+    private val settingsStore = FakeSettingsStore()
 
     @Before
     fun setUp() {
@@ -41,7 +44,7 @@ class TasksViewModelTest {
         server.close()
     }
 
-    private fun viewModel(): TasksViewModel = TasksViewModel(repository)
+    private fun viewModel(): TasksViewModel = TasksViewModel(repository, settingsStore)
 
     /** Waits until [tab] has loaded [ids] (or failed), so a reset in between never passes. */
     private suspend fun TasksViewModel.loaded(tab: TaskTab, vararg ids: String): TaskTabState =
@@ -237,5 +240,18 @@ class TasksViewModelTest {
 
         assertTrue(tab.error is ApiError.Server)
         assertTrue(tab.tasks.isEmpty())
+    }
+
+    @Test
+    fun `the layout follows the stored choice and the toggle keeps the other one`() = runTest {
+        server.enqueue(tasksPage(emptyList()))
+        val viewModel = viewModel()
+
+        assertEquals(TaskLayout.Grid, viewModel.layout.first())
+
+        viewModel.toggleLayout()
+
+        assertEquals(TaskLayout.List, viewModel.layout.first { it == TaskLayout.List })
+        assertEquals(TaskLayout.List, settingsStore.taskLayout.value)
     }
 }

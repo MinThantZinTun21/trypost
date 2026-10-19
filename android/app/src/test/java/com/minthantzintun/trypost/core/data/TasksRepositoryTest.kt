@@ -129,6 +129,30 @@ class TasksRepositoryTest {
     }
 
     @Test
+    fun `a Task without a title reads its colour and pin`() = runTest {
+        server.enqueue(json(taskJson("t1", title = null, description = "- [ ] Milk", color = "yellow", pinned = true)))
+
+        val task = (repository().task("t1") as ApiResult.Success).value
+
+        assertNull(task.title)
+        assertEquals(TagColor.Yellow, task.color)
+        assertTrue(task.isPinned)
+    }
+
+    @Test
+    fun `a blank title is left out, and the colour and pin are sent`() = runTest {
+        server.enqueue(json(taskJson("t1", title = null, description = "Body"), code = 201))
+
+        repository().create(draft(description = "Body").copy(title = "   ", color = TagColor.Blue, isPinned = true), yangon)
+
+        val body = server.takeRequest().jsonBody()
+        // The wire leaves nulls out; the server reads a missing title as none.
+        assertTrue("title" !in body)
+        assertEquals("blue", body.getValue("color").jsonPrimitive.content)
+        assertTrue(body.getValue("pinned").jsonPrimitive.boolean)
+    }
+
+    @Test
     fun `create sends a timed due with the phone's UTC offset`() = runTest {
         server.enqueue(json(taskJson("t1"), code = 201))
 

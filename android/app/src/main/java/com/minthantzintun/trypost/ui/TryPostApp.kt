@@ -61,8 +61,9 @@ data class EditPostDestination(val id: String)
 @Serializable
 data class TaskDetailDestination(val id: String)
 
+/** A new Task; [startsAsChecklist] opens the body on an empty checkbox. */
 @Serializable
-data object NewTaskDestination
+data class NewTaskDestination(val startsAsChecklist: Boolean = false)
 
 @Serializable
 data class EditTaskDestination(val id: String)
@@ -162,7 +163,7 @@ private fun SignedInGraph(navController: NavHostController, modifier: Modifier) 
         composable<TasksDestination> {
             TasksRoute(
                 onOpenTask = { id -> navController.navigate(TaskDetailDestination(id)) },
-                onNewTask = { navController.navigate(NewTaskDestination) },
+                onNewTask = { isChecklist -> navController.navigate(NewTaskDestination(startsAsChecklist = isChecklist)) },
             )
         }
         composable<VideosDestination> {
@@ -179,14 +180,14 @@ private fun SignedInGraph(navController: NavHostController, modifier: Modifier) 
         }
         composable<NewTaskDestination> {
             TaskEditorRoute(
-                onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
+                onClose = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack(TasksDestination, inclusive = false) },
             )
         }
         composable<EditTaskDestination> {
             TaskEditorRoute(
-                onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
+                onClose = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack(TasksDestination, inclusive = false) },
             )
         }
         composable<PostDetailDestination> {

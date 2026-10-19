@@ -349,6 +349,7 @@ before adding anything.
   whole set.
 - The list tabs are `App\Enums\Mobile\TaskTab`: Open (To do and In progress,
   by due with undated last) and Done (newest `completed_at` first).
+  Open puts pinned Tasks first.
   `task_tags[]` filters with OR inside a Tag group and AND across groups
   (`Task::withTaskTagsFromEachGroup()`); `q` searches title and description
   with `whereLike()`.
@@ -357,8 +358,26 @@ before adding anything.
   names are unique ignoring case (`UniqueNameIgnoringCase`), within the
   workspace for groups and within the group for tags. Deleting a Tag group
   deletes its Task tags and takes them off every Task.
+- **Keep-style Tasks** (ADR 0016, amended, spec #138):
+  - **Body:** `description` is a Markdown subset stored as sent. Blocks are
+    `# `/`## ` headings, `- ` bullets, `1. ` numbers, `- [ ] `/`- [x] `
+    checkboxes and paragraphs, one per line, no nesting. Inline marks are
+    `**bold**`, `*italic*` and `~~strike~~`, with `\` escapes. The app owns
+    parsing and rendering (`core/model/TaskBody`); the server never parses it.
+    Ticking a checkbox is the full `PUT` with that line rewritten.
+  - **Title:** optional; a Task needs a title or a body
+    (`required_without:description`).
+  - **Colour and pin:** `color` is a `TagColor` or null; `pinned` sorts first
+    on Open, and Done ignores it.
+  - **Screens:** the list is a grid of cards (two columns or one, kept in the
+    DataStore) in sections Pinned, Overdue, Today, Upcoming and No date, and
+    "Take a note…" replaces the New task button. The editor saves on Back,
+    drops an untouched or empty new Task, and asks no "discard changes?";
+    ⋮ holds Delete and Discard changes, + the due, priority, Task tags and
+    colour. Its body is a field per block (`BodyEditorState`), never a
+    Markdown text box.
 - Reminders, the timer, attachments and voice entry follow in their own PRs
-  (#132–#135); the spec is #130.
+  (#132–#135), after the Keep-style screens; the first spec is #130.
 
 ## TikTok handoff through Telegram (ADR 0009)
 

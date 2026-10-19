@@ -27,6 +27,8 @@ class TaskFactory extends Factory
             'description' => null,
             'status' => Status::Todo,
             'priority' => 0,
+            'color' => null,
+            'pinned' => false,
             'due_at' => null,
             'due_all_day' => false,
         ];

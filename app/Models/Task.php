@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\Task\Priority;
 use App\Enums\Task\Status;
+use App\Enums\Task\TagColor;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -30,6 +31,8 @@ class Task extends Model
         'description',
         'status',
         'priority',
+        'color',
+        'pinned',
         'due_at',
         'due_all_day',
         'completed_at',
@@ -38,6 +41,7 @@ class Task extends Model
     protected $attributes = [
         'status' => 'todo',
         'priority' => 0,
+        'pinned' => false,
         'due_all_day' => false,
     ];
 
@@ -46,6 +50,8 @@ class Task extends Model
         return [
             'status' => Status::class,
             'priority' => Priority::class,
+            'color' => TagColor::class,
+            'pinned' => 'boolean',
             'due_at' => 'datetime',
             'due_all_day' => 'boolean',
             'completed_at' => 'datetime',

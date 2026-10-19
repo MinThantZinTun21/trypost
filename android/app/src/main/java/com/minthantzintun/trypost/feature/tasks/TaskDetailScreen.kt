@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -26,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +57,7 @@ import com.minthantzintun.trypost.core.designsystem.Skeleton
 import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.designsystem.StateMessage
 import com.minthantzintun.trypost.core.model.Task
+import com.minthantzintun.trypost.core.model.TaskBody
 import com.minthantzintun.trypost.core.model.TaskStatus
 import com.minthantzintun.trypost.core.ui.message
 import java.time.Instant
@@ -84,6 +87,7 @@ fun TaskDetailRoute(
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onSetStatus = viewModel::setStatus,
+        onToggleCheckbox = viewModel::toggleCheckbox,
         onDelete = viewModel::delete,
     )
 }
@@ -97,15 +101,19 @@ fun TaskDetailScreen(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onSetStatus: (TaskStatus) -> Unit,
+    onToggleCheckbox: (Int) -> Unit,
     onDelete: () -> Unit,
 ) {
     var isConfirmingDelete by rememberSaveable { mutableStateOf(false) }
     val task = state.task
+    val containerColor = task?.color?.tone()?.container ?: MaterialTheme.colorScheme.surface
 
     Scaffold(
+        containerColor = containerColor,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.task_detail_title)) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = containerColor),
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.testTag("back")) {
                         Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
@@ -165,7 +173,7 @@ fun TaskDetailScreen(
                     onRefresh = onRefresh,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    TaskDetails(task)
+                    TaskDetails(task, onToggleCheckbox = onToggleCheckbox)
                 }
             }
         }
@@ -191,7 +199,7 @@ fun TaskDetailScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TaskDetails(task: Task) {
+private fun TaskDetails(task: Task, onToggleCheckbox: (Int) -> Unit) {
     val zone = remember { ZoneId.systemDefault() }
     val now = remember(task) { Instant.now() }
     val today = now.atZone(zone).toLocalDate()
@@ -204,16 +212,44 @@ private fun TaskDetails(task: Task) {
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 TaskStatusPill(task.status, modifier = Modifier.testTag("task-status"))
                 TaskPriorityPill(task.priority)
+                if (task.isPinned) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_pin),
+                        contentDescription = stringResource(R.string.task_pinned),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(IconSize.sm),
+                    )
+                }
             }
-            SelectionContainer {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.semantics { heading() }.testTag("task-title"),
-                )
+            task.title?.let { title ->
+                SelectionContainer {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.semantics { heading() }.testTag("task-title"),
+                    )
+                }
+            }
+            val description = task.description
+            if (!description.isNullOrBlank()) {
+                val body = remember(description) { TaskBody.parse(description) }
+                val checklist = remember(body) { body.checklist() }
+                checklist?.let { ChecklistProgressText(it, modifier = Modifier.testTag("task-progress")) }
+                SelectionContainer {
+                    TaskBodyBlocks(
+                        blocks = body.blocks,
+                        isCompact = false,
+                        onToggle = onToggleCheckbox,
+                        modifier = Modifier.fillMaxWidth().testTag("task-description"),
+                    )
+                }
             }
         }
 
@@ -238,22 +274,6 @@ private fun TaskDetails(task: Task) {
                             task.taskTags.forEach { TaskTagPill(it) }
                         }
                     }
-                }
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            Text(stringResource(R.string.task_description), style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-            val description = task.description
-            if (description.isNullOrBlank()) {
-                Text(
-                    text = stringResource(R.string.task_no_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                SelectionContainer {
-                    Text(text = description, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("task-description"))
                 }
             }
         }

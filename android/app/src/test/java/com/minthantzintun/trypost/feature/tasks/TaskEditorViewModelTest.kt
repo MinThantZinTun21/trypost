@@ -2,12 +2,16 @@ package com.minthantzintun.trypost.feature.tasks
 
 import androidx.lifecycle.SavedStateHandle
 import com.minthantzintun.trypost.core.data.TasksRepository
+import com.minthantzintun.trypost.core.model.BlockKind
+import com.minthantzintun.trypost.core.model.InlineStyle
+import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.TaskDue
 import com.minthantzintun.trypost.core.model.TaskPriority
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
 import com.minthantzintun.trypost.testing.json
+import com.minthantzintun.trypost.testing.noContent
 import com.minthantzintun.trypost.testing.session
 import com.minthantzintun.trypost.testing.taskJson
 import com.minthantzintun.trypost.testing.taskTagRefJson
@@ -16,11 +20,13 @@ import com.minthantzintun.trypost.testing.testJson
 import com.minthantzintun.trypost.testing.validationError
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -65,31 +71,100 @@ class TaskEditorViewModelTest {
 
     private suspend fun TaskEditorViewModel.saved(): TaskEditorUiState = state.first { !it.isSaving }
 
+    private suspend fun TaskEditorViewModel.closed(): TaskEditorUiState = state.first { it.isClosed }
+
+    /** Types [text] into the body's first line, as its field reports it. */
+    private fun TaskEditorViewModel.typeInBody(text: String) {
+        changeBlockText(state.value.body.blocks.first().id, text, text.length)
+    }
+
+    private fun RecordedRequest.json(): JsonObject = testJson.parseToJsonElement(body!!.utf8()).jsonObject
+
     @Test
-    fun `a new Task is created with its due in the phone's timezone`() = runTest {
+    fun `Back creates a new Task with its due in the phone's timezone`() = runTest {
         server.enqueue(json(taskJson("t1"), code = 201))
         val viewModel = newTask()
 
         viewModel.changeTitle("Call the supplier")
-        viewModel.changeDescription("Ask about the price")
+        viewModel.typeInBody("Ask about the price")
         viewModel.changePriority(TaskPriority.Medium)
         viewModel.changeDueKind(DueKind.DateTime)
         viewModel.changeDueDate(LocalDate.of(2030, 1, 5))
         viewModel.changeDueTime(LocalTime.of(15, 0))
         viewModel.toggleTaskTag("k1")
-        viewModel.save()
-        val state = viewModel.state.first { it.isSaved }
+        viewModel.leave()
+        val state = viewModel.closed()
 
         assertFalse(state.hasUnsavedChanges)
+        assertFalse(state.isDeleted)
         val request = server.takeRequest()
         assertEquals("POST", request.method)
-        val body = testJson.parseToJsonElement(request.body!!.utf8()).jsonObject
+        val body = request.json()
         assertEquals("Call the supplier", body.getValue("title").jsonPrimitive.content)
         assertEquals("Ask about the price", body.getValue("description").jsonPrimitive.content)
         assertEquals("2", body.getValue("priority").jsonPrimitive.content)
         assertEquals("2030-01-05T15:00:00+06:30", body.getValue("due_at").jsonPrimitive.content)
         assertFalse(body.getValue("due_all_day").jsonPrimitive.boolean)
         assertEquals(listOf("k1"), body.getValue("task_tags").jsonArray.map { it.jsonPrimitive.content })
+    }
+
+    @Test
+    fun `a new Task with no title and no body is dropped without a request`() = runTest {
+        val viewModel = newTask()
+        viewModel.changePriority(TaskPriority.High)
+        viewModel.typeInBody("   ")
+
+        viewModel.leave()
+
+        assertTrue(viewModel.state.value.isClosed)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `a body without a title is saved, formatting and all`() = runTest {
+        server.enqueue(json(taskJson("t1", title = null), code = 201))
+        val viewModel = newTask()
+
+        viewModel.typeInBody("Milk")
+        viewModel.selectInBody(0, 0, 4)
+        viewModel.toggleStyle(InlineStyle.Bold)
+        viewModel.toggleBlockKind(BlockKind.Checkbox)
+        viewModel.changeBlockText(0, "Milk\n", 5)
+        viewModel.changeBlockText(1, "Eggs", 4)
+        viewModel.leave()
+        viewModel.closed()
+
+        val body = server.takeRequest().json()
+        assertFalse("title" in body)
+        assertEquals("- [ ] **Milk**\n- [ ] Eggs", body.getValue("description").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `New checklist starts on an empty checkbox`() = runTest {
+        val viewModel = TaskEditorViewModel(SavedStateHandle(mapOf("startsAsChecklist" to true)), repository, clock)
+
+        val body = viewModel.state.value.body
+        assertEquals(listOf(BlockKind.Checkbox), body.blocks.map { it.kind })
+        assertEquals(EditorSelection(0, 0), body.selection)
+        assertTrue(viewModel.state.value.isEmpty)
+    }
+
+    @Test
+    fun `the pin and the colour are sent with the Task`() = runTest {
+        server.enqueue(json(taskJson("t1", title = "Trip")))
+        server.enqueue(json(taskJson("t1", title = "Trip", color = "teal", pinned = true)))
+        val viewModel = editTask()
+        viewModel.loaded()
+
+        viewModel.togglePin()
+        viewModel.changeColor(TagColor.Teal)
+        viewModel.leave()
+        viewModel.closed()
+
+        server.takeRequest()
+        val body = server.takeRequest().json()
+        assertEquals("teal", body.getValue("color").jsonPrimitive.content)
+        assertTrue(body.getValue("pinned").jsonPrimitive.boolean)
     }
 
     @Test
@@ -119,77 +194,90 @@ class TaskEditorViewModelTest {
         viewModel.changeTitle("Pay rent")
         viewModel.changeDueKind(DueKind.Date)
 
-        viewModel.save()
-        viewModel.state.first { it.isSaved }
+        viewModel.leave()
+        viewModel.closed()
 
-        val body = testJson.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject
+        val body = server.takeRequest().json()
         assertEquals("2030-01-01T00:00:00+06:30", body.getValue("due_at").jsonPrimitive.content)
         assertTrue(body.getValue("due_all_day").jsonPrimitive.boolean)
     }
 
     @Test
-    fun `the server's messages show under their fields`() = runTest {
+    fun `a refused save stays open with the messages under their fields`() = runTest {
         server.enqueue(
             validationError(
-                "title" to "The title field is required.",
+                "title" to "The title may not be greater than 255 characters.",
                 "due_at" to "The due must include its offset.",
                 "task_tags.1" to "The selected tag is invalid.",
             ),
         )
         val viewModel = newTask()
+        viewModel.changeTitle("Long")
 
-        viewModel.save()
+        viewModel.leave()
         val state = viewModel.saved()
 
-        assertEquals("The title field is required.", state.fieldErrors[TaskField.Title])
+        assertEquals("The title may not be greater than 255 characters.", state.fieldErrors[TaskField.Title])
         assertEquals("The due must include its offset.", state.fieldErrors[TaskField.Due])
         assertEquals("The selected tag is invalid.", state.fieldErrors[TaskField.TaskTags])
         assertNull(state.saveError)
-        assertFalse(state.isSaved)
+        assertFalse(state.isClosed)
+        assertTrue(state.hasUnsavedChanges)
     }
 
     @Test
     fun `a message about no known field shows above the form`() = runTest {
         server.enqueue(validationError("status" to "Nope."))
         val viewModel = newTask()
+        viewModel.changeTitle("Call")
 
-        viewModel.save()
+        viewModel.leave()
         val state = viewModel.saved()
 
         assertTrue(state.saveError is ApiError.Validation)
         assertTrue(state.fieldErrors.isEmpty())
+        assertFalse(state.isClosed)
     }
 
     @Test
     fun `a lost connection shows above the form`() = runTest {
         server.enqueue(json("""{"message":"Server Error"}""", code = 500))
         val viewModel = newTask()
+        viewModel.changeTitle("Call")
 
-        viewModel.save()
+        viewModel.leave()
 
-        assertTrue(viewModel.saved().saveError is ApiError.Server)
+        val state = viewModel.saved()
+        assertTrue(state.saveError is ApiError.Server)
+        assertFalse(state.isClosed)
     }
 
     @Test
     fun `changing a field clears only its own error`() = runTest {
-        server.enqueue(validationError("title" to "Required.", "description" to "Too long."))
+        server.enqueue(validationError("title" to "Too long.", "description" to "Too long."))
         val viewModel = newTask()
-        viewModel.save()
+        viewModel.changeTitle("Call")
+        viewModel.leave()
         viewModel.saved()
 
-        viewModel.changeTitle("Now with a title")
+        viewModel.changeTitle("Now shorter")
 
         assertNull(viewModel.state.value.fieldErrors[TaskField.Title])
         assertEquals("Too long.", viewModel.state.value.fieldErrors[TaskField.Description])
+
+        viewModel.typeInBody("Shorter")
+
+        assertNull(viewModel.state.value.fieldErrors[TaskField.Description])
     }
 
     @Test
-    fun `editing loads the Task and asks before leaving only after a change`() = runTest {
+    fun `editing loads the Task with its formatting and counts only a real change`() = runTest {
         server.enqueue(
             json(
                 taskJson(
                     "t1",
                     title = "Call",
+                    description = "# Plan\n5. **Ring** them",
                     priority = 3,
                     dueAt = "2030-01-01T17:30:00+00:00",
                     dueAllDay = true,
@@ -205,7 +293,13 @@ class TaskEditorViewModelTest {
         assertEquals(TaskPriority.High, loaded.form.priority)
         assertEquals(TaskDue.AllDay(LocalDate.of(2030, 1, 2)), loaded.form.due)
         assertEquals(listOf("k1"), loaded.form.taskTagIds)
+        assertEquals(listOf("Plan", "Ring them"), loaded.body.blocks.map { it.text.text })
+        assertEquals(listOf(BlockKind.Heading1, BlockKind.Numbered), loaded.body.blocks.map { it.kind })
         assertFalse(loaded.hasUnsavedChanges)
+
+        // Tapping into the body is not a change, though the list numbers from 1.
+        viewModel.selectInBody(1, 2)
+        assertFalse(viewModel.state.value.hasUnsavedChanges)
 
         viewModel.changeTitle("Call again")
         assertTrue(viewModel.state.value.hasUnsavedChanges)
@@ -215,23 +309,79 @@ class TaskEditorViewModelTest {
     }
 
     @Test
-    fun `saving an edited Task replaces it`() = runTest {
+    fun `Back on an untouched Task closes without a request`() = runTest {
+        server.enqueue(json(taskJson("t1", title = "Call")))
+        val viewModel = editTask()
+        viewModel.loaded()
+
+        viewModel.leave()
+
+        assertTrue(viewModel.state.value.isClosed)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `Back saves an edited Task in place`() = runTest {
         server.enqueue(json(taskJson("t1", title = "Call", description = "Old")))
         server.enqueue(json(taskJson("t1", title = "Call")))
         val viewModel = editTask()
         viewModel.loaded()
 
-        viewModel.changeDescription("")
-        viewModel.save()
-        viewModel.state.first { it.isSaved }
+        viewModel.changeBlockText(0, "", 0)
+        viewModel.leave()
+        viewModel.closed()
 
         server.takeRequest()
         val request = server.takeRequest()
         assertEquals("PUT", request.method)
         assertEquals("/mobile/v1/tasks/t1", request.url.encodedPath)
-        val body = testJson.parseToJsonElement(request.body!!.utf8()).jsonObject
+        val body = request.json()
         assertFalse(body.containsKey("description"))
         assertFalse(body.containsKey("due_at"))
+    }
+
+    @Test
+    fun `Discard changes closes without saving`() = runTest {
+        server.enqueue(json(taskJson("t1", title = "Call")))
+        val viewModel = editTask()
+        viewModel.loaded()
+        viewModel.changeTitle("Something else")
+
+        viewModel.discard()
+
+        assertTrue(viewModel.state.value.isClosed)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `Delete removes the stored Task and leaves`() = runTest {
+        server.enqueue(json(taskJson("t1", title = "Call")))
+        server.enqueue(noContent())
+        val viewModel = editTask()
+        viewModel.loaded()
+
+        viewModel.delete()
+        val state = viewModel.state.first { it.isDeleted }
+
+        assertTrue(state.isClosed)
+        server.takeRequest()
+        val request = server.takeRequest()
+        assertEquals("DELETE /mobile/v1/tasks/t1", "${request.method} ${request.url.encodedPath}")
+    }
+
+    @Test
+    fun `a failed delete stays open with the reason`() = runTest {
+        server.enqueue(json(taskJson("t1", title = "Call")))
+        server.enqueue(json("""{"message":"Server Error"}""", code = 500))
+        val viewModel = editTask()
+        viewModel.loaded()
+
+        viewModel.delete()
+        val state = viewModel.state.first { it.saveError != null }
+
+        assertTrue(state.saveError is ApiError.Server)
+        assertFalse(state.isClosed)
+        assertFalse(state.isDeleting)
     }
 
     @Test

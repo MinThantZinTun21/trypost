@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.TasksRepository
+import com.minthantzintun.trypost.core.model.BlockKind
+import com.minthantzintun.trypost.core.model.InlineStyle
+import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskDraft
 import com.minthantzintun.trypost.core.model.TaskDue
@@ -37,6 +40,8 @@ data class TaskForm(
     val priority: TaskPriority = TaskPriority.None,
     val due: TaskDue? = null,
     val taskTagIds: List<String> = emptyList(),
+    val color: TagColor? = null,
+    val isPinned: Boolean = false,
 ) {
     val dueKind: DueKind
         get() = when (due) {
@@ -51,6 +56,8 @@ data class TaskForm(
         priority = priority,
         due = due,
         taskTagIds = taskTagIds,
+        color = color,
+        isPinned = isPinned,
     )
 }
 
@@ -59,25 +66,36 @@ data class TaskEditorUiState(
     val isNew: Boolean,
     /** The stored Task being edited; null for a new one. */
     val task: Task? = null,
+    /** The fields as saved; [TaskForm.description] follows [body]. */
     val form: TaskForm = TaskForm(),
     /** The form as it was loaded (empty for a new Task). */
     val initialForm: TaskForm = TaskForm(),
+    /** The body as the block editor shows it. */
+    val body: BodyEditorState = BodyEditorState.fromMarkdown(null),
     val isLoading: Boolean = false,
     val loadError: ApiError? = null,
     val isSaving: Boolean = false,
     /** A save error that no field shows: a lost connection, a 404, or a message without a known field. */
     val saveError: ApiError? = null,
     val fieldErrors: Map<TaskField, String> = emptyMap(),
-    val isSaved: Boolean = false,
+    val isDeleting: Boolean = false,
+    /** The editor is done: saved, discarded, or left with nothing to save. */
+    val isClosed: Boolean = false,
+    /** The Task was deleted, so the screens behind it go too. */
+    val isDeleted: Boolean = false,
 ) {
     val isReady: Boolean get() = isNew || task != null
 
-    /** True once a field differs from what was loaded; leaving then asks first. */
-    val hasUnsavedChanges: Boolean get() = isReady && !isSaved && form != initialForm
+    /** True once a field differs from what was loaded. */
+    val hasUnsavedChanges: Boolean get() = isReady && !isClosed && form != initialForm
+
+    /** A Task needs a title or a body; a new one without either is not created. */
+    val isEmpty: Boolean get() = form.title.isBlank() && body.isBlank
 }
 
 /**
- * Creates a Task (no id) or edits one (an id). The due is kept in the
+ * Creates a Task (no id) or edits one (an id), Keep-style: Back saves. The
+ * body is a block editor written as Markdown; the due is kept in the
  * phone's timezone and sent with its UTC offset; the server's 422 messages
  * show under the field they are about.
  */
@@ -92,7 +110,17 @@ class TaskEditorViewModel @Inject constructor(
 
     private val zone: ZoneId get() = clock.zone
 
-    private val _state = MutableStateFlow(TaskEditorUiState(isNew = taskId == null))
+    private val _state = MutableStateFlow(
+        TaskEditorUiState(
+            isNew = taskId == null,
+            body = when {
+                taskId != null -> BodyEditorState.fromMarkdown(null)
+                savedStateHandle.get<Boolean>("startsAsChecklist") == true -> BodyEditorState.checklist()
+                // Take a note: the keyboard opens on the body, as in Keep.
+                else -> BodyEditorState.fromMarkdown(null).copy(selection = EditorSelection(0, 0), focusRequest = 1)
+            },
+        ),
+    )
     val state: StateFlow<TaskEditorUiState> = _state.asStateFlow()
 
     init {
@@ -107,7 +135,24 @@ class TaskEditorViewModel @Inject constructor(
 
     fun changeTitle(value: String) = changeForm(TaskField.Title) { it.copy(title = value) }
 
-    fun changeDescription(value: String) = changeForm(TaskField.Description) { it.copy(description = value) }
+    /** A body field now reads [text] with the cursor or selection at [start]..[end]. */
+    fun changeBlockText(blockId: Long, text: String, start: Int, end: Int = start) = changeBody { it.changeText(blockId, text, start, end) }
+
+    /** The cursor moved inside a body field without a change to its text. */
+    fun selectInBody(blockId: Long, start: Int, end: Int = start) = changeBody { it.select(blockId, start, end) }
+
+    fun backspaceAtBlockStart(blockId: Long) = changeBody { it.backspaceAtStart(blockId) }
+
+    fun toggleBlockKind(kind: BlockKind) = changeBody { it.toggleKind(kind) }
+
+    fun toggleStyle(style: InlineStyle) = changeBody { it.toggleStyle(style) }
+
+    fun toggleChecked(blockId: Long) = changeBody { it.toggleChecked(blockId) }
+
+    /** The card's colour, or none. */
+    fun changeColor(color: TagColor?) = changeForm(null) { it.copy(color = color) }
+
+    fun togglePin() = changeForm(null) { it.copy(isPinned = !it.isPinned) }
 
     fun changePriority(value: TaskPriority) = changeForm(TaskField.Priority) { it.copy(priority = value) }
 
@@ -158,11 +203,47 @@ class TaskEditorViewModel @Inject constructor(
         }
     }
 
-    fun save() {
+    /**
+     * Back: saves a change and closes once the server takes it. An untouched
+     * Task, or a new one with no title and no body, closes without a
+     * request; a refused save stays open with the reason.
+     */
+    fun leave() {
         val current = _state.value
-        if (current.isSaving || !current.isReady) {
+        if (current.isSaving || current.isDeleting) {
             return
         }
+
+        when {
+            !current.isReady || !current.hasUnsavedChanges || (current.isNew && current.isEmpty) -> _state.update { it.copy(isClosed = true) }
+            else -> save()
+        }
+    }
+
+    /** Leaves without saving. */
+    fun discard() {
+        _state.update { it.copy(isClosed = true) }
+    }
+
+    /** Deletes the stored Task for good; nothing for a new one. */
+    fun delete() {
+        val current = _state.value
+        if (taskId == null || current.isSaving || current.isDeleting) {
+            return
+        }
+
+        _state.update { it.copy(isDeleting = true, saveError = null) }
+
+        viewModelScope.launch {
+            when (val result = tasksRepository.delete(taskId)) {
+                is ApiResult.Success -> _state.update { it.copy(isDeleting = false, isDeleted = true, isClosed = true) }
+                is ApiResult.Failure -> _state.update { it.copy(isDeleting = false, saveError = result.error) }
+            }
+        }
+    }
+
+    private fun save() {
+        val current = _state.value
 
         _state.update { it.copy(isSaving = true, saveError = null, fieldErrors = emptyMap()) }
 
@@ -171,14 +252,26 @@ class TaskEditorViewModel @Inject constructor(
             val result = if (taskId == null) tasksRepository.create(draft, zone) else tasksRepository.update(taskId, draft, zone)
 
             when (result) {
-                is ApiResult.Success -> _state.update { it.copy(task = result.value, isSaving = false, isSaved = true) }
+                is ApiResult.Success -> _state.update { it.copy(task = result.value, isSaving = false, isClosed = true) }
                 is ApiResult.Failure -> _state.update { it.copy(isSaving = false).withSaveError(result.error) }
             }
         }
     }
 
-    private fun changeForm(field: TaskField, transform: (TaskForm) -> TaskForm) {
-        _state.update { it.copy(form = transform(it.form), fieldErrors = it.fieldErrors - field) }
+    private fun changeForm(field: TaskField?, transform: (TaskForm) -> TaskForm) {
+        _state.update { it.copy(form = transform(it.form), fieldErrors = if (field == null) it.fieldErrors else it.fieldErrors - field) }
+    }
+
+    private fun changeBody(transform: (BodyEditorState) -> BodyEditorState) {
+        _state.update { state ->
+            val body = transform(state.body)
+            val description = body.toMarkdown()
+            if (description == state.form.description) {
+                state.copy(body = body)
+            } else {
+                state.copy(body = body, form = state.form.copy(description = description), fieldErrors = state.fieldErrors - TaskField.Description)
+            }
+        }
     }
 
     private fun nextFullHour(): LocalTime = LocalTime.now(clock).truncatedTo(ChronoUnit.HOURS).plusHours(1)
@@ -189,8 +282,10 @@ class TaskEditorViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = tasksRepository.task(id)) {
                 is ApiResult.Success -> {
-                    val form = result.value.toForm()
-                    _state.update { it.copy(task = result.value, form = form, initialForm = form, isLoading = false) }
+                    // The body is written back as the editor writes it, so a tap alone is not a change.
+                    val body = BodyEditorState.fromMarkdown(result.value.description)
+                    val form = result.value.toForm().copy(description = body.toMarkdown())
+                    _state.update { it.copy(task = result.value, form = form, initialForm = form, body = body, isLoading = false) }
                 }
                 is ApiResult.Failure -> _state.update { it.copy(isLoading = false, loadError = result.error) }
             }
@@ -198,11 +293,13 @@ class TaskEditorViewModel @Inject constructor(
     }
 
     private fun Task.toForm(): TaskForm = TaskForm(
-        title = title,
+        title = title.orEmpty(),
         description = description.orEmpty(),
         priority = priority,
         due = due(zone),
         taskTagIds = taskTags.map { it.id },
+        color = color,
+        isPinned = isPinned,
     )
 
     private fun TaskEditorUiState.withSaveError(error: ApiError): TaskEditorUiState {

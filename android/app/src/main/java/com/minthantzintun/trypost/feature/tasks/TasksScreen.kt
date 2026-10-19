@@ -1,8 +1,9 @@
 package com.minthantzintun.trypost.feature.tasks
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,10 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,7 +33,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -40,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,10 +58,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -77,13 +84,14 @@ import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.Skeleton
 import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.designsystem.StateMessage
+import com.minthantzintun.trypost.core.model.ChecklistProgress
 import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskPriority
 import com.minthantzintun.trypost.core.model.TaskStatus
 import com.minthantzintun.trypost.core.model.TaskTab
 import com.minthantzintun.trypost.core.model.TaskTagRef
 import com.minthantzintun.trypost.core.model.taskTagRefs
-import com.minthantzintun.trypost.core.ui.DayHeader
+import com.minthantzintun.trypost.core.settings.TaskLayout
 import com.minthantzintun.trypost.core.ui.LoadMoreWhenNearEnd
 import com.minthantzintun.trypost.core.ui.message
 import kotlinx.coroutines.delay
@@ -94,11 +102,12 @@ import java.time.ZoneId
 @Composable
 fun TasksRoute(
     onOpenTask: (String) -> Unit,
-    onNewTask: () -> Unit,
+    onNewTask: (isChecklist: Boolean) -> Unit,
     viewModel: TasksViewModel = hiltViewModel(),
     taskTagsViewModel: TaskTagsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val layout by viewModel.layout.collectAsStateWithLifecycle()
     val taskTagsState by taskTagsViewModel.state.collectAsStateWithLifecycle()
 
     // A Task tag deleted elsewhere can no longer filter the list.
@@ -110,7 +119,9 @@ fun TasksRoute(
 
     TasksScreen(
         state = state,
+        layout = layout,
         taskTagsState = taskTagsState,
+        onToggleLayout = viewModel::toggleLayout,
         onSelectTab = viewModel::selectTab,
         onQueryChange = viewModel::changeQuery,
         onSearch = viewModel::search,
@@ -130,7 +141,9 @@ fun TasksRoute(
 @Composable
 fun TasksScreen(
     state: TasksUiState,
+    layout: TaskLayout,
     taskTagsState: TaskTagsUiState,
+    onToggleLayout: () -> Unit,
     onSelectTab: (TaskTab) -> Unit,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
@@ -142,7 +155,7 @@ fun TasksScreen(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onOpenTask: (String) -> Unit,
-    onNewTask: () -> Unit,
+    onNewTask: (isChecklist: Boolean) -> Unit,
 ) {
     var isFilterOpen by rememberSaveable { mutableStateOf(false) }
     val taskTagRefs = remember(taskTagsState.tagGroups) { taskTagsState.tagGroups.orEmpty().taskTagRefs() }
@@ -153,6 +166,13 @@ fun TasksScreen(
                 TopAppBar(
                     title = { Text(stringResource(R.string.tasks_title)) },
                     actions = {
+                        IconButton(onClick = onToggleLayout, modifier = Modifier.testTag("tasks-layout")) {
+                            if (layout == TaskLayout.Grid) {
+                                Icon(painterResource(R.drawable.ic_layout_list), contentDescription = stringResource(R.string.tasks_layout_list))
+                            } else {
+                                Icon(painterResource(R.drawable.ic_layout_grid), contentDescription = stringResource(R.string.tasks_layout_grid))
+                            }
+                        }
                         IconButton(onClick = { isFilterOpen = true }, modifier = Modifier.testTag("tasks-filter")) {
                             BadgedBox(
                                 badge = {
@@ -185,19 +205,13 @@ fun TasksScreen(
                 }
             }
         },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNewTask,
-                icon = { Icon(painterResource(R.drawable.ic_plus), contentDescription = null) },
-                text = { Text(stringResource(R.string.tasks_new)) },
-                modifier = Modifier.testTag("new-task"),
-            )
-        },
+        bottomBar = { QuickAddBar(onNewTask = onNewTask) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             TaskTabContent(
                 tab = state.selectedTab,
                 tabState = state.current,
+                layout = layout,
                 isFiltered = state.isFiltered,
                 onClearFilters = onClearFilters,
                 onRefresh = onRefresh,
@@ -362,11 +376,38 @@ private fun FilterSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+/** "Take a note…" opens a new Task; the checklist button opens one that starts as a checklist. */
+@Composable
+private fun QuickAddBar(onNewTask: (isChecklist: Boolean) -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.tasks_quick_add),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.medium)
+                    .clickable(role = Role.Button) { onNewTask(false) }
+                    .padding(horizontal = Spacing.md, vertical = Spacing.md)
+                    .testTag("new-task"),
+            )
+            IconButton(onClick = { onNewTask(true) }, modifier = Modifier.testTag("new-checklist")) {
+                Icon(painterResource(R.drawable.ic_list_check), contentDescription = stringResource(R.string.tasks_new_checklist))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TaskTabContent(
     tab: TaskTab,
     tabState: TaskTabState,
+    layout: TaskLayout,
     isFiltered: Boolean,
     onClearFilters: () -> Unit,
     onRefresh: () -> Unit,
@@ -377,7 +418,7 @@ private fun TaskTabContent(
     val error = tabState.error
 
     when {
-        tabState.isLoading && tabState.tasks.isEmpty() -> TasksSkeleton()
+        tabState.isLoading && tabState.tasks.isEmpty() -> TasksSkeleton(layout)
         error != null && tabState.tasks.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             StateMessage(
                 icon = R.drawable.ic_cloud_off,
@@ -391,10 +432,6 @@ private fun TaskTabContent(
         }
         else -> {
             val zone = remember { ZoneId.systemDefault() }
-            val sections = remember(tabState.tasks, tab, zone) {
-                if (tab == TaskTab.Open) groupTasksByDay(tabState.tasks, zone) else emptyList()
-            }
-            val listState = remember(tab) { LazyListState() }
             val lifecycle = LocalLifecycleOwner.current.lifecycle
             val now by produceState(Instant.now(), lifecycle) {
                 lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -405,50 +442,53 @@ private fun TaskTabContent(
                 }
             }
             val today = now.atZone(zone).toLocalDate()
+            // Sections move with the clock only when a day turns or a due passes, so the minute is enough.
+            val sections = remember(tabState.tasks, tab, zone, now.epochSecond / 60) {
+                if (tab == TaskTab.Open) groupTasksIntoSections(tabState.tasks, now, zone) else emptyList()
+            }
+            val gridState = remember(tab) { LazyStaggeredGridState() }
 
-            LoadMoreWhenNearEnd(listState, tabState.hasMore, tabState.page, tabState.loadMoreError != null, onLoadMore)
+            LoadMoreWhenNearEnd(gridState, tabState.hasMore, tabState.page, tabState.loadMoreError != null, onLoadMore)
 
             PullToRefreshBox(
                 isRefreshing = tabState.isRefreshing,
                 onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                LazyColumn(
-                    state = listState,
-                    // Room under the last card for the New task button.
-                    contentPadding = PaddingValues(start = Spacing.gutter, end = Spacing.gutter, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(if (layout == TaskLayout.Grid) 2 else 1),
+                    state = gridState,
+                    contentPadding = PaddingValues(start = Spacing.gutter, end = Spacing.gutter, top = Spacing.sm, bottom = Spacing.lg),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalItemSpacing = Spacing.sm,
                     modifier = Modifier.fillMaxSize().testTag("tasks-list"),
                 ) {
                     if (tabState.tasks.isEmpty()) {
-                        item {
+                        item(span = StaggeredGridItemSpan.FullLine) {
                             EmptyTasks(tab = tab, isFiltered = isFiltered, onClearFilters = onClearFilters)
                         }
                     }
                     if (tab == TaskTab.Open) {
                         sections.forEach { section ->
-                            stickyHeader(key = "day-${section.day}") { DayHeader(section.day) }
-                            items(section.items, key = { it.id }) { task ->
-                                TaskCard(task = task, zone = zone, now = now, today = today, isInDaySection = true, onClick = { onOpenTask(task.id) })
+                            item(key = "section-${section.kind}", span = StaggeredGridItemSpan.FullLine) { SectionHeader(section.kind) }
+                            items(section.tasks, key = { it.id }) { task ->
+                                TaskCard(task = task, zone = zone, now = now, today = today, onClick = { onOpenTask(task.id) })
                             }
                         }
                     } else {
-                        if (tabState.tasks.isNotEmpty()) {
-                            item { Box(Modifier.height(Spacing.sm)) }
-                        }
                         items(tabState.tasks, key = { it.id }) { task ->
-                            TaskCard(task = task, zone = zone, now = now, today = today, isInDaySection = false, onClick = { onOpenTask(task.id) })
+                            TaskCard(task = task, zone = zone, now = now, today = today, onClick = { onOpenTask(task.id) })
                         }
                     }
                     if (tabState.isLoadingMore) {
-                        item {
+                        item(span = StaggeredGridItemSpan.FullLine) {
                             Box(Modifier.fillMaxWidth().padding(Spacing.lg), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(modifier = Modifier.size(IconSize.md))
                             }
                         }
                     }
                     tabState.loadMoreError?.let { loadMoreError ->
-                        item {
+                        item(span = StaggeredGridItemSpan.FullLine) {
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -462,6 +502,20 @@ private fun TaskTabContent(
             }
         }
     }
+}
+
+@Composable
+private fun SectionHeader(kind: TaskSectionKind) {
+    Text(
+        text = stringResource(kind.titleRes()),
+        style = MaterialTheme.typography.labelLarge,
+        color = if (kind == TaskSectionKind.Overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = Spacing.sm, start = Spacing.xs)
+            .semantics { heading() }
+            .testTag("tasks-section-${kind.name.lowercase()}"),
+    )
 }
 
 @Composable
@@ -486,50 +540,70 @@ private fun EmptyTasks(tab: TaskTab, isFiltered: Boolean, onClearFilters: () -> 
 }
 
 /**
- * One Task: its title, then when it is due (the time inside a day section,
- * the date on Done), its priority, In progress, and its Task tags.
+ * One Task as a Keep card in its colour: the title, a few lines of the body
+ * (or a checklist's first rows) and how many more, then the checklist's
+ * progress, the due, In progress, the priority and the Task tags.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TaskCard(task: Task, zone: ZoneId, now: Instant, today: LocalDate, isInDaySection: Boolean, onClick: () -> Unit) {
+private fun TaskCard(task: Task, zone: ZoneId, now: Instant, today: LocalDate, onClick: () -> Unit) {
     val isOverdue = task.isOverdue(now, zone)
     val due = task.due(zone)
-    val dueText = when {
-        due == null -> null
-        isInDaySection -> dueTimeLabel(task, zone)
-        else -> dueLabel(due, today)
-    }
+    val preview = remember(task.description) { taskCardPreview(task.description) }
+    val tone = task.color?.tone()
 
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = tone?.container ?: MaterialTheme.colorScheme.surface),
+        border = if (tone == null) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
         modifier = Modifier.fillMaxWidth().testTag("task-${task.id}"),
     ) {
-        Column(modifier = Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                Icon(
-                    painter = painterResource(task.status.icon()),
-                    contentDescription = task.status.label(),
-                    tint = task.status.tone().content,
-                    modifier = Modifier.size(IconSize.sm),
-                )
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+        Column(modifier = Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            // Without a title the body's first line heads the card, next to the pin.
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    task.title?.let { title ->
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (preview != null) {
+                        TaskBodyBlocks(blocks = preview.blocks, isCompact = true)
+                        if (preview.moreCount > 0) {
+                            Text(
+                                text = pluralStringResource(R.plurals.tasks_card_more, preview.moreCount, preview.moreCount),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag("task-${task.id}-more"),
+                            )
+                        }
+                    }
+                }
+                if (task.isPinned) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_pin),
+                        contentDescription = stringResource(R.string.task_pinned),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(IconSize.sm).testTag("task-${task.id}-pinned"),
+                    )
+                }
             }
-            if (dueText != null || task.priority != TaskPriority.None || task.status == TaskStatus.InProgress) {
+            val checklist = preview?.checklist
+            if (checklist != null || due != null || task.priority != TaskPriority.None || task.status == TaskStatus.InProgress) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (dueText != null) {
-                        DueText(text = dueText, isOverdue = isOverdue, modifier = Modifier.testTag("task-${task.id}-due"))
+                    if (checklist != null) {
+                        ChecklistProgressText(checklist, modifier = Modifier.testTag("task-${task.id}-progress"))
+                    }
+                    if (due != null) {
+                        DueText(text = dueLabel(due, today), isOverdue = isOverdue, modifier = Modifier.testTag("task-${task.id}-due"))
                     }
                     if (task.status == TaskStatus.InProgress) {
                         TaskStatusPill(task.status)
@@ -546,6 +620,30 @@ private fun TaskCard(task: Task, zone: ZoneId, now: Instant, today: LocalDate, i
                 }
             }
         }
+    }
+}
+
+/** "3/5" with a checklist icon, read as "3 of 5 done". */
+@Composable
+fun ChecklistProgressText(progress: ChecklistProgress, modifier: Modifier = Modifier) {
+    val description = pluralStringResource(R.plurals.tasks_checklist_progress_description, progress.total, progress.checked, progress.total)
+
+    Row(
+        modifier = modifier.clearAndSetSemantics { contentDescription = description },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_list_check),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(IconSize.xs),
+        )
+        Text(
+            text = stringResource(R.string.tasks_checklist_progress, progress.checked, progress.total),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -571,28 +669,30 @@ fun DueText(text: String, isOverdue: Boolean, modifier: Modifier = Modifier) {
 
 /** Holds the cards' shape while the first page loads. */
 @Composable
-private fun TasksSkeleton() {
-    Column(
+private fun TasksSkeleton(layout: TaskLayout) {
+    val columns = if (layout == TaskLayout.Grid) 2 else 1
+    val heights = listOf(96.dp, 140.dp, 72.dp, 120.dp, 88.dp, 104.dp)
+
+    Row(
         modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.gutter, vertical = Spacing.md).testTag("tasks-loading"),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        Skeleton(Modifier.width(96.dp).height(16.dp))
-        repeat(6) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.large)
-                    .padding(Spacing.md),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                Skeleton(Modifier.fillMaxWidth(0.7f).height(14.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    Skeleton(Modifier.width(64.dp).height(12.dp))
-                    Skeleton(Modifier.width(48.dp).height(12.dp))
+        repeat(columns) { column ->
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                heights.drop(column).take(6 / columns + 1).forEach { height ->
+                    Skeleton(Modifier.fillMaxWidth().height(height), shape = MaterialTheme.shapes.large)
                 }
             }
         }
     }
+}
+
+private fun TaskSectionKind.titleRes(): Int = when (this) {
+    TaskSectionKind.Pinned -> R.string.tasks_section_pinned
+    TaskSectionKind.Overdue -> R.string.tasks_section_overdue
+    TaskSectionKind.Today -> R.string.tasks_section_today
+    TaskSectionKind.Upcoming -> R.string.tasks_section_upcoming
+    TaskSectionKind.NoDate -> R.string.tasks_section_no_date
 }
 
 private fun TaskTab.titleRes(): Int = when (this) {

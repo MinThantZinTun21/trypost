@@ -16,6 +16,11 @@ interface SettingsStore {
     val themeMode: Flow<ThemeMode>
 
     suspend fun setThemeMode(mode: ThemeMode)
+
+    /** The Tasks list's layout, kept across launches. */
+    val taskLayout: Flow<TaskLayout>
+
+    suspend fun setTaskLayout(layout: TaskLayout)
 }
 
 /** The DataStore that holds [SettingsStore], apart from the session's. */
@@ -36,7 +41,16 @@ class DataStoreSettingsStore @Inject constructor(
         dataStore.edit { it[THEME_MODE] = mode.wire }
     }
 
+    override val taskLayout: Flow<TaskLayout> = dataStore.data
+        .map { TaskLayout.fromWire(it[TASK_LAYOUT]) }
+        .distinctUntilChanged()
+
+    override suspend fun setTaskLayout(layout: TaskLayout) {
+        dataStore.edit { it[TASK_LAYOUT] = layout.wire }
+    }
+
     private companion object {
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val TASK_LAYOUT = stringPreferencesKey("task_layout")
     }
 }

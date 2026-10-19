@@ -62,13 +62,13 @@ interface MobileApi {
     ): PageDto<TaskDto>
 
     @POST("mobile/v1/tasks")
-    suspend fun createTask(@Body body: TaskBody): TaskDto
+    suspend fun createTask(@Body body: SaveTaskBody): TaskDto
 
     @GET("mobile/v1/tasks/{task}")
     suspend fun task(@Path("task") id: String): TaskDto
 
     @PUT("mobile/v1/tasks/{task}")
-    suspend fun updateTask(@Path("task") id: String, @Body body: TaskBody): TaskDto
+    suspend fun updateTask(@Path("task") id: String, @Body body: SaveTaskBody): TaskDto
 
     @PUT("mobile/v1/tasks/{task}/status")
     suspend fun updateTaskStatus(@Path("task") id: String, @Body body: TaskStatusBody): TaskDto

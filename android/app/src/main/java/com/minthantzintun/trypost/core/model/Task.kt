@@ -8,7 +8,9 @@ import java.time.ZoneId
 /** A Task (ADR 0016): a to-do of the Owner's, kept on the server. */
 data class Task(
     val id: String,
-    val title: String,
+    /** Null when the Task is only a body: a Task has a title, a body, or both. */
+    val title: String?,
+    /** The body: the Markdown subset [TaskBody] reads. */
     val description: String?,
     val status: TaskStatus,
     val priority: TaskPriority,
@@ -16,6 +18,10 @@ data class Task(
     /** True when [dueAt] is the start of a day in the phone's timezone and the Task has no time. */
     val isDueAllDay: Boolean,
     val completedAt: Instant?,
+    /** The card's colour, or null for none. */
+    val color: TagColor?,
+    /** Pinned Tasks come first on Open. */
+    val isPinned: Boolean,
     val createdAt: Instant?,
     val updatedAt: Instant?,
     /** Ordered by Tag group name, then Task tag name. */
@@ -42,6 +48,17 @@ data class Task(
 
         return if (isDueAllDay) dueAt.atZone(zone).toLocalDate().isBefore(now.atZone(zone).toLocalDate()) else dueAt.isBefore(now)
     }
+
+    /** Every field as a save sends it, e.g. to tick a checkbox and keep the rest. */
+    fun toDraft(zone: ZoneId): TaskDraft = TaskDraft(
+        title = title.orEmpty(),
+        description = description,
+        priority = priority,
+        due = due(zone),
+        taskTagIds = taskTags.map { it.id },
+        color = color,
+        isPinned = isPinned,
+    )
 }
 
 /** When a Task is due: a whole day, or a day and a time, both in the phone's timezone. */
@@ -97,7 +114,10 @@ enum class TagColor(val wire: String) {
     ;
 
     companion object {
-        fun fromWire(value: String?): TagColor = entries.firstOrNull { it.wire == value } ?: Gray
+        fun fromWire(value: String?): TagColor = fromWireOrNull(value) ?: Gray
+
+        /** A Task's colour, which may be none. */
+        fun fromWireOrNull(value: String?): TagColor? = entries.firstOrNull { it.wire == value }
     }
 }
 
@@ -135,11 +155,13 @@ data class TaskPage(
     val lastPage: Int,
 )
 
-/** What the editor saves: the whole Task, since a save replaces every field. */
+/** What the editor saves: the whole Task, since a save replaces every field. A blank title is none. */
 data class TaskDraft(
     val title: String,
     val description: String?,
     val priority: TaskPriority,
     val due: TaskDue?,
     val taskTagIds: List<String>,
+    val color: TagColor? = null,
+    val isPinned: Boolean = false,
 )

@@ -157,13 +157,15 @@ data class PlatformTextsBody(
 @Serializable
 data class TaskDto(
     val id: String,
-    val title: String,
+    val title: String? = null,
     val description: String? = null,
     val status: String = "todo",
     val priority: Int = 0,
     @SerialName("due_at") val dueAt: String? = null,
     @SerialName("due_all_day") val dueAllDay: Boolean = false,
     @SerialName("completed_at") val completedAt: String? = null,
+    val color: String? = null,
+    val pinned: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     @SerialName("task_tags") val taskTags: List<TaskTagRefDto> = emptyList(),
@@ -199,10 +201,12 @@ data class TaskTagDto(
  * field is sent; a null is left out, which the server reads as cleared.
  */
 @Serializable
-data class TaskBody(
-    val title: String,
+data class SaveTaskBody(
+    val title: String?,
     val description: String?,
     val priority: Int,
+    val color: String?,
+    val pinned: Boolean,
     @SerialName("due_at") val dueAt: String?,
     @SerialName("due_all_day") val dueAllDay: Boolean,
     @SerialName("task_tags") val taskTags: List<String>,
