@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class TaskController extends Controller
 {
-    private const array RELATIONS = ['taskTags.tagGroup'];
+    private const array RELATIONS = ['taskTags.tagGroup', 'reminders'];
 
     public function index(ListTasksRequest $request): AnonymousResourceCollection
     {
@@ -47,6 +47,7 @@ class TaskController extends Controller
             null,
             $request->taskAttributes(),
             $request->taskTagIds(),
+            $request->taskReminders(),
         );
 
         return $this->show($task)->response()->setStatusCode(Response::HTTP_CREATED);
@@ -69,6 +70,7 @@ class TaskController extends Controller
             $task,
             $request->taskAttributes(),
             $request->taskTagIds(),
+            $request->taskReminders(),
         ));
     }
 

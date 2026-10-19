@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Mobile\V1\MeController;
 use App\Http\Controllers\Mobile\V1\PostController;
+use App\Http\Controllers\Mobile\V1\ReminderController;
 use App\Http\Controllers\Mobile\V1\SessionController;
 use App\Http\Controllers\Mobile\V1\SocialAccountController;
 use App\Http\Controllers\Mobile\V1\TagGroupController;
@@ -40,6 +41,8 @@ Route::prefix('mobile/v1')
             Route::put('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
             Route::put('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
             Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+            Route::get('reminders/upcoming', [ReminderController::class, 'upcoming'])->name('reminders.upcoming');
+            Route::post('reminders/{reminder}/dismiss', [ReminderController::class, 'dismiss'])->name('reminders.dismiss');
             Route::get('tag-groups', [TagGroupController::class, 'index'])->name('tag-groups.index');
             Route::post('tag-groups', [TagGroupController::class, 'store'])->name('tag-groups.store');
             Route::put('tag-groups/{tagGroup}', [TagGroupController::class, 'update'])->name('tag-groups.update');

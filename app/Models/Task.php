@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One of the Owner's to-dos (ADR 0016). Only the Mobile app reaches Tasks;
@@ -74,6 +75,11 @@ class Task extends Model
     public function taskTags(): BelongsToMany
     {
         return $this->belongsToMany(TaskTag::class);
+    }
+
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class)->orderBy('remind_at');
     }
 
     /**

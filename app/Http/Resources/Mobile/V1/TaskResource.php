@@ -43,6 +43,7 @@ class TaskResource extends JsonResource
                 ])
                 ->values()
                 ->all(),
+            'reminders' => ReminderResource::collection($this->reminders),
         ];
     }
 }

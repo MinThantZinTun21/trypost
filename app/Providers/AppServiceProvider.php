@@ -12,6 +12,7 @@ use App\Models\PageInsightSnapshot;
 use App\Models\Post;
 use App\Models\PostInsight;
 use App\Models\PostPlatform;
+use App\Models\Reminder;
 use App\Models\SocialAccount;
 use App\Models\TagGroup;
 use App\Models\Task;
@@ -54,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
             'post' => Post::class,
             'postInsight' => PostInsight::class,
             'postPlatform' => PostPlatform::class,
+            'reminder' => Reminder::class,
             'socialAccount' => SocialAccount::class,
             'tagGroup' => TagGroup::class,
             'task' => Task::class,
