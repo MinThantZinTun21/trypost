@@ -62,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -582,7 +583,7 @@ private fun TaskCard(task: Task, zone: ZoneId, now: Instant, today: LocalDate, o
                 TaskBodyBlocks(blocks = preview.blocks, isCompact = true)
                 if (preview.moreCount > 0) {
                     Text(
-                        text = stringResource(R.string.tasks_card_more, preview.moreCount),
+                        text = pluralStringResource(R.plurals.tasks_card_more, preview.moreCount, preview.moreCount),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.testTag("task-${task.id}-more"),
@@ -623,7 +624,7 @@ private fun TaskCard(task: Task, zone: ZoneId, now: Instant, today: LocalDate, o
 /** "3/5" with a checklist icon, read as "3 of 5 done". */
 @Composable
 fun ChecklistProgressText(progress: ChecklistProgress, modifier: Modifier = Modifier) {
-    val description = stringResource(R.string.tasks_checklist_progress_description, progress.checked, progress.total)
+    val description = pluralStringResource(R.plurals.tasks_checklist_progress_description, progress.total, progress.checked, progress.total)
 
     Row(
         modifier = modifier.clearAndSetSemantics { contentDescription = description },

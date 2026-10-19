@@ -180,14 +180,14 @@ private fun SignedInGraph(navController: NavHostController, modifier: Modifier) 
         }
         composable<NewTaskDestination> {
             TaskEditorRoute(
-                onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
+                onClose = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack(TasksDestination, inclusive = false) },
             )
         }
         composable<EditTaskDestination> {
             TaskEditorRoute(
-                onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
+                onClose = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack(TasksDestination, inclusive = false) },
             )
         }
         composable<PostDetailDestination> {

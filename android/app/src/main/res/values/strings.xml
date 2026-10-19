@@ -203,23 +203,42 @@
     <string name="tasks_section_today">Today</string>
     <string name="tasks_section_upcoming">Upcoming</string>
     <string name="tasks_section_no_date">No date</string>
-    <string name="tasks_card_more">+%1$d more</string>
+    <plurals name="tasks_card_more">
+        <item quantity="one">+%1$d more line</item>
+        <item quantity="other">+%1$d more lines</item>
+    </plurals>
     <string name="tasks_checklist_progress">%1$d/%2$d</string>
-    <string name="tasks_checklist_progress_description">%1$d of %2$d done</string>
+    <plurals name="tasks_checklist_progress_description">
+        <item quantity="one">%1$d of %2$d item done</item>
+        <item quantity="other">%1$d of %2$d items done</item>
+    </plurals>
 
     <!-- Task -->
     <string name="task_detail_title">Task</string>
     <string name="task_pinned">Pinned</string>
-    <string name="task_new_title">New task</string>
-    <string name="task_edit_title">Edit task</string>
+    <string name="task_pin">Pin</string>
+    <string name="task_unpin">Unpin</string>
+    <string name="task_more">More options</string>
+    <string name="task_discard_changes">Discard changes</string>
+    <string name="task_body_placeholder">Note</string>
+    <string name="task_options">Due date, priority, tags and colour</string>
+    <string name="task_format">Formatting</string>
+    <string name="task_format_h1">Heading 1</string>
+    <string name="task_format_h2">Heading 2</string>
+    <string name="task_format_bold">Bold</string>
+    <string name="task_format_italic">Italic</string>
+    <string name="task_format_strike">Strikethrough</string>
+    <string name="task_format_bullet">Bulleted list</string>
+    <string name="task_format_numbered">Numbered list</string>
+    <string name="task_format_checkbox">Checkbox</string>
+    <string name="task_color">Colour</string>
+    <string name="task_color_none">No colour</string>
     <string name="task_edit">Edit task</string>
     <string name="task_delete">Delete task</string>
     <string name="task_delete_title">Delete this task?</string>
     <string name="task_delete_body">The task is deleted for good. Its tags stay.</string>
     <string name="task_error_title">Couldn\'t load the task</string>
     <string name="task_title">Title</string>
-    <string name="task_description">Description</string>
-    <string name="task_no_description">No description.</string>
     <string name="task_priority">Priority</string>
     <string name="task_due">Due</string>
     <string name="task_no_due">No due date</string>
