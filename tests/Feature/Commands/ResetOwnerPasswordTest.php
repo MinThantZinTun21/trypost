@@ -62,10 +62,22 @@ test('it rejects a confirmation that does not match', function () {
     expect(Hash::check('password', $owner->refresh()->password))->toBeTrue();
 });
 
-test('it rejects a password that is too short', function () {
+test('it accepts any password, even a short one in production', function () {
+    $owner = User::factory()->create();
+    app()->detectEnvironment(fn (): string => 'production');
+
+    $this->artisan('owner:reset-password', ['--password' => '1234'])
+        ->assertSuccessful();
+
+    expect(Hash::check('1234', $owner->refresh()->password))->toBeTrue();
+});
+
+test('it rejects an empty password', function () {
     $owner = User::factory()->create();
 
-    $this->artisan('owner:reset-password', ['--password' => 'short'])
+    $this->artisan('owner:reset-password')
+        ->expectsQuestion('New password', '')
+        ->expectsQuestion('Confirm new password', '')
         ->assertFailed();
 
     expect(Hash::check('password', $owner->refresh()->password))->toBeTrue();

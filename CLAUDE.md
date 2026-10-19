@@ -396,6 +396,10 @@ before adding anything.
 - There is no registration, onboarding, social login, email verification or
   forgot-password flow. The seeder creates the Owner, and
   `php artisan owner:reset-password` sets their password on the server.
+- The Owner's password has no strength rules, in production too: web
+  Settings and `owner:reset-password` require only a non-empty, confirmed
+  password. The Owner chose this; do not bring back `Password::defaults()`.
+  The sign-in throttle (5 tries per email and IP) still applies.
 - Workspaces and accounts are internal plumbing: the Owner has exactly one of
   each, created with them, and neither appears in the UI. Every Post and Social
   account still belongs to a workspace, and policies still check it, because the
