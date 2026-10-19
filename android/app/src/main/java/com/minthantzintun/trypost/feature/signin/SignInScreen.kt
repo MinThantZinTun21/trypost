@@ -57,7 +57,8 @@ fun SignInRoute(viewModel: SignInViewModel = hiltViewModel()) {
     SignInScreen(
         state = state,
         onServerUrlChange = viewModel::onServerUrlChange,
-        onTokenChange = viewModel::onTokenChange,
+        onEmailChange = viewModel::onEmailChange,
+        onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::submit,
     )
 }
@@ -66,22 +67,24 @@ fun SignInRoute(viewModel: SignInViewModel = hiltViewModel()) {
 fun SignInScreen(
     state: SignInUiState,
     onServerUrlChange: (String) -> Unit,
-    onTokenChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
 ) {
-    var isTokenVisible by rememberSaveable { mutableStateOf(false) }
+    var isPasswordVisible by rememberSaveable { mutableStateOf(false) }
     val errorText = when (val error = state.error) {
         null -> null
         SignInError.InvalidAddress -> stringResource(R.string.sign_in_invalid_address)
-        SignInError.MissingToken -> stringResource(R.string.sign_in_missing_token)
+        SignInError.MissingEmail -> stringResource(R.string.sign_in_missing_email)
+        SignInError.MissingPassword -> stringResource(R.string.sign_in_missing_password)
         is SignInError.Api -> when (error.error) {
-            ApiError.Unauthorized -> stringResource(R.string.sign_in_unauthorized)
             ApiError.NotFound -> stringResource(R.string.sign_in_not_found)
             else -> error.error.message()
         }
     }
     val isAddressError = state.error == SignInError.InvalidAddress || (state.error as? SignInError.Api)?.error == ApiError.NotFound
-    val isTokenError = state.error != null && !isAddressError
+    val isEmailError = state.error == SignInError.MissingEmail
+    val isPasswordError = state.error != null && !isAddressError && !isEmailError
 
     Scaffold { padding ->
         Column(
@@ -122,26 +125,40 @@ fun SignInScreen(
                     modifier = Modifier.testTag("sign-in-server-url"),
                 )
                 FormField(
-                    value = state.token,
-                    onValueChange = onTokenChange,
-                    label = stringResource(R.string.sign_in_token),
-                    isError = isTokenError,
-                    supportingText = errorText?.takeIf { isTokenError },
+                    value = state.email,
+                    onValueChange = onEmailChange,
+                    label = stringResource(R.string.sign_in_email),
+                    isError = isEmailError,
+                    supportingText = errorText?.takeIf { isEmailError },
+                    enabled = !state.isSubmitting,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrectEnabled = false),
+                    leadingIcon = { Icon(painterResource(R.drawable.ic_mail), contentDescription = null) },
+                    modifier = Modifier
+                        .semantics { contentType = ContentType.Username + ContentType.EmailAddress }
+                        .testTag("sign-in-email"),
+                )
+                FormField(
+                    value = state.password,
+                    onValueChange = onPasswordChange,
+                    label = stringResource(R.string.sign_in_password),
+                    isError = isPasswordError,
+                    supportingText = errorText?.takeIf { isPasswordError },
                     enabled = !state.isSubmitting,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done, autoCorrectEnabled = false),
                     keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                    visualTransformation = if (isTokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    leadingIcon = { Icon(painterResource(R.drawable.ic_lock), contentDescription = null) },
                     trailingIcon = {
-                        IconButton(onClick = { isTokenVisible = !isTokenVisible }) {
+                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                             Icon(
-                                painter = painterResource(if (isTokenVisible) R.drawable.ic_eye_off else R.drawable.ic_eye),
-                                contentDescription = stringResource(if (isTokenVisible) R.string.sign_in_hide_token else R.string.sign_in_show_token),
+                                painter = painterResource(if (isPasswordVisible) R.drawable.ic_eye_off else R.drawable.ic_eye),
+                                contentDescription = stringResource(if (isPasswordVisible) R.string.sign_in_hide_password else R.string.sign_in_show_password),
                             )
                         }
                     },
                     modifier = Modifier
                         .semantics { contentType = ContentType.Password }
-                        .testTag("sign-in-token"),
+                        .testTag("sign-in-password"),
                 )
                 Button(
                     onClick = onSubmit,

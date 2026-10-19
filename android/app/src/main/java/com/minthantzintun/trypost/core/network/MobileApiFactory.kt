@@ -9,23 +9,25 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Builds a [MobileApi] for a server address and token. The address is the
- * Owner's choice, so there is no fixed Retrofit base URL.
+ * Builds a [MobileApi] for a server address and Mobile token. The address is
+ * the Owner's choice, so there is no fixed Retrofit base URL. Without a token
+ * it can only sign in.
  */
 @Singleton
 class MobileApiFactory @Inject constructor(
     private val client: OkHttpClient,
     private val json: Json,
 ) {
-    fun create(serverUrl: String, token: String): MobileApi {
+    fun create(serverUrl: String, token: String? = null): MobileApi {
         val authenticated = client.newBuilder()
             .addInterceptor { chain ->
-                chain.proceed(
-                    chain.request().newBuilder()
-                        .header("Authorization", "Bearer $token")
-                        .header("Accept", "application/json")
-                        .build(),
-                )
+                val request = chain.request().newBuilder().header("Accept", "application/json")
+
+                if (token != null) {
+                    request.header("Authorization", "Bearer $token")
+                }
+
+                chain.proceed(request.build())
             }
             .build()
 

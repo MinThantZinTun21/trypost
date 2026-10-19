@@ -10,6 +10,9 @@ import retrofit2.http.Query
 
 /** The server's `/mobile/v1` API (ADR 0010). */
 interface MobileApi {
+    @POST("mobile/v1/sessions")
+    suspend fun signIn(@Body body: SignInBody): SignInDto
+
     @GET("mobile/v1/me")
     suspend fun me(): OwnerDto
 
