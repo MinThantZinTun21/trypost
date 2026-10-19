@@ -49,7 +49,16 @@ class SessionRepository @Inject constructor(
         }
     }
 
+    /**
+     * Revokes this phone's Mobile token on the server, then forgets the
+     * session. It forgets it even when the server can't be reached.
+     */
     suspend fun signOut() {
+        sessionStore.current()?.let { session ->
+            val api = apiFactory.create(session.serverUrl, session.token)
+            apiCall(json) { api.signOut() }
+        }
+
         sessionStore.clear()
     }
 

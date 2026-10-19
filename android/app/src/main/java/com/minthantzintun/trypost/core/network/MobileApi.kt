@@ -13,6 +13,9 @@ interface MobileApi {
     @POST("mobile/v1/sessions")
     suspend fun signIn(@Body body: SignInBody): SignInDto
 
+    @DELETE("mobile/v1/session")
+    suspend fun signOut()
+
     @GET("mobile/v1/me")
     suspend fun me(): OwnerDto
 
