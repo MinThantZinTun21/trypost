@@ -14,11 +14,9 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    config()->set('trypost.mobile.token', 'mobile-test-token');
-
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
-    $this->headers = ['Authorization' => 'Bearer mobile-test-token'];
+    $this->headers = mobileHeaders($this->owner);
 });
 
 test('a post shows each social account with its outcome', function () {

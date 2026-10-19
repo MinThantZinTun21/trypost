@@ -14,10 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Guards an endpoint with one bearer secret from the environment. An empty
  * secret switches the endpoint off (404); a wrong one is 401. A matching
  * request acts as the Owner, the install's first user, in their workspace.
- *
- * Ids are ordered UUIDs, so they break a tie between users created in the same
- * second. The current workspace is resolved up front because Post policies
- * check it.
+ * The current workspace is resolved up front because Post policies check it.
  */
 abstract class AuthenticatesWithOwnerToken
 {
@@ -33,7 +30,7 @@ abstract class AuthenticatesWithOwnerToken
         abort_if($token === '', Response::HTTP_NOT_FOUND);
         abort_unless(hash_equals($token, (string) $request->bearerToken()), Response::HTTP_UNAUTHORIZED);
 
-        $owner = User::query()->oldest()->oldest('id')->first();
+        $owner = User::findOwner();
 
         abort_if($owner === null, Response::HTTP_NOT_FOUND);
 

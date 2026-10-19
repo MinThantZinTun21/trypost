@@ -50,7 +50,7 @@ class ResetOwnerPassword extends Command
             return self::FAILURE;
         }
 
-        $user->update(['password' => $password]);
+        $user->changePassword($password);
 
         $this->info("Password updated for {$user->email}.");
 

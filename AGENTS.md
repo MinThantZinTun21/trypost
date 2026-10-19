@@ -251,10 +251,23 @@ before adding anything.
 - `/mobile/v1` (`routes/mobile.php`, controllers in `App\Http\Controllers\Mobile\V1`)
   is the Owner's Android app (`android/`) way in. It sits outside the web
   group: no session, cookies or CSRF.
-- `AuthenticateMobileToken` guards it with one bearer secret, `MOBILE_TOKEN`
-  (`config('trypost.mobile.token')`; empty = 404, wrong = 401), and acts as the
-  Owner. It shares `AuthenticatesWithOwnerToken` with `AuthenticateMcpToken`;
-  the two secrets stay separate so each can be rotated alone.
+- The app signs in with the Owner's web email and password (ADR 0015):
+  `POST /mobile/v1/sessions` (`SessionController`, `SignInRequest`) checks
+  them with the web guard's `validate()` (no session) under the web login's
+  throttle (`App\Concerns\ThrottlesSignIn`, shared with `LoginRequest`) and
+  answers 201 with a new Mobile token and the Owner's name. Only the Owner
+  (`User::findOwner()`) may sign in; anyone else is refused as a wrong password.
+- A Mobile token (`App\Models\MobileToken`) is per phone and stored only as
+  its SHA-256 hash. `AuthenticateMobileToken` looks the bearer token up (missing
+  or unknown = 401) and acts as its Owner. There is no `MOBILE_TOKEN` and no
+  switch that turns the API off; do not bring either back.
+  `AuthenticatesWithOwnerToken` serves only `MCP_TOKEN`.
+- `DELETE /mobile/v1/session` is Sign out: it deletes the calling phone's
+  Mobile token (204) and leaves other phones signed in. A new password (web
+  Settings or `owner:reset-password`) deletes every Mobile token through
+  `User::changePassword()`; set a new password only through it. A model event
+  would also fire on the web login's rehash and sign every phone out.
+- Tests sign in with `mobileHeaders($user)` (`tests/Pest.php`).
 - The app views Posts, edits their texts, Reschedules them, Posts them now and
   Sends them to Telegram (ADR 0012). It never creates Posts or changes media, Social
   accounts or Content types. There is

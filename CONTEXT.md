@@ -68,6 +68,10 @@ _Avoid_: Bot, agent, API client
 The Owner's Android app. It views Posts, edits their texts, Reschedules them, Posts them now and Sends them to Telegram, and it uploads Videos; it never creates Posts or changes a Post's media.
 _Avoid_: Client, API client
 
+**Mobile token**:
+The secret one phone gets when the Owner signs in to the Mobile app with their web email and password. The server keeps only its hash; Sign out on that phone, or a change of the Owner's password, ends it.
+_Avoid_: API key, MOBILE_TOKEN, session
+
 **Insights**:
 Numbers Facebook reports about how a Facebook Page and its posts perform. Facebook only; TikTok and YouTube have none in this app.
 _Avoid_: Analytics, stats, metrics (in prose)

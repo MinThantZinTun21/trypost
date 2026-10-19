@@ -3,6 +3,7 @@ package com.minthantzintun.trypost.core.data
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.core.network.MobileApiFactory
+import com.minthantzintun.trypost.core.network.SignInBody
 import com.minthantzintun.trypost.core.network.apiCall
 import com.minthantzintun.trypost.core.session.Session
 import com.minthantzintun.trypost.core.session.SessionStore
@@ -12,7 +13,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Signs the Owner in with their server address and `MOBILE_TOKEN`, and out again. */
+/** Signs the Owner in with their server address and web email and password, and out again. */
 @Singleton
 class SessionRepository @Inject constructor(
     private val sessionStore: SessionStore,
@@ -21,27 +22,43 @@ class SessionRepository @Inject constructor(
 ) {
     val session: Flow<Session?> = sessionStore.session
 
-    /** Checks the token against `/mobile/v1/me` and keeps it only when the server accepts it. */
-    suspend fun signIn(serverUrl: String, token: String): SignInResult {
+    /**
+     * Sends the web email and password to `/mobile/v1/sessions` and keeps the
+     * Mobile token the server hands back. The password is sent as typed.
+     */
+    suspend fun signIn(serverUrl: String, email: String, password: String): SignInResult {
         val normalizedUrl = normalize(serverUrl) ?: return SignInResult.InvalidAddress
-        val trimmedToken = token.trim()
+        val trimmedEmail = email.trim()
 
-        if (trimmedToken.isEmpty()) {
-            return SignInResult.MissingToken
+        if (trimmedEmail.isEmpty()) {
+            return SignInResult.MissingEmail
         }
 
-        val api = apiFactory.create(normalizedUrl, trimmedToken)
+        if (password.isEmpty()) {
+            return SignInResult.MissingPassword
+        }
 
-        return when (val result = apiCall(json) { api.me() }) {
+        val api = apiFactory.create(normalizedUrl)
+
+        return when (val result = apiCall(json) { api.signIn(SignInBody(email = trimmedEmail, password = password)) }) {
             is ApiResult.Success -> {
-                sessionStore.save(Session(serverUrl = normalizedUrl, token = trimmedToken, ownerName = result.value.name))
+                sessionStore.save(Session(serverUrl = normalizedUrl, token = result.value.token, ownerName = result.value.name))
                 SignInResult.SignedIn
             }
             is ApiResult.Failure -> SignInResult.Failed(result.error)
         }
     }
 
+    /**
+     * Revokes this phone's Mobile token on the server, then forgets the
+     * session. It forgets it even when the server can't be reached.
+     */
     suspend fun signOut() {
+        sessionStore.current()?.let { session ->
+            val api = apiFactory.create(session.serverUrl, session.token)
+            apiCall(json) { api.signOut() }
+        }
+
         sessionStore.clear()
     }
 
@@ -60,7 +77,9 @@ sealed interface SignInResult {
 
     data object InvalidAddress : SignInResult
 
-    data object MissingToken : SignInResult
+    data object MissingEmail : SignInResult
+
+    data object MissingPassword : SignInResult
 
     data class Failed(val error: ApiError) : SignInResult
 }

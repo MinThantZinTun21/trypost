@@ -57,6 +57,15 @@ class User extends Authenticatable
     }
 
     /**
+     * The Owner: the install's first user. Ids are ordered UUIDs, so they
+     * break a tie between users created in the same second.
+     */
+    public static function findOwner(): ?self
+    {
+        return self::query()->oldest()->oldest('id')->first();
+    }
+
+    /**
      * First whitespace-delimited token of the display name (empty when unset).
      */
     public function firstName(): string
@@ -76,5 +85,24 @@ class User extends Authenticatable
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Sets a new password and signs every phone out of the Mobile app
+     * (ADR 0015). Web Settings and `owner:reset-password` both come here; a
+     * login that only rehashes the same password does not.
+     */
+    public function changePassword(string $password): void
+    {
+        $this->update(['password' => $password]);
+        $this->mobileTokens()->delete();
+    }
+
+    /**
+     * The phones signed in to the Mobile app (ADR 0015).
+     */
+    public function mobileTokens(): HasMany
+    {
+        return $this->hasMany(MobileToken::class);
     }
 }

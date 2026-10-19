@@ -9,6 +9,8 @@ import com.minthantzintun.trypost.testing.serverUrl
 import com.minthantzintun.trypost.testing.testApiFactory
 import com.minthantzintun.trypost.testing.testJson
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockWebServer
 import org.junit.After
@@ -37,9 +39,14 @@ class SignInViewModelTest {
         server.close()
     }
 
-    private suspend fun submit(serverUrl: String = server.serverUrl(), token: String = "good-token"): SignInUiState {
+    private suspend fun submit(
+        serverUrl: String = server.serverUrl(),
+        email: String = "owner@example.com",
+        password: String = "right password",
+    ): SignInUiState {
         viewModel.onServerUrlChange(serverUrl)
-        viewModel.onTokenChange(token)
+        viewModel.onEmailChange(email)
+        viewModel.onPasswordChange(password)
         viewModel.submit()
 
         return viewModel.state.first { !it.isSubmitting }
@@ -51,29 +58,50 @@ class SignInViewModelTest {
     }
 
     @Test
-    fun `a token the server accepts is kept with the owner's name`() = runTest {
-        server.enqueue(json("""{"name":"The Owner"}"""))
+    fun `the web email and password get a mobile token that is kept with the owner's name`() = runTest {
+        server.enqueue(json("""{"token":"phone-token","name":"The Owner"}""", code = 201))
 
-        val state = submit(serverUrl = "${server.serverUrl()}/", token = "  good-token  ")
+        val state = submit(serverUrl = "${server.serverUrl()}/", email = "  owner@example.com  ", password = " right password ")
 
         assertNull(state.error)
         val request = server.takeRequest()
-        assertEquals("/mobile/v1/me", request.url.encodedPath)
-        assertEquals("Bearer good-token", request.headers["Authorization"])
+        assertEquals("POST", request.method)
+        assertEquals("/mobile/v1/sessions", request.url.encodedPath)
+        assertNull(request.headers["Authorization"])
         assertEquals("application/json", request.headers["Accept"])
+        assertEquals(
+            buildJsonObject {
+                put("email", "owner@example.com")
+                put("password", " right password ")
+            },
+            testJson.parseToJsonElement(request.body!!.utf8()),
+        )
         val session = store.current()!!
         assertEquals(server.serverUrl(), session.serverUrl)
-        assertEquals("good-token", session.token)
+        assertEquals("phone-token", session.token)
         assertEquals("The Owner", session.ownerName)
     }
 
     @Test
-    fun `a wrong token is reported and not kept`() = runTest {
-        server.enqueue(json("""{"message":"Unauthorized."}""", code = 401))
+    fun `wrong credentials show the server's message and nothing is kept`() = runTest {
+        server.enqueue(
+            json(
+                """{"message":"These credentials do not match our records.","errors":{"email":["These credentials do not match our records."]}}""",
+                code = 422,
+            ),
+        )
 
-        val state = submit(token = "wrong")
+        val error = submit(password = "wrong").error
 
-        assertEquals(SignInError.Api(ApiError.Unauthorized), state.error)
+        assertEquals(
+            SignInError.Api(
+                ApiError.Validation(
+                    "These credentials do not match our records.",
+                    mapOf("email" to listOf("These credentials do not match our records.")),
+                ),
+            ),
+            error,
+        )
         assertNull(store.current())
     }
 
@@ -101,16 +129,36 @@ class SignInViewModelTest {
     }
 
     @Test
-    fun `an empty token is refused before calling the server`() = runTest {
-        assertEquals(SignInError.MissingToken, submit(token = "   ").error)
+    fun `an empty email is refused before calling the server`() = runTest {
+        assertEquals(SignInError.MissingEmail, submit(email = "   ").error)
         assertEquals(0, server.requestCount)
     }
 
     @Test
-    fun `editing a field clears the error`() = runTest {
-        submit(token = "")
+    fun `an empty password is refused before calling the server`() = runTest {
+        assertEquals(SignInError.MissingPassword, submit(password = "").error)
+        assertEquals(0, server.requestCount)
+    }
 
-        viewModel.onTokenChange("x")
+    @Test
+    fun `each error shows under the field it is about`() {
+        val credentials = ApiError.Validation("Wrong.", mapOf("email" to listOf("Wrong.")))
+        val passwordOnly = ApiError.Validation("Short.", mapOf("password" to listOf("Short.")))
+
+        assertEquals(SignInField.ServerUrl, SignInError.InvalidAddress.field)
+        assertEquals(SignInField.ServerUrl, SignInError.Api(ApiError.NotFound).field)
+        assertEquals(SignInField.Email, SignInError.MissingEmail.field)
+        assertEquals(SignInField.Email, SignInError.Api(credentials).field)
+        assertEquals(SignInField.Password, SignInError.MissingPassword.field)
+        assertEquals(SignInField.Password, SignInError.Api(passwordOnly).field)
+        assertEquals(SignInField.Password, SignInError.Api(ApiError.Unreachable).field)
+    }
+
+    @Test
+    fun `editing a field clears the error`() = runTest {
+        submit(password = "")
+
+        viewModel.onPasswordChange("x")
 
         assertNull(viewModel.state.value.error)
     }

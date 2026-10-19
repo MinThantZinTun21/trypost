@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Models\Account;
 use App\Models\Media;
+use App\Models\MobileToken;
 use App\Models\Notification;
 use App\Models\PageInsightSnapshot;
 use App\Models\Post;
@@ -45,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'account' => Account::class,
             'media' => Media::class,
+            'mobileToken' => MobileToken::class,
             'notification' => Notification::class,
             'pageInsightSnapshot' => PageInsightSnapshot::class,
             'post' => Post::class,

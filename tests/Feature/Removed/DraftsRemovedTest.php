@@ -47,8 +47,7 @@ test('the assistant can neither save nor list Drafts', function () {
 });
 
 test('the Mobile app has no Drafts tab and cannot Unschedule', function () {
-    config()->set('trypost.mobile.token', 'mobile-test-token');
-    $headers = ['Authorization' => 'Bearer mobile-test-token'];
+    $headers = mobileHeaders($this->owner);
     $post = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->owner->id]);
 
     $this->getJson(route('mobile.v1.posts.index', ['status' => 'draft']), $headers)->assertUnprocessable();

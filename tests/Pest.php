@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\MobileToken;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
@@ -63,3 +65,16 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+/**
+ * Bearer headers for the Mobile API with a new Mobile token for the user, as
+ * the phone holds after signing in (ADR 0015).
+ *
+ * @return array{Authorization: string}
+ */
+function mobileHeaders(User $user): array
+{
+    $plainToken = MobileToken::issueFor($user);
+
+    return ['Authorization' => "Bearer {$plainToken}"];
+}

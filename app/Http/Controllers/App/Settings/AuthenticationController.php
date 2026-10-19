@@ -25,9 +25,7 @@ class AuthenticationController extends Controller
 
     public function updatePassword(AuthenticationPasswordRequest $request): RedirectResponse
     {
-        $request->user()->update([
-            'password' => $request->password,
-        ]);
+        $request->user()->changePassword($request->password);
 
         return back()->with('flash.success', __('settings.flash.password_updated'));
     }

@@ -14,10 +14,10 @@ sealed interface ApiResult<out T> {
 
 /** Why a `/mobile/v1` call did not succeed, in the terms the screens show. */
 sealed interface ApiError {
-    /** 401: the token is wrong or was rotated. */
+    /** 401: the Mobile token was revoked by Sign out or a new password. */
     data object Unauthorized : ApiError
 
-    /** 404: the mobile API is off (`MOBILE_TOKEN` empty) or the address is wrong. */
+    /** 404: the address is wrong, or the Post or Video is gone. */
     data object NotFound : ApiError
 
     /** The server could not be reached at all. */

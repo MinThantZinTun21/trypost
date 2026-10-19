@@ -16,7 +16,8 @@ import javax.inject.Inject
 
 data class SignInUiState(
     val serverUrl: String,
-    val token: String = "",
+    val email: String = "",
+    val password: String = "",
     val isSubmitting: Boolean = false,
     val error: SignInError? = null,
 )
@@ -24,10 +25,31 @@ data class SignInUiState(
 sealed interface SignInError {
     data object InvalidAddress : SignInError
 
-    data object MissingToken : SignInError
+    data object MissingEmail : SignInError
+
+    data object MissingPassword : SignInError
 
     data class Api(val error: ApiError) : SignInError
 }
+
+enum class SignInField { ServerUrl, Email, Password }
+
+/**
+ * The field an error shows under. The server reports wrong credentials and
+ * the wait after too many tries on `email`; anything not about one field
+ * shows under Password, next to Sign in.
+ */
+val SignInError.field: SignInField
+    get() = when (this) {
+        SignInError.InvalidAddress -> SignInField.ServerUrl
+        SignInError.MissingEmail -> SignInField.Email
+        SignInError.MissingPassword -> SignInField.Password
+        is SignInError.Api -> when (error) {
+            ApiError.NotFound -> SignInField.ServerUrl
+            is ApiError.Validation -> if ("email" in error.fields || "password" !in error.fields) SignInField.Email else SignInField.Password
+            else -> SignInField.Password
+        }
+    }
 
 /**
  * Signs the Owner in. On success the stored session changes and the app's
@@ -45,8 +67,12 @@ class SignInViewModel @Inject constructor(
         _state.update { it.copy(serverUrl = value, error = null) }
     }
 
-    fun onTokenChange(value: String) {
-        _state.update { it.copy(token = value, error = null) }
+    fun onEmailChange(value: String) {
+        _state.update { it.copy(email = value, error = null) }
+    }
+
+    fun onPasswordChange(value: String) {
+        _state.update { it.copy(password = value, error = null) }
     }
 
     fun submit() {
@@ -58,10 +84,11 @@ class SignInViewModel @Inject constructor(
         _state.update { it.copy(isSubmitting = true, error = null) }
 
         viewModelScope.launch {
-            val error = when (val result = sessionRepository.signIn(current.serverUrl, current.token)) {
+            val error = when (val result = sessionRepository.signIn(current.serverUrl, current.email, current.password)) {
                 SignInResult.SignedIn -> null
                 SignInResult.InvalidAddress -> SignInError.InvalidAddress
-                SignInResult.MissingToken -> SignInError.MissingToken
+                SignInResult.MissingEmail -> SignInError.MissingEmail
+                SignInResult.MissingPassword -> SignInError.MissingPassword
                 is SignInResult.Failed -> SignInError.Api(result.error)
             }
 

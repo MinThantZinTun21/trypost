@@ -10,7 +10,17 @@ import kotlinx.serialization.json.JsonObject
  */
 
 @Serializable
-data class OwnerDto(val name: String)
+data class SignInBody(
+    val email: String,
+    val password: String,
+)
+
+/** A new Mobile token for this phone, shown once, and the Owner's name. */
+@Serializable
+data class SignInDto(
+    val token: String,
+    val name: String,
+)
 
 @Serializable
 data class PageDto<T>(

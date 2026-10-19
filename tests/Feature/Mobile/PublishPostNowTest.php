@@ -13,11 +13,9 @@ use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     Queue::fake();
-    config()->set('trypost.mobile.token', 'mobile-test-token');
-
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
-    $this->headers = ['Authorization' => 'Bearer mobile-test-token'];
+    $this->headers = mobileHeaders($this->owner);
 
     $this->makePost = function (array $attributes = []): Post {
         $post = Post::factory()->create([
