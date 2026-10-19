@@ -2,7 +2,6 @@ package com.minthantzintun.trypost.feature.posts
 
 import com.minthantzintun.trypost.core.data.PostChanges
 import com.minthantzintun.trypost.core.data.PostsRepository
-import com.minthantzintun.trypost.core.data.SessionRepository
 import com.minthantzintun.trypost.core.model.MediaType
 import com.minthantzintun.trypost.core.model.Platform
 import com.minthantzintun.trypost.core.model.PlatformStatus
@@ -15,9 +14,7 @@ import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.postJson
 import com.minthantzintun.trypost.testing.postsPage
 import com.minthantzintun.trypost.testing.session
-import com.minthantzintun.trypost.testing.testApiFactory
 import com.minthantzintun.trypost.testing.testClient
-import com.minthantzintun.trypost.testing.testJson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockWebServer
@@ -50,10 +47,7 @@ class PostsViewModelTest {
         server.close()
     }
 
-    private fun viewModel(): PostsViewModel = PostsViewModel(
-        PostsRepository(testClient(store), changes),
-        SessionRepository(store, testApiFactory(), testJson),
-    )
+    private fun viewModel(): PostsViewModel = PostsViewModel(PostsRepository(testClient(store), changes))
 
     private suspend fun PostsViewModel.settled(tab: PostTab): TabState =
         state.first { it.tabs.getValue(tab).run { !isLoading && !isRefreshing && !isLoadingMore } }.tabs.getValue(tab)
@@ -168,23 +162,12 @@ class PostsViewModelTest {
         assertNull(store.current())
     }
 
-    @Test
-    fun `signing out removes the session`() = runTest {
-        server.enqueue(postsPage(emptyList()))
-        val viewModel = viewModel()
-        viewModel.settled(PostTab.Scheduled)
-
-        viewModel.signOut()
-
-        assertNull(store.session.first { it == null })
-    }
-
     private val accountsJson = """{"data":[""" +
         """{"id":"a1","platform":"facebook","display_label":"My Page","status":"connected"},""" +
         """{"id":"a2","platform":"tiktok","display_label":"@me","status":"disconnected"}]}"""
 
     @Test
-    fun `opening the account picker lists the social accounts, disconnected ones marked`() = runTest {
+    fun `opening Posts loads the social accounts for the filter, disconnected ones marked`() = runTest {
         server.enqueue(postsPage(emptyList()))
         val viewModel = viewModel()
         viewModel.settled(PostTab.Scheduled)

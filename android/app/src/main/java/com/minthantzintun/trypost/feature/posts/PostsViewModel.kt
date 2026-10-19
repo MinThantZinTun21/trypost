@@ -3,7 +3,6 @@ package com.minthantzintun.trypost.feature.posts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.PostsRepository
-import com.minthantzintun.trypost.core.data.SessionRepository
 import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostTab
 import com.minthantzintun.trypost.core.model.SocialAccount
@@ -38,7 +37,7 @@ data class PostsUiState(
     val tabs: Map<PostTab, TabState> = PostTab.entries.associateWith { TabState() },
     /** The Social account every tab is filtered to, or null for all of them. */
     val selectedAccountId: String? = null,
-    /** The picker's accounts, loaded when it opens. */
+    /** The filter's accounts, loaded each time the Posts screen opens. */
     val accounts: List<SocialAccount> = emptyList(),
     val isLoadingAccounts: Boolean = false,
     val accountsError: ApiError? = null,
@@ -50,7 +49,6 @@ data class PostsUiState(
 @HiltViewModel
 class PostsViewModel @Inject constructor(
     private val postsRepository: PostsRepository,
-    private val sessionRepository: SessionRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PostsUiState())
@@ -75,7 +73,7 @@ class PostsViewModel @Inject constructor(
         }
     }
 
-    /** Loads the picker's Social accounts, keeping the last list while it does. */
+    /** Loads the filter's Social accounts, keeping the last list while it does. */
     fun loadAccounts() {
         if (_state.value.isLoadingAccounts) {
             return
@@ -148,10 +146,6 @@ class PostsViewModel @Inject constructor(
                 is ApiResult.Failure -> updateTab(tab) { it.copy(isLoadingMore = false, loadMoreError = result.error) }
             }
         }
-    }
-
-    fun signOut() {
-        viewModelScope.launch { sessionRepository.signOut() }
     }
 
     private fun loadFirstPage(tab: PostTab, isRefresh: Boolean) {

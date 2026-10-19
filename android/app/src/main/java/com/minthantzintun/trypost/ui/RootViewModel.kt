@@ -15,7 +15,7 @@ sealed interface RootState {
 
     data object SignedOut : RootState
 
-    data class SignedIn(val ownerName: String) : RootState
+    data object SignedIn : RootState
 }
 
 /** Follows the stored session, so signing out (or a 401) returns to sign-in from anywhere. */
@@ -24,6 +24,6 @@ class RootViewModel @Inject constructor(
     sessionRepository: SessionRepository,
 ) : ViewModel() {
     val state: StateFlow<RootState> = sessionRepository.session
-        .map { session -> if (session == null) RootState.SignedOut else RootState.SignedIn(session.ownerName) }
+        .map { session -> if (session == null) RootState.SignedOut else RootState.SignedIn }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RootState.Loading)
 }

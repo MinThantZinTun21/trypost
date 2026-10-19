@@ -1,6 +1,7 @@
 package com.minthantzintun.trypost.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,29 +12,27 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.layout.RowScope
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.asLabel
 import com.minthantzintun.trypost.feature.detail.PostDetailRoute
 import com.minthantzintun.trypost.feature.edit.EditPostRoute
 import com.minthantzintun.trypost.feature.posts.PostsRoute
+import com.minthantzintun.trypost.feature.settings.SettingsRoute
 import com.minthantzintun.trypost.feature.signin.SignInRoute
 import com.minthantzintun.trypost.feature.videos.VideosRoute
 import kotlinx.serialization.Serializable
@@ -43,6 +42,9 @@ data object PostsDestination
 
 @Serializable
 data object VideosDestination
+
+@Serializable
+data object SettingsDestination
 
 @Serializable
 data class PostDetailDestination(val id: String)
@@ -55,16 +57,16 @@ fun TryPostApp(viewModel: RootViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        when (val current = state) {
+        when (state) {
             RootState.Loading -> Box(Modifier.fillMaxSize())
             RootState.SignedOut -> SignInRoute()
-            is RootState.SignedIn -> SignedInNavHost(ownerName = current.ownerName)
+            is RootState.SignedIn -> SignedInNavHost()
         }
     }
 }
 
 @Composable
-private fun SignedInNavHost(ownerName: String) {
+private fun SignedInNavHost() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
@@ -95,7 +97,6 @@ private fun SignedInNavHost(ownerName: String) {
     ) { padding ->
         SignedInGraph(
             navController = navController,
-            ownerName = ownerName,
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         )
     }
@@ -122,25 +123,24 @@ private fun NavHostController.switchTo(destination: Any) {
 }
 
 @Composable
-private fun SignedInGraph(navController: NavHostController, ownerName: String, modifier: Modifier) {
+private fun SignedInGraph(navController: NavHostController, modifier: Modifier) {
     NavHost(navController = navController, startDestination = PostsDestination, modifier = modifier) {
         composable<PostsDestination> {
-            PostsRoute(ownerName = ownerName, onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) })
+            PostsRoute(
+                onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) },
+                onOpenSettings = { navController.navigate(SettingsDestination) },
+            )
         }
         composable<VideosDestination> {
             VideosRoute()
         }
+        composable<SettingsDestination> {
+            SettingsRoute(onBack = { navController.popBackStack() })
+        }
         composable<PostDetailDestination> {
             PostDetailRoute(
                 onBack = { navController.popBackStack() },
-                extraActions = { post ->
-                    OutlinedButton(
-                        onClick = { navController.navigate(EditPostDestination(post.id)) },
-                        modifier = Modifier.testTag("edit"),
-                    ) {
-                        Text(stringResource(R.string.edit).asLabel())
-                    }
-                },
+                onEdit = { id -> navController.navigate(EditPostDestination(id)) },
             )
         }
         composable<EditPostDestination> {

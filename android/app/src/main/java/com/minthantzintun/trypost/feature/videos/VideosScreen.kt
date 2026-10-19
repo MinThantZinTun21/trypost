@@ -4,37 +4,51 @@ import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +56,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -49,9 +65,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.core.data.ContentUriVideoSource
 import com.minthantzintun.trypost.core.data.VideoSource
-import com.minthantzintun.trypost.core.designsystem.MessageState
-import com.minthantzintun.trypost.core.designsystem.UnderlinedField
-import com.minthantzintun.trypost.core.designsystem.asLabel
+import com.minthantzintun.trypost.core.designsystem.ActionIconButton
+import com.minthantzintun.trypost.core.designsystem.ButtonLabel
+import com.minthantzintun.trypost.core.designsystem.ConfirmDialog
+import com.minthantzintun.trypost.core.designsystem.ErrorMessage
+import com.minthantzintun.trypost.core.designsystem.FormField
+import com.minthantzintun.trypost.core.designsystem.IconSize
+import com.minthantzintun.trypost.core.designsystem.Skeleton
+import com.minthantzintun.trypost.core.designsystem.Spacing
+import com.minthantzintun.trypost.core.designsystem.StateMessage
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.model.Video
 import com.minthantzintun.trypost.core.ui.DownloadOutcomeSnackbar
@@ -63,6 +85,10 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
+
+/** Room under the list for the Upload button, so it never hides the last Video. */
+private val FabClearance = 88.dp
+private val VideoTileSize = 56.dp
 
 @Composable
 fun VideosRoute(viewModel: VideosViewModel = hiltViewModel()) {
@@ -112,19 +138,16 @@ fun VideosScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.videos_title), style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    TextButton(
-                        onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) },
-                        enabled = !state.isUploading,
-                        modifier = Modifier.testTag("upload-video"),
-                    ) {
-                        Text(stringResource(R.string.videos_upload).asLabel())
-                    }
-                },
-            )
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.videos_title)) }) },
+        floatingActionButton = {
+            if (state.pending == null) {
+                ExtendedFloatingActionButton(
+                    onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) },
+                    icon = { Icon(painterResource(R.drawable.ic_upload), contentDescription = null) },
+                    text = { Text(stringResource(R.string.videos_upload)) },
+                    modifier = Modifier.testTag("upload-video"),
+                )
+            }
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -140,7 +163,7 @@ fun VideosScreen(
     }
 
     state.pending?.let { pending ->
-        UploadDialog(
+        UploadSheet(
             name = pending.name,
             state = state,
             onNameChange = onNameChange,
@@ -150,22 +173,19 @@ fun VideosScreen(
     }
 
     confirmingDelete?.let { video ->
-        AlertDialog(
-            onDismissRequest = { confirmingDelete = null },
-            title = { Text(stringResource(R.string.videos_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.videos_delete_confirm_body, video.name)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmingDelete = null
-                        onDelete(video.id)
-                    },
-                    modifier = Modifier.testTag("delete-video-confirm"),
-                ) { Text(stringResource(R.string.videos_delete).asLabel()) }
+        ConfirmDialog(
+            title = stringResource(R.string.videos_delete_confirm_title),
+            body = stringResource(R.string.videos_delete_confirm_body, video.name),
+            confirmLabel = stringResource(R.string.videos_delete),
+            onConfirm = {
+                confirmingDelete = null
+                onDelete(video.id)
             },
-            dismissButton = {
-                TextButton(onClick = { confirmingDelete = null }) { Text(stringResource(R.string.cancel).asLabel()) }
-            },
+            onDismiss = { confirmingDelete = null },
+            dismissLabel = stringResource(R.string.cancel),
+            icon = R.drawable.ic_delete,
+            isDestructive = true,
+            confirmTestTag = "delete-video-confirm",
         )
     }
 
@@ -174,31 +194,58 @@ fun VideosScreen(
             onDismissRequest = onDismissDeleteError,
             title = { Text(stringResource(R.string.videos_delete_failed)) },
             text = { Text(error.message()) },
-            confirmButton = { TextButton(onClick = onDismissDeleteError) { Text(stringResource(R.string.ok).asLabel()) } },
+            confirmButton = { TextButton(onClick = onDismissDeleteError) { Text(stringResource(R.string.ok)) } },
         )
     }
 }
 
+/**
+ * Names the picked Video and shows the upload's progress. While the file goes
+ * up, nothing closes the sheet: not a swipe, a tap outside or Back.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UploadDialog(
+private fun UploadSheet(
     name: String,
     state: VideosUiState,
     onNameChange: (String) -> Unit,
     onUpload: (String) -> Unit,
     onCancel: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = { if (!state.isUploading) onCancel() },
-        title = { Text(stringResource(R.string.videos_name_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                UnderlinedField(
-                    value = name,
-                    onValueChange = onNameChange,
-                    label = stringResource(R.string.videos_name),
-                    modifier = Modifier.fillMaxWidth().testTag("video-name"),
-                )
-                if (state.isUploading) {
+    val isUploading by rememberUpdatedState(state.isUploading)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != SheetValue.Hidden || !isUploading },
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = { if (!isUploading) onCancel() },
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .padding(start = Spacing.xl, end = Spacing.xl, bottom = Spacing.xl)
+                .testTag("upload-sheet"),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        ) {
+            Text(
+                text = stringResource(R.string.videos_name_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() },
+            )
+            FormField(
+                value = name,
+                onValueChange = onNameChange,
+                label = stringResource(R.string.videos_name),
+                enabled = !state.isUploading,
+                supportingText = stringResource(R.string.videos_upload_hint),
+                modifier = Modifier.fillMaxWidth().testTag("video-name"),
+            )
+            if (state.isUploading) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     LinearProgressIndicator(
                         progress = { state.uploadProgress },
                         modifier = Modifier.fillMaxWidth().testTag("upload-progress"),
@@ -209,27 +256,30 @@ private fun UploadDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                state.uploadError?.let { error ->
-                    Text(
-                        "${stringResource(R.string.videos_upload_failed)} ${error.message()}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.testTag("upload-error"),
-                    )
+            }
+            state.uploadError?.let { error ->
+                ErrorMessage(
+                    lines = listOf(error.message()),
+                    title = stringResource(R.string.videos_upload_failed),
+                    modifier = Modifier.testTag("upload-error"),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm, Alignment.End),
+            ) {
+                TextButton(onClick = onCancel, enabled = !state.isUploading) { Text(stringResource(R.string.cancel)) }
+                Button(
+                    onClick = { onUpload(name) },
+                    enabled = name.isNotBlank() && !state.isUploading,
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                    modifier = Modifier.testTag("upload-confirm"),
+                ) {
+                    ButtonLabel(icon = R.drawable.ic_upload, label = stringResource(R.string.videos_upload), isBusy = state.isUploading)
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onUpload(name) },
-                enabled = name.isNotBlank() && !state.isUploading,
-                modifier = Modifier.testTag("upload-confirm"),
-            ) { Text(stringResource(R.string.videos_upload).asLabel()) }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel, enabled = !state.isUploading) { Text(stringResource(R.string.cancel).asLabel()) }
-        },
-    )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -245,17 +295,18 @@ private fun VideoList(
     val error = state.error
 
     when {
-        state.isLoading && !state.hasLoaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+        state.isLoading && !state.hasLoaded -> VideosSkeleton()
+        error != null && !state.hasLoaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            StateMessage(
+                icon = R.drawable.ic_cloud_off,
+                title = stringResource(R.string.videos_error_title),
+                body = error.message(),
+                actionLabel = stringResource(R.string.retry),
+                onAction = onRetry,
+                isError = true,
+                modifier = Modifier.testTag("videos-error"),
+            )
         }
-        error != null && !state.hasLoaded -> MessageState(
-            title = stringResource(R.string.videos_error_title),
-            body = error.message(),
-            actionLabel = stringResource(R.string.retry),
-            onAction = onRetry,
-            isError = true,
-            modifier = Modifier.testTag("videos-error"),
-        )
         else -> {
             val listState = rememberLazyListState()
             val zone = remember { ZoneId.systemDefault() }
@@ -263,38 +314,43 @@ private fun VideoList(
             LoadMoreWhenNearEnd(listState, state.hasMore, state.page, state.loadMoreError != null, onLoadMore)
 
             PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("videos-list")) {
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(start = Spacing.gutter, end = Spacing.gutter, top = Spacing.xs, bottom = FabClearance),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    modifier = Modifier.fillMaxSize().testTag("videos-list"),
+                ) {
                     if (state.videos.isEmpty()) {
                         item {
-                            MessageState(
+                            StateMessage(
+                                icon = R.drawable.ic_videos,
                                 title = stringResource(R.string.videos_empty_title),
                                 body = stringResource(R.string.videos_empty_body),
-                                modifier = Modifier.testTag("videos-empty"),
+                                modifier = Modifier.padding(top = 48.dp).testTag("videos-empty"),
                             )
                         }
                     }
                     items(state.videos, key = { it.id }) { video ->
-                        VideoRow(
+                        VideoCard(
                             video = video,
                             zone = zone,
                             isDeleting = state.deletingId == video.id,
                             onDelete = { onDelete(video) },
                             onDownload = onDownload,
                         )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     }
                     if (state.isLoadingMore) {
                         item {
-                            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            Box(Modifier.fillMaxWidth().padding(Spacing.lg), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.size(IconSize.md))
                             }
                         }
                     }
                     state.loadMoreError?.let { loadMoreError ->
                         item {
-                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(Spacing.lg), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(loadMoreError.message(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                                OutlinedButton(onClick = onLoadMore) { Text(stringResource(R.string.retry).asLabel()) }
+                                TextButton(onClick = onLoadMore) { Text(stringResource(R.string.retry)) }
                             }
                         }
                     }
@@ -305,34 +361,108 @@ private fun VideoList(
 }
 
 @Composable
-private fun VideoRow(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete: () -> Unit, onDownload: (DownloadLink) -> Unit) {
+private fun VideoCard(video: Video, zone: ZoneId, isDeleting: Boolean, onDelete: () -> Unit, onDownload: (DownloadLink) -> Unit) {
     val context = LocalContext.current
     val details = listOfNotNull(
         video.size?.let { Formatter.formatShortFileSize(context, it) },
         video.durationSeconds?.let(::formatDuration),
         video.createdAt?.atZone(zone)?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)),
     ).joinToString(" · ")
+    var isMenuOpen by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp).testTag("video-${video.id}"),
-        verticalAlignment = Alignment.CenterVertically,
+    Card(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth().testTag("video-${video.id}"),
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(video.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (details.isNotEmpty()) {
-                Text(details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.padding(start = Spacing.md, top = Spacing.md, bottom = Spacing.md, end = Spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(VideoTileSize)
+                    .background(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.medium),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_play),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Text(video.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (details.isNotEmpty()) {
+                    Text(details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (isDeleting) {
+                Box(Modifier.size(IconSize.touchTarget), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(IconSize.md), strokeWidth = 2.dp)
+                }
+            } else {
+                Box {
+                    ActionIconButton(
+                        icon = R.drawable.ic_more,
+                        label = stringResource(R.string.videos_more_options, video.name),
+                        onClick = { isMenuOpen = true },
+                        modifier = Modifier.testTag("video-menu-${video.id}"),
+                    )
+                    DropdownMenu(expanded = isMenuOpen, onDismissRequest = { isMenuOpen = false }) {
+                        video.download?.let { link ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.download)) },
+                                leadingIcon = { Icon(painterResource(R.drawable.ic_download), contentDescription = null) },
+                                onClick = {
+                                    isMenuOpen = false
+                                    onDownload(link)
+                                },
+                                modifier = Modifier.testTag("download-video-${video.id}"),
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.videos_delete)) },
+                            leadingIcon = { Icon(painterResource(R.drawable.ic_delete), contentDescription = null) },
+                            colors = MenuDefaults.itemColors(
+                                textColor = MaterialTheme.colorScheme.error,
+                                leadingIconColor = MaterialTheme.colorScheme.error,
+                            ),
+                            onClick = {
+                                isMenuOpen = false
+                                onDelete()
+                            },
+                            modifier = Modifier.testTag("delete-video-${video.id}"),
+                        )
+                    }
+                }
             }
         }
-        video.download?.let { link ->
-            IconButton(onClick = { onDownload(link) }, modifier = Modifier.testTag("download-video-${video.id}")) {
-                Icon(painterResource(R.drawable.ic_download), contentDescription = stringResource(R.string.download))
-            }
-        }
-        if (isDeleting) {
-            CircularProgressIndicator(modifier = Modifier.padding(12.dp).size(20.dp), strokeWidth = 2.dp)
-        } else {
-            TextButton(onClick = onDelete, modifier = Modifier.testTag("delete-video-${video.id}")) {
-                Text(stringResource(R.string.videos_delete).asLabel(), color = MaterialTheme.colorScheme.error)
+    }
+}
+
+/** Holds the cards' shape while the first page loads, so nothing jumps when it arrives. */
+@Composable
+private fun VideosSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.gutter, vertical = Spacing.xs).testTag("videos-loading"),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        repeat(6) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.large)
+                    .padding(Spacing.md),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Skeleton(Modifier.size(VideoTileSize), shape = MaterialTheme.shapes.medium)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    Skeleton(Modifier.fillMaxWidth(0.7f).height(14.dp))
+                    Skeleton(Modifier.width(140.dp).height(12.dp))
+                }
             }
         }
     }

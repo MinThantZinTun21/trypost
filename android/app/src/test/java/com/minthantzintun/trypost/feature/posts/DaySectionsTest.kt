@@ -38,6 +38,21 @@ class DaySectionsTest {
     }
 
     @Test
+    fun `a day that comes back later joins its first section, so no day is listed twice`() {
+        val utc = ZoneId.of("UTC")
+        val posts = listOf(
+            post("a", "2030-01-01T09:00:00Z"),
+            post("b", "2030-01-02T09:00:00Z"),
+            post("c", "2030-01-01T10:00:00Z"),
+        )
+
+        val sections = groupByDay(posts, PostTab.Scheduled, utc)
+
+        assertEquals(listOf(LocalDate.of(2030, 1, 1), LocalDate.of(2030, 1, 2)), sections.map { it.day })
+        assertEquals(listOf(listOf("a", "c"), listOf("b")), sections.map { section -> section.posts.map { it.id } })
+    }
+
+    @Test
     fun `undated posts share one section`() {
         val sections = groupByDay(listOf(post("a", null), post("b", null)), PostTab.Failed, ZoneId.of("UTC"))
 

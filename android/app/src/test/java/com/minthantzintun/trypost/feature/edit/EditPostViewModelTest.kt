@@ -20,6 +20,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import mockwebserver3.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -75,6 +76,51 @@ class EditPostViewModelTest {
             mapOf(PlatformText.Title to "Old title", PlatformText.Description to "", PlatformText.Tags to "a, b"),
             state.texts["yt"],
         )
+    }
+
+    @Test
+    fun `only a real change counts as unsaved`() = runTest {
+        server.enqueue(json(post()))
+        val viewModel = viewModel()
+        assertFalse(viewModel.loaded().hasUnsavedChanges)
+
+        viewModel.changeContent("Hello!")
+        assertTrue(viewModel.state.value.hasUnsavedChanges)
+
+        viewModel.changeContent("Hello")
+        assertFalse(viewModel.state.value.hasUnsavedChanges)
+
+        viewModel.changeText("yt", PlatformText.Description, "A description")
+        assertTrue(viewModel.state.value.hasUnsavedChanges)
+
+        viewModel.changeText("yt", PlatformText.Description, "")
+        assertFalse(viewModel.state.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun `a saved post has no unsaved changes`() = runTest {
+        server.enqueue(json(post()))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.changeText("tt", PlatformText.Caption, "New caption")
+        server.enqueue(json(post(caption = "New caption")))
+        viewModel.save()
+
+        assertFalse(viewModel.state.first { it.isSaved }.hasUnsavedChanges)
+    }
+
+    @Test
+    fun `a refused save keeps the changes unsaved`() = runTest {
+        server.enqueue(json(post()))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.changeContent("New content")
+        server.enqueue(json("""{"message":"This post has already been processed."}""", code = 409))
+        viewModel.save()
+
+        assertTrue(viewModel.state.first { !it.isSaving && it.saveError != null }.hasUnsavedChanges)
     }
 
     @Test

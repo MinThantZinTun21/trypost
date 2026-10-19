@@ -7,103 +7,121 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /*
- * The web app's shadcn Sera tokens (resources/css/app.css), converted from
- * OKLCH to sRGB. Lime primary always carries its dark lime foreground.
+ * Material 3 Expressive with the TryPost lime (ADR 0014). Dark is the primary
+ * look: near-black surfaces that step up in tone, lime with dark ink on it.
+ * Light keeps the lime as a tonal container and uses a deep lime for text.
+ * Every text pair here is at least 4.5:1, checked for both themes.
  */
-private val Lime400 = Color(0xFF9AE600)
-private val Lime700 = Color(0xFF497D00)
-private val Lime900 = Color(0xFF35530E)
-private val Neutral50 = Color(0xFFFAFAFA)
-private val Neutral100 = Color(0xFFF5F5F5)
-private val Neutral200 = Color(0xFFE5E5E5)
-private val Neutral400 = Color(0xFFA1A1A1)
-private val Neutral500 = Color(0xFF737373)
-private val Neutral800 = Color(0xFF262626)
-private val Neutral850 = Color(0xFF2E2E2E)
-private val Neutral900 = Color(0xFF171717)
-private val Neutral950 = Color(0xFF0A0A0A)
-private val Red400 = Color(0xFFFF6467)
-private val Red600 = Color(0xFFE7000B)
+internal val DarkColors = darkColorScheme(
+    primary = Color(0xFFA3E635),
+    onPrimary = Color(0xFF1A2B00),
+    primaryContainer = Color(0xFF2F4A06),
+    onPrimaryContainer = Color(0xFFCBF48A),
+    inversePrimary = Color(0xFF3F6300),
+    secondary = Color(0xFFC0C9AE),
+    onSecondary = Color(0xFF2A331D),
+    secondaryContainer = Color(0xFF2C3324),
+    onSecondaryContainer = Color(0xFFDCE5C9),
+    tertiary = Color(0xFF8FD3CB),
+    onTertiary = Color(0xFF003733),
+    tertiaryContainer = Color(0xFF1B4D48),
+    onTertiaryContainer = Color(0xFFB0F0E7),
+    background = Color(0xFF0E100C),
+    onBackground = Color(0xFFE4E7DC),
+    surface = Color(0xFF0E100C),
+    onSurface = Color(0xFFE4E7DC),
+    surfaceVariant = Color(0xFF2B2F27),
+    onSurfaceVariant = Color(0xFFB9BDAE),
+    surfaceTint = Color(0xFFA3E635),
+    inverseSurface = Color(0xFFE4E7DC),
+    inverseOnSurface = Color(0xFF2B2F27),
+    surfaceDim = Color(0xFF0E100C),
+    surfaceBright = Color(0xFF34382F),
+    surfaceContainerLowest = Color(0xFF090B07),
+    surfaceContainerLow = Color(0xFF151712),
+    surfaceContainer = Color(0xFF1A1D16),
+    surfaceContainerHigh = Color(0xFF22251E),
+    surfaceContainerHighest = Color(0xFF2B2F27),
+    outline = Color(0xFF8A8F80),
+    outlineVariant = Color(0xFF363A31),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF5C1410),
+    onErrorContainer = Color(0xFFFFDAD6),
+    scrim = Color(0xFF000000),
+)
 
 internal val LightColors = lightColorScheme(
-    primary = Lime400,
-    onPrimary = Lime900,
-    primaryContainer = Lime400,
-    onPrimaryContainer = Lime900,
-    secondary = Neutral100,
-    onSecondary = Neutral900,
-    secondaryContainer = Neutral100,
-    onSecondaryContainer = Neutral900,
-    background = Color.White,
-    onBackground = Neutral950,
-    surface = Color.White,
-    onSurface = Neutral950,
-    surfaceVariant = Neutral100,
-    onSurfaceVariant = Neutral500,
-    surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color.White,
-    surfaceContainer = Color.White,
-    surfaceContainerHigh = Neutral100,
-    surfaceContainerHighest = Neutral100,
-    outline = Neutral200,
-    outlineVariant = Neutral200,
-    error = Red600,
-    onError = Color.White,
+    primary = Color(0xFF3F6300),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFB9F06A),
+    onPrimaryContainer = Color(0xFF112000),
+    inversePrimary = Color(0xFFA3E635),
+    secondary = Color(0xFF586249),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFDCE5C9),
+    onSecondaryContainer = Color(0xFF151E0A),
+    tertiary = Color(0xFF39665F),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFBCECE3),
+    onTertiaryContainer = Color(0xFF00201C),
+    background = Color(0xFFF8FAF2),
+    onBackground = Color(0xFF191C15),
+    surface = Color(0xFFF8FAF2),
+    onSurface = Color(0xFF191C15),
+    surfaceVariant = Color(0xFFDFE2D7),
+    onSurfaceVariant = Color(0xFF45493E),
+    surfaceTint = Color(0xFF3F6300),
+    inverseSurface = Color(0xFF2E3129),
+    inverseOnSurface = Color(0xFFF0F2E8),
+    surfaceDim = Color(0xFFD8DBD0),
+    surfaceBright = Color(0xFFF8FAF2),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF1F3EA),
+    surfaceContainer = Color(0xFFEBEEE3),
+    surfaceContainerHigh = Color(0xFFE5E8DD),
+    surfaceContainerHighest = Color(0xFFDFE2D7),
+    outline = Color(0xFF757A6C),
+    outlineVariant = Color(0xFFC6CABA),
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+    scrim = Color(0xFF000000),
 )
 
-internal val DarkColors = darkColorScheme(
-    primary = Lime400,
-    onPrimary = Lime900,
-    primaryContainer = Lime400,
-    onPrimaryContainer = Lime900,
-    secondary = Neutral800,
-    onSecondary = Neutral50,
-    secondaryContainer = Neutral800,
-    onSecondaryContainer = Neutral50,
-    background = Neutral950,
-    onBackground = Neutral50,
-    surface = Neutral950,
-    onSurface = Neutral50,
-    surfaceVariant = Neutral800,
-    onSurfaceVariant = Neutral400,
-    surfaceContainerLowest = Neutral950,
-    surfaceContainerLow = Neutral900,
-    surfaceContainer = Neutral900,
-    surfaceContainerHigh = Neutral800,
-    surfaceContainerHighest = Neutral800,
-    outline = Neutral850,
-    outlineVariant = Neutral850,
-    error = Red400,
-    onError = Neutral950,
-)
+/** A status colour: [content] for its icon and word, on its own [container]. */
+@Immutable
+data class Tone(val content: Color, val container: Color)
 
-/** The Sera colours Material 3 has no slot for: status tones and lime text. */
+/** The status tones Material 3 has no slot for. Each pair is at least 4.5:1. */
 @Immutable
 data class StatusColors(
-    val primaryText: Color,
-    val success: Color,
-    val warning: Color,
-    val info: Color,
-    val neutral: Color,
-    val danger: Color,
-)
-
-internal val LightStatusColors = StatusColors(
-    primaryText = Lime700,
-    success = Color(0xFF009966),
-    warning = Color(0xFFE17100),
-    info = Color(0xFF155DFC),
-    neutral = Neutral500,
-    danger = Red600,
+    val scheduled: Tone,
+    val publishing: Tone,
+    val published: Tone,
+    val failed: Tone,
+    val neutral: Tone,
 )
 
 internal val DarkStatusColors = StatusColors(
-    primaryText = Lime400,
-    success = Color(0xFF00D492),
-    warning = Color(0xFFFFB900),
-    info = Color(0xFF51A2FF),
-    neutral = Neutral400,
-    danger = Red400,
+    scheduled = Tone(Color(0xFF8DB8FF), Color(0xFF14284A)),
+    publishing = Tone(Color(0xFFF5C04A), Color(0xFF3B2C00)),
+    published = Tone(Color(0xFF6FDDA0), Color(0xFF0C3423)),
+    failed = Tone(Color(0xFFFFB4AB), Color(0xFF5C1410)),
+    neutral = Tone(Color(0xFFB9BDAE), Color(0xFF2B2F27)),
 )
 
-val LocalStatusColors = staticCompositionLocalOf { LightStatusColors }
+internal val LightStatusColors = StatusColors(
+    scheduled = Tone(Color(0xFF1A57C9), Color(0xFFDCE6FF)),
+    publishing = Tone(Color(0xFF7A5300), Color(0xFFFFE8B3)),
+    published = Tone(Color(0xFF08734A), Color(0xFFCFF3DF)),
+    failed = Tone(Color(0xFFBA1A1A), Color(0xFFFFDAD6)),
+    neutral = Tone(Color(0xFF45493E), Color(0xFFE5E8DD)),
+)
+
+val LocalStatusColors = staticCompositionLocalOf { DarkStatusColors }
+
+/** The networks' own logo colours; TikTok's mark follows the text colour. */
+internal val FacebookBlue = Color(0xFF0866FF)
+internal val YouTubeRed = Color(0xFFFF0033)

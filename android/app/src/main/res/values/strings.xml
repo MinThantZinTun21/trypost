@@ -27,6 +27,17 @@
 
     <!-- Posts -->
     <string name="posts_title">Posts</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme_hint">System follows your phone\'s dark mode.</string>
+    <string name="theme_system">System</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_signed_in_as">Signed in as</string>
+    <string name="settings_server">Server address</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">App version</string>
     <string name="sign_out">Sign out</string>
     <string name="sign_out_confirm_title">Sign out?</string>
     <string name="sign_out_confirm_body">The token is removed from this phone. You\'ll need it again to sign back in.</string>
@@ -36,9 +47,7 @@
     <string name="tab_published">Published</string>
     <string name="tab_failed">Failed</string>
     <string name="account_filter_all">All accounts</string>
-    <string name="account_filter_one">One account</string>
     <string name="account_filter_disconnected">Disconnected</string>
-    <string name="account_filter_error">Couldn\'t load accounts.</string>
     <string name="empty_scheduled_title">Nothing scheduled</string>
     <string name="empty_scheduled_body">Scheduled posts show here, soonest first.</string>
     <string name="empty_published_title">Nothing published yet</string>
@@ -51,10 +60,13 @@
     <string name="posts_tomorrow">Tomorrow</string>
     <string name="posts_yesterday">Yesterday</string>
     <string name="posts_no_text">(No text)</string>
-    <plurals name="posts_media_count">
-        <item quantity="one">%1$d media file</item>
-        <item quantity="other">%1$d media files</item>
-    </plurals>
+    <string name="posts_in_minutes">in %1$d min</string>
+    <string name="posts_in_hours">in %1$d h</string>
+    <string name="posts_in_hours_minutes">in %1$d h %2$d min</string>
+    <string name="posts_in_days">in %1$d d</string>
+    <string name="posts_video_thumbnail">Video</string>
+    <string name="posts_accounts_retry">Couldn\'t load accounts. Try again</string>
+    <string name="posts_more_accounts">+%1$d</string>
 
     <!-- Navigation -->
     <string name="nav_posts">Posts</string>
@@ -73,6 +85,8 @@
     <string name="videos_delete">Delete</string>
     <string name="videos_delete_confirm_title">Delete this video?</string>
     <string name="videos_delete_confirm_body">“%1$s” and its file are removed from the server.</string>
+    <string name="videos_more_options">More options for %1$s</string>
+    <string name="videos_upload_hint">Keep the app open until the upload finishes.</string>
     <string name="videos_delete_failed">Couldn\'t delete the video.</string>
 
     <!-- Post detail -->
@@ -113,6 +127,13 @@
     <string name="reschedule">Reschedule</string>
     <string name="next">Next</string>
     <string name="schedule_pick_time">Pick a time</string>
+    <string name="reschedule_sheet_title">Reschedule to…</string>
+    <string name="reschedule_in_one_hour">In 1 hour</string>
+    <string name="reschedule_tonight">Tonight</string>
+    <string name="reschedule_tomorrow_morning">Tomorrow morning</string>
+    <string name="reschedule_one_day_later">Same time, a day later</string>
+    <string name="reschedule_custom">Pick date &amp; time…</string>
+    <string name="edit_texts">Edit texts</string>
     <string name="post_now">Post now</string>
     <string name="post_now_confirm_title">Post now?</string>
     <string name="post_now_confirm_body">The post goes out to every account now instead of at its scheduled time.</string>
@@ -123,7 +144,10 @@
     <string name="action_error_title">Couldn\'t save</string>
 
     <!-- Edit -->
-    <string name="edit">Edit</string>
+    <string name="edit_discard_title">Discard changes?</string>
+    <string name="edit_discard_body">Your edits to this post\'s texts haven\'t been saved.</string>
+    <string name="edit_discard">Discard</string>
+    <string name="edit_keep_editing">Keep editing</string>
     <string name="edit_title">Edit post</string>
     <string name="save">Save</string>
     <string name="edit_content_hint">The Facebook text, and what any blank text below falls back to.</string>

@@ -19,20 +19,12 @@ fun Post.listedAt(tab: PostTab): Instant? = when (tab) {
     PostTab.Failed -> scheduledAt ?: publishedAt
 }
 
-/** Groups Posts by day, keeping the server's order. */
-fun groupByDay(posts: List<Post>, tab: PostTab, zone: ZoneId): List<DaySection> {
-    val sections = mutableListOf<DaySection>()
-
-    for (post in posts) {
-        val day = post.listedAt(tab)?.atZone(zone)?.toLocalDate()
-        val last = sections.lastOrNull()
-
-        if (last != null && last.day == day) {
-            sections[sections.lastIndex] = last.copy(posts = last.posts + post)
-        } else {
-            sections += DaySection(day = day, posts = listOf(post))
-        }
-    }
-
-    return sections
-}
+/**
+ * Groups Posts by day, keeping the server's order. A day that comes back
+ * later (a Post out of order, or one that moved between pages) joins its
+ * first section, so each day is listed once and keys its header uniquely.
+ */
+fun groupByDay(posts: List<Post>, tab: PostTab, zone: ZoneId): List<DaySection> =
+    posts
+        .groupBy { it.listedAt(tab)?.atZone(zone)?.toLocalDate() }
+        .map { (day, postsOnDay) -> DaySection(day = day, posts = postsOnDay) }
