@@ -55,7 +55,7 @@ fun TimerSection(
 ) {
     var now by remember { mutableStateOf(Instant.now()) }
     val running = state.runningTimer
-    val isTicking = running != null || task.timerSessions.any { it.endedAt == null }
+    val isTicking = running != null || task.timerSessions.any { it.isRunning(now) }
 
     LaunchedEffect(isTicking) {
         while (isTicking) {

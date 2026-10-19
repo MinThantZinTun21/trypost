@@ -27,6 +27,8 @@ class AddTaskAttachment
 
             $maxCount = (int) config('trypost.tasks.attachments.max_count');
             if ($task->attachments()->count() >= $maxCount) {
+                app(DirectAssetReceiver::class)->discard($user, $uploadId);
+
                 throw ValidationException::withMessages(['upload_id' => __('tasks.attachments_full', ['max' => $maxCount])]);
             }
 

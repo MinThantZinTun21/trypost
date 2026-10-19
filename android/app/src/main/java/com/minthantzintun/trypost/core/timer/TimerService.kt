@@ -1,6 +1,7 @@
 package com.minthantzintun.trypost.core.timer
 
 import android.Manifest
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import javax.inject.Inject
 
 /**
@@ -52,6 +54,7 @@ class TimerService : Service() {
     private var watchJob: Job? = null
     private var pomodoroJob: Job? = null
     private var shownSessionId: String? = null
+    private var endedSessionId: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -59,8 +62,9 @@ class TimerService : Service() {
         // A service started for the foreground must show its notification first, even to stop at once.
         startInForeground(tracker.running.value?.let(::notification) ?: placeholder())
 
-        if (intent?.action == ACTION_STOP) {
-            stopTimer()
+        when (intent?.action) {
+            ACTION_STOP -> stopTimer()
+            ACTION_POMODORO_END -> tracker.running.value?.let(::endPomodoroIfUp)
         }
         if (watchJob == null) {
             watchJob = scope.launch { tracker.running.collect(::follow) }
@@ -70,12 +74,14 @@ class TimerService : Service() {
     }
 
     override fun onDestroy() {
+        cancelPomodoroAlarm()
         scope.cancel()
         super.onDestroy()
     }
 
     private fun follow(session: TimerSession?) {
         if (session == null) {
+            cancelPomodoroAlarm()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
@@ -87,14 +93,51 @@ class TimerService : Service() {
         shownSessionId = session.id
         startInForeground(notification(session))
         pomodoroJob?.cancel()
+        cancelPomodoroAlarm()
         pomodoroJob = session.plannedEndAt?.let { end ->
+            // The delay stops while the phone sleeps; the alarm wakes it at the end.
+            armPomodoroAlarm(end)
             scope.launch {
                 delay(Duration.between(clock.instant(), end).toMillis().coerceAtLeast(0))
-                showPomodoroDone(session)
-                tracker.finishPomodoro()
+                endPomodoroIfUp(session)
             }
         }
     }
+
+    /** Says a Pomodoro is up once, whether the delay or the alarm gets there first. */
+    private fun endPomodoroIfUp(session: TimerSession) {
+        val end = session.plannedEndAt ?: return
+        if (session.id == endedSessionId || clock.instant().isBefore(end)) {
+            return
+        }
+
+        endedSessionId = session.id
+        scope.launch {
+            showPomodoroDone(session)
+            tracker.finishPomodoro()
+        }
+    }
+
+    private fun armPomodoroAlarm(end: Instant) {
+        val alarmManager = getSystemService(AlarmManager::class.java)
+        val canBeExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
+        if (canBeExact) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, end.toEpochMilli(), pomodoroEndIntent())
+        } else {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, end.toEpochMilli(), pomodoroEndIntent())
+        }
+    }
+
+    private fun cancelPomodoroAlarm() {
+        getSystemService(AlarmManager::class.java).cancel(pomodoroEndIntent())
+    }
+
+    private fun pomodoroEndIntent(): PendingIntent = PendingIntent.getForegroundService(
+        this,
+        0,
+        Intent(this, TimerService::class.java).setAction(ACTION_POMODORO_END),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 
     private fun stopTimer() {
         scope.launch {
@@ -177,5 +220,6 @@ class TimerService : Service() {
 
     private companion object {
         const val ACTION_STOP = "com.minthantzintun.trypost.timer.STOP"
+        const val ACTION_POMODORO_END = "com.minthantzintun.trypost.timer.POMODORO_END"
     }
 }

@@ -103,10 +103,23 @@ final class DirectAssetReceiver
             $user,
             $uploadId,
             null,
-            [MediaType::Image, MediaType::Video, MediaType::Audio],
+            Task::attachmentMediaTypes(),
             __('tasks.attachment_unsupported'),
             Task::attachmentMaxSizeInMb(...),
         );
+    }
+
+    /**
+     * Forgets a finished upload that will not be registered and removes its
+     * file from storage.
+     */
+    public function discard(User $user, string $uploadId): void
+    {
+        $key = (string) data_get($this->cache->pull($this->cacheKey($user, $uploadId)), 'key', '');
+
+        if ($key !== '') {
+            Storage::delete($key);
+        }
     }
 
     /**

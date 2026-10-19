@@ -153,10 +153,11 @@ test('a stored file over its cap is refused and removed', function () {
     Storage::assertMissing('medias/clip.mp4');
 });
 
-test('an eleventh attachment is refused when it finishes', function () {
+test('an eleventh attachment is refused when it finishes and its upload is removed', function () {
     $fake = fakeAttachmentCloud();
     $fake->shouldReceive('storedSize')->never();
     $uploadId = startAttachmentUpload();
+    Storage::put('medias/memo.m4a', 'audio bytes');
     attachToTask($this->task, 10);
 
     $this->postJson(route('mobile.v1.tasks.attachments.store', $this->task), ['upload_id' => $uploadId], $this->headers)
@@ -164,6 +165,11 @@ test('an eleventh attachment is refused when it finishes', function () {
         ->assertJsonValidationErrors(['upload_id' => __('tasks.attachments_full', ['max' => 10])]);
 
     expect($this->task->attachments()->count())->toBe(10);
+    Storage::assertMissing('medias/memo.m4a');
+
+    $this->postJson(route('mobile.v1.tasks.attachments.store', $this->task), ['upload_id' => $uploadId], $this->headers)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['upload_id' => __('tasks.attachments_full', ['max' => 10])]);
 });
 
 test('attachments are listed oldest first with download links', function () {

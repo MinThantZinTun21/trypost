@@ -10,6 +10,8 @@ import com.minthantzintun.trypost.core.reminders.ReminderAlarms
 import com.minthantzintun.trypost.core.timer.TimerTracker
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -54,11 +56,16 @@ class TryPostApplication : Application() {
                     return@collectLatest
                 }
 
-                reminderAlarms.sync()
-                tasksRepository.changes.collect { change ->
-                    if (change is TaskChange.Saved || change is TaskChange.Deleted) {
-                        reminderAlarms.sync()
+                coroutineScope {
+                    // Subscribed before the first sync, so a Task change made during it still re-syncs.
+                    launch(start = CoroutineStart.UNDISPATCHED) {
+                        tasksRepository.changes.collect { change ->
+                            if (change is TaskChange.Saved || change is TaskChange.Deleted) {
+                                reminderAlarms.sync()
+                            }
+                        }
                     }
+                    reminderAlarms.sync()
                 }
             }
         }

@@ -171,6 +171,19 @@ test('the task carries its tracked time and sessions, newest first', function ()
         ->assertJsonPath('timer_sessions.*.id', [$running->id, $older->id]);
 });
 
+test('a task shows a pomodoro whose time ran out as completed', function () {
+    $task = timerTask();
+    $session = TimerSession::factory()->for($task)->pomodoro(1500)->create(['started_at' => now()->subMinutes(30)]);
+
+    $this->getJson(route('mobile.v1.tasks.show', $task), $this->headers)
+        ->assertOk()
+        ->assertJsonPath('tracked_seconds', 1500)
+        ->assertJsonPath('timer_sessions.0.outcome', 'completed')
+        ->assertJsonPath('timer_sessions.0.ended_at', '2030-01-01T08:55:00+00:00');
+
+    expect($session->fresh()->outcome)->toBe(TimerOutcome::Completed);
+});
+
 test('another workspace\'s timer cannot be started or stopped', function () {
     $foreignTask = Task::factory()->create();
     $session = TimerSession::factory()->for($foreignTask)->create();

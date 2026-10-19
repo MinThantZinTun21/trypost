@@ -33,7 +33,7 @@ class StartTaskAttachmentUploadRequest extends FormRequest
      */
     public function rules(): array
     {
-        $suffixes = collect([MediaType::Image, MediaType::Video, MediaType::Audio])
+        $suffixes = collect(Task::attachmentMediaTypes())
             ->flatMap(fn (MediaType $type): array => $type->extensions())
             ->map(fn (string $extension): string => ".{$extension}")
             ->all();

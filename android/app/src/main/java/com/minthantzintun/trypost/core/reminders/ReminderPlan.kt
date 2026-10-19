@@ -10,6 +10,8 @@ data class ReminderRing(
     val remindAtMillis: Long,
     val lastRangAtMillis: Long? = null,
     val snoozedUntilMillis: Long? = null,
+    /** It rang where no notification could show, so it does not ring again every five minutes for nothing. */
+    val isMuted: Boolean = false,
 )
 
 /**
@@ -33,7 +35,7 @@ object ReminderPlan {
         }
 
         val lastRang = state?.lastRangAtMillis?.let(Instant::ofEpochMilli) ?: return now
-        if (!reminder.repeatsUntilDismissed) {
+        if (!reminder.repeatsUntilDismissed || state.isMuted) {
             return null
         }
 
@@ -51,14 +53,14 @@ object ReminderPlan {
         return rings.filter { (id, ring) -> times[id] == ring.remindAtMillis }
     }
 
-    /** The ring after [reminder] rang at [now]: any Snooze is used up. */
-    fun rang(reminder: UpcomingReminder, now: Instant): ReminderRing =
-        ReminderRing(remindAtMillis = reminder.remindAtMillis, lastRangAtMillis = now.toEpochMilli())
+    /** The ring after [reminder] rang at [now]: any Snooze is used up, and one that was not [isShown] stops repeating. */
+    fun rang(reminder: UpcomingReminder, now: Instant, isShown: Boolean = true): ReminderRing =
+        ReminderRing(remindAtMillis = reminder.remindAtMillis, lastRangAtMillis = now.toEpochMilli(), isMuted = !isShown)
 
     /** [ring] after a Snooze at [now]; a repeating reminder counts its five minutes from the snoozed ring. */
     fun snoozed(reminder: UpcomingReminder, ring: ReminderRing?, now: Instant): ReminderRing =
         (ring?.takeIf { it.remindAtMillis == reminder.remindAtMillis } ?: ReminderRing(reminder.remindAtMillis))
-            .copy(snoozedUntilMillis = now.plus(SnoozeFor).toEpochMilli(), lastRangAtMillis = now.toEpochMilli())
+            .copy(snoozedUntilMillis = now.plus(SnoozeFor).toEpochMilli(), lastRangAtMillis = now.toEpochMilli(), isMuted = false)
 
     private fun Instant.coerceAtLeast(other: Instant): Instant = if (isBefore(other)) other else this
 }

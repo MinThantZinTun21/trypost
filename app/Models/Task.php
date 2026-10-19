@@ -113,11 +113,21 @@ class Task extends Model
     }
 
     /**
+     * A Task attachment is a photo, a video or audio; documents stay with Posts.
+     *
+     * @return list<MediaType>
+     */
+    public static function attachmentMediaTypes(): array
+    {
+        return [MediaType::Image, MediaType::Video, MediaType::Audio];
+    }
+
+    /**
      * @return list<MediaType>
      */
     protected function acceptedMediaTypes(): array
     {
-        return [MediaType::Image, MediaType::Video, MediaType::Audio];
+        return self::attachmentMediaTypes();
     }
 
     /**

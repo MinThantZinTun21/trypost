@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat
 import com.minthantzintun.trypost.core.data.TaskChange
 import com.minthantzintun.trypost.core.data.TasksRepository
 import com.minthantzintun.trypost.core.di.ApplicationScope
+import com.minthantzintun.trypost.core.model.TaskStatus
 import com.minthantzintun.trypost.core.model.TimerSession
 import com.minthantzintun.trypost.core.network.ApiResult
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -37,8 +38,16 @@ class TimerTracker @Inject constructor(
     init {
         scope.launch {
             tasksRepository.changes.collect { change ->
-                if (change is TaskChange.TimerChanged) {
-                    show(change.running)
+                when (change) {
+                    is TaskChange.TimerChanged -> show(change.running)
+                    // Done stops the Task's timer on the server, and a deleted Task takes its sessions along.
+                    is TaskChange.Saved -> if (change.task.status == TaskStatus.Done && _running.value?.taskId == change.task.id) {
+                        show(null)
+                    }
+                    is TaskChange.Deleted -> if (_running.value?.taskId == change.id) {
+                        show(null)
+                    }
+                    TaskChange.TaskTagsChanged -> Unit
                 }
             }
         }

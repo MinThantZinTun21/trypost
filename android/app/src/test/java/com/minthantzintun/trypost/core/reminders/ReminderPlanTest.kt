@@ -84,4 +84,13 @@ class ReminderPlanTest {
             alarms,
         )
     }
+
+    @Test
+    fun `a repeat that could not show stops, until a snooze brings it back`() {
+        val repeating = reminder(at = "2030-01-01T08:00:00Z", repeats = true)
+        val muted = ReminderPlan.rang(repeating, now, isShown = false)
+
+        assertNull(ReminderPlan.nextRing(repeating, muted, minutes(5)))
+        assertEquals(minutes(10), ReminderPlan.nextRing(repeating, ReminderPlan.snoozed(repeating, muted, now), now))
+    }
 }

@@ -188,6 +188,32 @@ class ReminderAlarmsTest {
         assertTrue(scheduler.armed.isEmpty())
         assertEquals(ReminderState(), store.state)
     }
+
+    @Test
+    fun `a repeating reminder that could not show rings once and is not armed again`() = runTest {
+        server.enqueue(upcoming(reminderJson("r1", remindAt = "2030-01-01T04:00:00+00:00", repeats = true)))
+        alarms.sync()
+        notifier.isAllowed = false
+
+        alarms.ring("r1")
+
+        assertTrue(notifier.shown.isEmpty())
+        assertTrue("r1" !in scheduler.armed)
+    }
+
+    @Test
+    fun `a sync that still lists a reminder dismissed here leaves it quiet`() = runTest {
+        server.enqueue(upcoming(reminderJson("r1")))
+        server.enqueue(json(reminderJson("r1", dismissedAt = "2030-01-01T04:00:00+00:00")))
+        server.enqueue(upcoming(reminderJson("r1")))
+        alarms.sync()
+        alarms.dismiss("r1")
+
+        alarms.sync()
+
+        assertTrue(store.state.upcoming.isEmpty())
+        assertTrue(scheduler.armed.isEmpty())
+    }
 }
 
 private class MemoryReminderStore : ReminderStore {
@@ -215,9 +241,14 @@ private class RecordingScheduler : AlarmScheduler {
 private class RecordingNotifier : ReminderNotifier {
     val shown = mutableListOf<String>()
     val cancelled = mutableListOf<String>()
+    var isAllowed = true
 
-    override fun show(reminder: UpcomingReminder) {
-        shown += reminder.id
+    override fun show(reminder: UpcomingReminder): Boolean {
+        if (isAllowed) {
+            shown += reminder.id
+        }
+
+        return isAllowed
     }
 
     override fun cancel(reminderId: String) {

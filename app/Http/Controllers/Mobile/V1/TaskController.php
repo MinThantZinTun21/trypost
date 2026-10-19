@@ -13,6 +13,7 @@ use App\Http\Requests\App\Mobile\UpdateTaskRequest;
 use App\Http\Requests\App\Mobile\UpdateTaskStatusRequest;
 use App\Http\Resources\Mobile\V1\TaskResource;
 use App\Models\Task;
+use App\Models\TimerSession;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
@@ -57,7 +58,9 @@ class TaskController extends Controller
     {
         $this->authorize('manage', $task);
 
-        return new TaskResource($task->load(self::RELATIONS));
+        $task->load(self::RELATIONS)->timerSessions->each(fn (TimerSession $session): TimerSession => $session->finishIfElapsed());
+
+        return new TaskResource($task);
     }
 
     public function update(UpdateTaskRequest $request, Task $task): TaskResource

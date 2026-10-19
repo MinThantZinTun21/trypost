@@ -168,6 +168,21 @@ test('dismiss stops a reminder and keeps the first dismissal', function () {
     $this->getJson(route('mobile.v1.reminders.upcoming'), $this->headers)->assertJsonCount(0, 'data');
 });
 
+test('done dismisses the reminders that already rang, so reopening keeps them quiet', function () {
+    $task = reminderTask();
+    $rang = Reminder::factory()->for($task)->create(['remind_at' => '2030-01-01 08:00:00']);
+    $ahead = Reminder::factory()->for($task)->create(['remind_at' => '2030-01-02 08:00:00']);
+
+    $this->putJson(route('mobile.v1.tasks.status', $task), ['status' => 'done'], $this->headers)->assertOk();
+    $this->putJson(route('mobile.v1.tasks.status', $task), ['status' => 'todo'], $this->headers)->assertOk();
+
+    expect($rang->fresh()->dismissed_at?->toIso8601String())->toBe('2030-01-01T09:00:00+00:00')
+        ->and($ahead->fresh()->dismissed_at)->toBeNull();
+    $this->getJson(route('mobile.v1.reminders.upcoming'), $this->headers)
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $ahead->id);
+});
+
 test('another workspace\'s reminder cannot be dismissed', function () {
     $reminder = Reminder::factory()->for(Task::factory()->create())->create();
 

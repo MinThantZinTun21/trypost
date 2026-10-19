@@ -186,12 +186,12 @@ data class ReminderDto(
     @SerialName("minutes_before") val minutesBefore: Int? = null,
     @SerialName("repeat_until_dismissed") val repeatUntilDismissed: Boolean = false,
     @SerialName("dismissed_at") val dismissedAt: String? = null,
-    val task: ReminderTaskDto? = null,
+    val task: TaskLabelDto? = null,
 )
 
-/** What a reminder's notification says about its Task. */
+/** The Task a reminder or the running timer belongs to, as its notification names it. */
 @Serializable
-data class ReminderTaskDto(
+data class TaskLabelDto(
     val id: String,
     val title: String? = null,
     val description: String? = null,
@@ -207,7 +207,7 @@ data class TimerSessionDto(
     @SerialName("ended_at") val endedAt: String? = null,
     @SerialName("planned_seconds") val plannedSeconds: Long? = null,
     val outcome: String? = null,
-    val task: ReminderTaskDto? = null,
+    val task: TaskLabelDto? = null,
 )
 
 /** `GET timer`: the running Timer session, or null. */

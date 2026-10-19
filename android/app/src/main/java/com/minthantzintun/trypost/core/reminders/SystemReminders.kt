@@ -47,11 +47,14 @@ class SystemAlarmScheduler @Inject constructor(
 class SystemReminderNotifier @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ReminderNotifier {
-    override fun show(reminder: UpcomingReminder) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
+    override fun show(reminder: UpcomingReminder): Boolean {
+        val isAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled() &&
+            (
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                )
+        if (!isAllowed) {
+            return false
         }
 
         val open = AppNotifications.openTask(context, reminder.taskId, dismissReminderId = reminder.id)
@@ -74,6 +77,8 @@ class SystemReminderNotifier @Inject constructor(
             .build()
 
         NotificationManagerCompat.from(context).notify(notificationId(reminder.id), notification)
+
+        return true
     }
 
     override fun cancel(reminderId: String) {

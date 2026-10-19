@@ -20,7 +20,8 @@ interface AlarmScheduler {
 
 /** Shows and hides a reminder's notification. */
 interface ReminderNotifier {
-    fun show(reminder: UpcomingReminder)
+    /** False when the phone may not show notifications, so the reminder was not seen. */
+    fun show(reminder: UpcomingReminder): Boolean
 
     fun cancel(reminderId: String)
 }
@@ -42,6 +43,9 @@ class ReminderAlarms @Inject constructor(
 ) {
     private val lock = Mutex()
 
+    /** Dismissed or Done here since the app started, so a sync that read the list just before cannot bring one back. */
+    private val forgottenIds = mutableSetOf<String>()
+
     /** Sends waiting dismissals, reads the upcoming list and re-arms; with no connection it re-arms what it has. */
     suspend fun sync() {
         val pending = lock.withLock { store.read().pendingDismissals }
@@ -52,7 +56,7 @@ class ReminderAlarms @Inject constructor(
             val state = store.read()
             val stillPending = state.pendingDismissals - sent
             val next = if (upcoming is ApiResult.Success) {
-                state.copy(upcoming = upcoming.value.filterNot { it.id in stillPending }, pendingDismissals = stillPending)
+                state.copy(upcoming = upcoming.value.filterNot { it.id in stillPending || it.id in forgottenIds }, pendingDismissals = stillPending)
             } else {
                 state.copy(pendingDismissals = stillPending)
             }
@@ -67,8 +71,8 @@ class ReminderAlarms @Inject constructor(
     suspend fun ring(reminderId: String) = lock.withLock {
         val state = store.read()
         val reminder = state.upcoming.firstOrNull { it.id == reminderId } ?: return@withLock
-        notifier.show(reminder)
-        rearmLocked(state.copy(rings = state.rings + (reminderId to ReminderPlan.rang(reminder, clock.instant()))))
+        val isShown = notifier.show(reminder)
+        rearmLocked(state.copy(rings = state.rings + (reminderId to ReminderPlan.rang(reminder, clock.instant(), isShown))))
     }
 
     /** Rings again in ten minutes; the server never hears of it. */
@@ -110,11 +114,13 @@ class ReminderAlarms @Inject constructor(
             scheduler.cancel(id)
             notifier.cancel(id)
         }
+        forgottenIds.clear()
         store.write(ReminderState())
     }
 
     private suspend fun forget(reminderId: String, pendingDismissal: Boolean) = lock.withLock {
         val state = store.read()
+        forgottenIds += reminderId
         notifier.cancel(reminderId)
         rearmLocked(
             state.copy(
