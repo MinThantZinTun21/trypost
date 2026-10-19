@@ -17,14 +17,16 @@ enum TaskTab: string
     case Done = 'done';
 
     /**
-     * Limit the query to this tab's Tasks in its order: Open by due date with
-     * undated Tasks last, Done newest first.
+     * Limit the query to this tab's Tasks in its order: Open with pinned
+     * Tasks first, then by due date with undated Tasks last; Done newest
+     * first, pins ignored.
      */
     public function apply(Builder $query): Builder
     {
         return match ($this) {
             // PostgreSQL sorts nulls last on an ascending order and MySQL first; undated Tasks go last on both.
             self::Open => $query->whereIn('status', Status::open())
+                ->orderByDesc('pinned')
                 ->orderByRaw('due_at is null')
                 ->oldest('due_at')
                 ->oldest('created_at')

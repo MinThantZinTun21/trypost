@@ -20,4 +20,18 @@ Voice uses Android's built-in speech recognizer and a rule-based English parser.
 
 - `Media\Type` gains `Audio`; the "exactly three media types" rule becomes "three for Posts, plus Audio for Task attachments".
 - The app asks for `RECORD_AUDIO`, `USE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE_SPECIAL_USE` (the running timer).
-- Repeating Tasks, checklists, a web page, MCP tools and local AI are out of scope.
+- Repeating Tasks, a web page, MCP tools and local AI are out of scope.
+
+## Amended: Keep-style Tasks with a rich-text body (#138)
+
+The Owner asked for Tasks to work like Google Keep, with checklists and formatting. This reverses two choices above: the plain-text description and "checklists out of scope".
+
+- **Body:** a Task's `description` holds a small Markdown subset, stored exactly as sent.
+  - Blocks: `# ` and `## ` headings, `- ` bullets, `1. ` numbered items, `- [ ] ` / `- [x] ` checkboxes and paragraphs, one per line, no nesting.
+  - Inline: `**bold**`, `*italic*` and `~~strike~~`, with `\` escaping a mark.
+  - Markdown keeps the body readable as plain text, keeps the API's shape, and suits a later web page or MCP tool. The app parses and renders it itself, with no editor library.
+- **Optional title:** a Task needs a title or a body, not both.
+- **Colour and pin:** a Task may carry one of the Tag group colours and be pinned. The Open tab puts pinned Tasks first.
+- **App layout:** a grid of cards, a "Take a note…" bar, and an editor that saves on Back.
+- **Ticking a checkbox:** the app rewrites that line and sends the full `PUT`, so there is no checklist table and no new endpoint.
+- **Rejected:** a separate checklist-items table (a second shape for the same text), and `compose-rich-editor` (a new dependency that still needs custom checkbox blocks).

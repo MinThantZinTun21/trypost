@@ -106,14 +106,50 @@ test('a task is refused for invalid fields', function (array $body, string $fiel
 
     expect(Task::query()->count())->toBe(0);
 })->with([
-    'no title' => [['title' => ''], 'title'],
+    'no title and no body' => [['title' => ''], 'title'],
+    'no title and a blank body' => [['title' => '', 'description' => "  \n "], 'title'],
     'a long title' => [['title' => str_repeat('a', 256)], 'title'],
     'an unknown priority' => [['priority' => 4], 'priority'],
     'a due without its offset' => [['due_at' => '2030-01-02T15:00:00'], 'due_at'],
     'a due past 2038' => [['due_at' => '2038-02-01T00:00:00Z'], 'due_at'],
     'all day without a due' => [['due_all_day' => true], 'due_all_day'],
     'an unknown task tag' => [['task_tags' => ['9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d']], 'task_tags.0'],
+    'an unknown colour' => [['color' => 'violet'], 'color'],
+    'a pin that is not a yes or no' => [['pinned' => 'often'], 'pinned'],
 ]);
+
+test('a task needs only a body', function () {
+    $this->postJson(route('mobile.v1.tasks.store'), ['description' => '- [ ] Milk'], $this->headers)
+        ->assertCreated()
+        ->assertJsonPath('title', null)
+        ->assertJsonPath('description', '- [ ] Milk');
+});
+
+test('a markdown body comes back as it was sent', function () {
+    $body = "# Trip\n\n## Pack\n- [x] **Passport**\n- [ ] *Charger* and ~~cable~~\n1. Book \\*the\\* taxi\n- Snacks";
+
+    $this->postJson(route('mobile.v1.tasks.store'), ['title' => 'Trip', 'description' => $body], $this->headers)
+        ->assertCreated()
+        ->assertJsonPath('description', $body);
+
+    expect(Task::query()->sole()->description)->toBe($body);
+});
+
+test('a task carries its colour and pin, and an update without them clears them', function () {
+    $created = $this->postJson(route('mobile.v1.tasks.store'), [
+        'title' => 'Pinned',
+        'color' => 'teal',
+        'pinned' => true,
+    ], $this->headers)
+        ->assertCreated()
+        ->assertJsonPath('color', 'teal')
+        ->assertJsonPath('pinned', true);
+
+    $this->putJson(route('mobile.v1.tasks.update', $created->json('id')), ['title' => 'Pinned'], $this->headers)
+        ->assertOk()
+        ->assertJsonPath('color', null)
+        ->assertJsonPath('pinned', false);
+});
 
 test('the offset error says the time needs its offset', function () {
     $this->postJson(route('mobile.v1.tasks.store'), ['title' => 'Task', 'due_at' => '2030-01-02T15:00:00'], $this->headers)
@@ -234,6 +270,22 @@ test('open tasks are listed by due with undated ones last', function () {
     ownerTask(['title' => 'Finished', 'due_at' => '2030-01-01 09:00:00', 'status' => Status::Done, 'completed_at' => now()]);
 
     expect(listedTaskTitles(['tab' => 'open']))->toBe(['Sooner', 'Later', 'Undated']);
+});
+
+test('pinned open tasks come first, each part by due', function () {
+    ownerTask(['title' => 'Soon', 'due_at' => '2030-01-01 09:00:00']);
+    ownerTask(['title' => 'Pinned undated', 'pinned' => true]);
+    ownerTask(['title' => 'Pinned later', 'pinned' => true, 'due_at' => '2030-01-05 09:00:00']);
+    ownerTask(['title' => 'Undated']);
+
+    expect(listedTaskTitles(['tab' => 'open']))->toBe(['Pinned later', 'Pinned undated', 'Soon', 'Undated']);
+});
+
+test('done tasks ignore pins', function () {
+    ownerTask(['title' => 'Pinned', 'pinned' => true, 'status' => Status::Done, 'completed_at' => '2030-01-01 09:00:00']);
+    ownerTask(['title' => 'Newer', 'status' => Status::Done, 'completed_at' => '2030-01-02 09:00:00']);
+
+    expect(listedTaskTitles(['tab' => 'done']))->toBe(['Newer', 'Pinned']);
 });
 
 test('done tasks are listed newest finished first', function () {
