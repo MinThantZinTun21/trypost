@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.TaskChange
 import com.minthantzintun.trypost.core.data.TasksRepository
 import com.minthantzintun.trypost.core.model.Task
+import com.minthantzintun.trypost.core.model.TaskBody
 import com.minthantzintun.trypost.core.model.TaskStatus
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
@@ -16,6 +17,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.time.Clock
 import javax.inject.Inject
 
 data class TaskDetailUiState(
@@ -30,11 +34,12 @@ data class TaskDetailUiState(
     val isDeleted: Boolean = false,
 )
 
-/** One Task: Done or Reopen, To do or In progress, and Delete. */
+/** One Task: its body's checkboxes, Done or Reopen, To do or In progress, and Delete. */
 @HiltViewModel
 class TaskDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val tasksRepository: TasksRepository,
+    private val clock: Clock,
 ) : ViewModel() {
 
     private val taskId: String = checkNotNull(savedStateHandle["id"]) { "TaskDetailDestination needs an id" }
@@ -44,13 +49,21 @@ class TaskDetailViewModel @Inject constructor(
 
     private var loadJob: Job? = null
 
+    /** Ticks save one at a time, oldest first; each save carries every tick made so far. */
+    private val tickLock = Mutex()
+    private var pendingTicks = 0
+
+    /** The Task as the server last confirmed it, which a refused tick rolls back to. */
+    private var confirmedTask: Task? = null
+
     init {
         load(isRefresh = false)
 
         viewModelScope.launch {
             tasksRepository.changes.collect { change ->
                 when (change) {
-                    is TaskChange.Saved -> if (change.task.id == taskId) {
+                    // While ticks save, the screen already shows them; an older save would undo the newest.
+                    is TaskChange.Saved -> if (change.task.id == taskId && pendingTicks == 0) {
                         _state.update { it.copy(task = change.task, error = null) }
                     }
                     // A renamed or deleted Task tag reads differently on this Task.
@@ -72,7 +85,7 @@ class TaskDetailViewModel @Inject constructor(
     /** Done, Reopen (To do), or In progress; Done sets the completed time on the server. */
     fun setStatus(status: TaskStatus) {
         val current = _state.value
-        if (current.savingStatus != null || current.isDeleting || current.task?.status == status) {
+        if (current.savingStatus != null || current.isDeleting || pendingTicks > 0 || current.task?.status == status) {
             return
         }
 
@@ -82,6 +95,49 @@ class TaskDetailViewModel @Inject constructor(
             when (val result = tasksRepository.setStatus(taskId, status)) {
                 is ApiResult.Success -> _state.update { it.copy(task = result.value, savingStatus = null) }
                 is ApiResult.Failure -> _state.update { it.copy(savingStatus = null, actionError = result.error) }
+            }
+        }
+    }
+
+    /**
+     * Ticks or unticks the body's checkbox number [index] (counted from 0)
+     * at once, then saves the whole Task. A refusal puts back the body the
+     * server last saved and shows why.
+     */
+    fun toggleCheckbox(index: Int) {
+        val current = _state.value
+        val task = current.task ?: return
+        val description = task.description ?: return
+        if (current.savingStatus != null || current.isDeleting) {
+            return
+        }
+
+        val ticked = TaskBody.toggleCheckbox(description, index)
+        if (ticked == description) {
+            return
+        }
+
+        if (pendingTicks == 0) {
+            confirmedTask = task
+        }
+        pendingTicks++
+        _state.update { it.copy(task = task.copy(description = ticked), actionError = null) }
+
+        viewModelScope.launch {
+            tickLock.withLock {
+                val latest = _state.value.task ?: return@withLock
+                val result = tasksRepository.update(taskId, latest.toDraft(clock.zone), clock.zone)
+                pendingTicks--
+
+                when (result) {
+                    is ApiResult.Success -> {
+                        confirmedTask = result.value
+                        if (pendingTicks == 0) {
+                            _state.update { it.copy(task = result.value) }
+                        }
+                    }
+                    is ApiResult.Failure -> _state.update { it.copy(task = confirmedTask ?: it.task, actionError = result.error) }
+                }
             }
         }
     }

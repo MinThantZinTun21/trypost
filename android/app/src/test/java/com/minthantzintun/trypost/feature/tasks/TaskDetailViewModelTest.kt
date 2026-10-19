@@ -10,13 +10,17 @@ import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.noContent
 import com.minthantzintun.trypost.testing.session
 import com.minthantzintun.trypost.testing.taskJson
+import com.minthantzintun.trypost.testing.taskTagRefJson
 import com.minthantzintun.trypost.testing.testClient
 import com.minthantzintun.trypost.testing.testJson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,6 +29,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 
 class TaskDetailViewModelTest {
     @get:Rule
@@ -44,7 +51,11 @@ class TaskDetailViewModelTest {
         server.close()
     }
 
-    private fun viewModel(): TaskDetailViewModel = TaskDetailViewModel(SavedStateHandle(mapOf("id" to "t1")), repository)
+    private val clock = Clock.fixed(Instant.parse("2030-01-01T03:50:00Z"), ZoneId.of("Asia/Yangon"))
+
+    private fun viewModel(): TaskDetailViewModel = TaskDetailViewModel(SavedStateHandle(mapOf("id" to "t1")), repository, clock)
+
+    private fun RecordedRequest.field(name: String) = testJson.parseToJsonElement(body!!.utf8()).jsonObject.getValue(name)
 
     private suspend fun TaskDetailViewModel.loaded(): TaskDetailUiState = state.first { it.task != null && !it.isLoading }
 
@@ -166,5 +177,80 @@ class TaskDetailViewModelTest {
 
         assertNull(state.task)
         assertEquals(ApiError.NotFound, state.error)
+    }
+
+    @Test
+    fun `ticking a checkbox shows at once and saves the whole Task`() = runTest {
+        val body = "Pack\n- [ ] Charger\n- [x] Passport"
+        server.enqueue(
+            json(
+                taskJson(
+                    "t1", title = "Trip", priority = 2, description = body, color = "teal", pinned = true,
+                    dueAt = "2030-01-05T00:00:00+06:30", dueAllDay = true, taskTags = listOf(taskTagRefJson("k1")),
+                ),
+            ),
+        )
+        server.enqueue(json(taskJson("t1", title = "Trip", description = "Pack\n- [x] Charger\n- [x] Passport")))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.toggleCheckbox(0)
+
+        assertEquals("Pack\n- [x] Charger\n- [x] Passport", viewModel.state.value.task!!.description)
+        server.takeRequest()
+        val request = server.takeRequest()
+        assertEquals("PUT /mobile/v1/tasks/t1", "${request.method} ${request.url.encodedPath}")
+        assertEquals("Pack\n- [x] Charger\n- [x] Passport", request.field("description").jsonPrimitive.content)
+        assertEquals("Trip", request.field("title").jsonPrimitive.content)
+        assertEquals(2, request.field("priority").jsonPrimitive.content.toInt())
+        assertEquals("teal", request.field("color").jsonPrimitive.content)
+        assertTrue(request.field("pinned").jsonPrimitive.boolean)
+        assertEquals("2030-01-05T00:00:00+06:30", request.field("due_at").jsonPrimitive.content)
+        assertTrue(request.field("due_all_day").jsonPrimitive.boolean)
+        assertEquals("k1", request.field("task_tags").jsonArray.single().jsonPrimitive.content)
+    }
+
+    @Test
+    fun `a refused tick rolls the body back and shows why`() = runTest {
+        server.enqueue(json(taskJson("t1", description = "- [ ] Milk")))
+        server.enqueue(json("""{"message":"Server Error"}""", code = 500))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.toggleCheckbox(0)
+        val state = viewModel.state.first { it.actionError != null }
+
+        assertEquals("- [ ] Milk", state.task!!.description)
+        assertTrue(state.actionError is ApiError.Server)
+    }
+
+    @Test
+    fun `two quick ticks both stay and save in order`() = runTest {
+        server.enqueue(json(taskJson("t1", description = "- [ ] A\n- [ ] B")))
+        server.enqueue(json(taskJson("t1", description = "- [x] A\n- [x] B")))
+        server.enqueue(json(taskJson("t1", description = "- [x] A\n- [x] B")))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.toggleCheckbox(0)
+        viewModel.toggleCheckbox(1)
+
+        assertEquals("- [x] A\n- [x] B", viewModel.state.value.task!!.description)
+        server.takeRequest()
+        assertEquals("- [x] A\n- [ ] B", server.takeRequest().field("description").jsonPrimitive.content)
+        assertEquals("- [x] A\n- [x] B", server.takeRequest().field("description").jsonPrimitive.content)
+        assertEquals("- [x] A\n- [x] B", viewModel.state.value.task!!.description)
+    }
+
+    @Test
+    fun `a checkbox that is not there sends nothing`() = runTest {
+        server.enqueue(json(taskJson("t1", description = "Just text")))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.toggleCheckbox(0)
+
+        assertEquals("Just text", viewModel.state.value.task!!.description)
+        assertEquals(1, server.requestCount)
     }
 }

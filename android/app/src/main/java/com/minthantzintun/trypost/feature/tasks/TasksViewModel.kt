@@ -7,12 +7,16 @@ import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskTab
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
+import com.minthantzintun.trypost.core.settings.SettingsStore
+import com.minthantzintun.trypost.core.settings.TaskLayout
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -52,10 +56,15 @@ data class TasksUiState(
 @HiltViewModel
 class TasksViewModel @Inject constructor(
     private val tasksRepository: TasksRepository,
+    private val settingsStore: SettingsStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TasksUiState())
     val state: StateFlow<TasksUiState> = _state.asStateFlow()
+
+    /** Two columns or one, as the Owner last chose. */
+    val layout: StateFlow<TaskLayout> = settingsStore.taskLayout
+        .stateIn(viewModelScope, SharingStarted.Eagerly, TaskLayout.Grid)
 
     private val jobs = mutableMapOf<TaskTab, Job>()
     private var searchJob: Job? = null
@@ -69,6 +78,12 @@ class TasksViewModel @Inject constructor(
         viewModelScope.launch {
             tasksRepository.changes.collect { reloadLoadedTabs() }
         }
+    }
+
+    /** Switches between the grid and the list, and remembers it. */
+    fun toggleLayout() {
+        val next = if (layout.value == TaskLayout.Grid) TaskLayout.List else TaskLayout.Grid
+        viewModelScope.launch { settingsStore.setTaskLayout(next) }
     }
 
     fun selectTab(tab: TaskTab) {

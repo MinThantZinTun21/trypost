@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.TasksRepository
+import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskDraft
 import com.minthantzintun.trypost.core.model.TaskDue
@@ -37,6 +38,8 @@ data class TaskForm(
     val priority: TaskPriority = TaskPriority.None,
     val due: TaskDue? = null,
     val taskTagIds: List<String> = emptyList(),
+    val color: TagColor? = null,
+    val isPinned: Boolean = false,
 ) {
     val dueKind: DueKind
         get() = when (due) {
@@ -51,6 +54,8 @@ data class TaskForm(
         priority = priority,
         due = due,
         taskTagIds = taskTagIds,
+        color = color,
+        isPinned = isPinned,
     )
 }
 
@@ -198,11 +203,13 @@ class TaskEditorViewModel @Inject constructor(
     }
 
     private fun Task.toForm(): TaskForm = TaskForm(
-        title = title,
+        title = title.orEmpty(),
         description = description.orEmpty(),
         priority = priority,
         due = due(zone),
         taskTagIds = taskTags.map { it.id },
+        color = color,
+        isPinned = isPinned,
     )
 
     private fun TaskEditorUiState.withSaveError(error: ApiError): TaskEditorUiState {

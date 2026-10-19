@@ -173,7 +173,6 @@
     <string name="tasks_title">Tasks</string>
     <string name="tasks_tab_open">Open</string>
     <string name="tasks_tab_done">Done</string>
-    <string name="tasks_new">New task</string>
     <string name="tasks_search">Search tasks</string>
     <string name="tasks_search_clear">Clear search</string>
     <string name="tasks_filter">Filter by tags</string>
@@ -186,7 +185,7 @@
     <string name="tasks_filter_unknown_tag">Tag</string>
     <string name="tasks_error_title">Couldn\'t load tasks</string>
     <string name="tasks_empty_open_title">Nothing to do</string>
-    <string name="tasks_empty_open_body">Add a task with New task.</string>
+    <string name="tasks_empty_open_body">Take a note below to add a task.</string>
     <string name="tasks_empty_done_title">No done tasks yet</string>
     <string name="tasks_empty_done_body">Tasks you mark Done show here, newest first.</string>
     <string name="tasks_empty_filtered_title">No matching tasks</string>
@@ -195,9 +194,22 @@
     <string name="tasks_due_day_time">%1$s, %2$s</string>
     <string name="tasks_overdue_due">Overdue · %1$s</string>
     <string name="tasks_tag_in_group">%1$s, tag in %2$s</string>
+    <string name="tasks_layout_grid">Grid view</string>
+    <string name="tasks_layout_list">List view</string>
+    <string name="tasks_quick_add">Take a note…</string>
+    <string name="tasks_new_checklist">New checklist</string>
+    <string name="tasks_section_pinned">Pinned</string>
+    <string name="tasks_section_overdue">Overdue</string>
+    <string name="tasks_section_today">Today</string>
+    <string name="tasks_section_upcoming">Upcoming</string>
+    <string name="tasks_section_no_date">No date</string>
+    <string name="tasks_card_more">+%1$d more</string>
+    <string name="tasks_checklist_progress">%1$d/%2$d</string>
+    <string name="tasks_checklist_progress_description">%1$d of %2$d done</string>
 
     <!-- Task -->
     <string name="task_detail_title">Task</string>
+    <string name="task_pinned">Pinned</string>
     <string name="task_new_title">New task</string>
     <string name="task_edit_title">Edit task</string>
     <string name="task_edit">Edit task</string>

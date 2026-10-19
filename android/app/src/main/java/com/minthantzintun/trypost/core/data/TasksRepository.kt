@@ -15,7 +15,7 @@ import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.core.network.MobileClient
 import com.minthantzintun.trypost.core.network.TagGroupBody
 import com.minthantzintun.trypost.core.network.TagGroupDto
-import com.minthantzintun.trypost.core.network.TaskBody
+import com.minthantzintun.trypost.core.network.SaveTaskBody
 import com.minthantzintun.trypost.core.network.TaskDto
 import com.minthantzintun.trypost.core.network.TaskStatusBody
 import com.minthantzintun.trypost.core.network.TaskTagBody
@@ -124,10 +124,12 @@ internal fun dueAtWire(due: TaskDue, zone: ZoneId): String {
     return at.format(WireDateTime)
 }
 
-private fun TaskDraft.toBody(zone: ZoneId): TaskBody = TaskBody(
-    title = title.trim(),
+private fun TaskDraft.toBody(zone: ZoneId): SaveTaskBody = SaveTaskBody(
+    title = title.trim().takeIf { it.isNotEmpty() },
     description = description?.takeIf { it.isNotBlank() },
     priority = priority.wire,
+    color = color?.wire,
+    pinned = isPinned,
     dueAt = due?.let { dueAtWire(it, zone) },
     dueAllDay = due is TaskDue.AllDay,
     taskTags = taskTagIds,
@@ -135,13 +137,15 @@ private fun TaskDraft.toBody(zone: ZoneId): TaskBody = TaskBody(
 
 internal fun TaskDto.toTask(): Task = Task(
     id = id,
-    title = title,
+    title = title?.takeIf { it.isNotBlank() },
     description = description?.takeIf { it.isNotEmpty() },
     status = TaskStatus.fromWire(status),
     priority = TaskPriority.fromWire(priority),
     dueAt = dueAt.toInstant(),
     isDueAllDay = dueAllDay && dueAt != null,
     completedAt = completedAt.toInstant(),
+    color = TagColor.fromWireOrNull(color),
+    isPinned = pinned,
     createdAt = createdAt.toInstant(),
     updatedAt = updatedAt.toInstant(),
     taskTags = taskTags.map {

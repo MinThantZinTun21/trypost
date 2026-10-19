@@ -4,6 +4,7 @@ import com.minthantzintun.trypost.core.di.AppModule
 import com.minthantzintun.trypost.core.network.MobileApiFactory
 import com.minthantzintun.trypost.core.network.MobileClient
 import com.minthantzintun.trypost.core.session.Session
+import kotlinx.serialization.json.JsonPrimitive
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
@@ -76,20 +77,22 @@ fun tasksPage(tasks: List<String>, page: Int = 1, lastPage: Int = 1): MockRespon
 
 fun taskJson(
     id: String,
-    title: String = "Task $id",
+    title: String? = "Task $id",
     status: String = "todo",
     priority: Int = 0,
     dueAt: String? = null,
     dueAllDay: Boolean = false,
     description: String? = null,
     taskTags: List<String> = emptyList(),
+    color: String? = null,
+    pinned: Boolean = false,
 ): String {
     val due = dueAt?.let { "\"$it\"" } ?: "null"
-    val text = description?.let { "\"$it\"" } ?: "null"
     val completed = if (status == "done") "\"2030-01-03T10:00:00+00:00\"" else "null"
 
     return """
-        {"id":"$id","title":"$title","description":$text,"status":"$status","priority":$priority,
+        {"id":"$id","title":${JsonPrimitive(title)},"description":${JsonPrimitive(description)},"status":"$status","priority":$priority,
+         "color":${JsonPrimitive(color)},"pinned":$pinned,
          "due_at":$due,"due_all_day":$dueAllDay,"completed_at":$completed,
          "created_at":"2030-01-01T08:00:00+00:00","updated_at":"2030-01-01T08:00:00+00:00",
          "task_tags":[${taskTags.joinToString(",")}]}
