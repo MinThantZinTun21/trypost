@@ -22,6 +22,7 @@ Route::prefix('mobile/v1')
         Route::post('sessions', [SessionController::class, 'store'])->name('sessions.store');
 
         Route::middleware([AuthenticateMobileToken::class, SubstituteBindings::class])->group(function (): void {
+            Route::delete('session', [SessionController::class, 'destroy'])->name('session.destroy');
             Route::get('me', MeController::class)->name('me');
             Route::get('posts', [PostController::class, 'index'])->name('posts.index');
             Route::get('posts/{post}', [PostController::class, 'show'])->name('posts.show');

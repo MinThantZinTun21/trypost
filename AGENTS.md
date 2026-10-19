@@ -262,6 +262,10 @@ before adding anything.
   or unknown = 401) and acts as its Owner. There is no `MOBILE_TOKEN` and no
   switch that turns the API off; do not bring either back.
   `AuthenticatesWithOwnerToken` serves only `MCP_TOKEN`.
+- `DELETE /mobile/v1/session` is Sign out: it deletes the calling phone's
+  Mobile token (204) and leaves other phones signed in. A new password (web
+  Settings or `owner:reset-password`) deletes every Mobile token through
+  `User::booted()`, so any password path revokes them.
 - Tests sign in with `mobileHeaders($user)` (`tests/Pest.php`).
 - The app views Posts, edits their texts, Reschedules them, Posts them now and
   Sends them to Telegram (ADR 0012). It never creates Posts or changes media, Social

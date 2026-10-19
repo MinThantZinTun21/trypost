@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Mobile\SignInRequest;
 use App\Models\MobileToken;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class SessionController extends Controller
@@ -24,5 +25,16 @@ class SessionController extends Controller
             'token' => MobileToken::issueFor($owner),
             'name' => $owner->name,
         ], Response::HTTP_CREATED);
+    }
+
+    /**
+     * Signs this phone out: its Mobile token stops working. Other phones stay
+     * signed in.
+     */
+    public function destroy(Request $request): Response
+    {
+        MobileToken::findByPlainToken((string) $request->bearerToken())?->delete();
+
+        return response()->noContent();
     }
 }

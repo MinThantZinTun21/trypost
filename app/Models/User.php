@@ -46,6 +46,19 @@ class User extends Authenticatable
         'photo_url',
     ];
 
+    /**
+     * A new password, from web Settings or `owner:reset-password`, signs
+     * every phone out of the Mobile app (ADR 0015).
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (User $user): void {
+            if ($user->wasChanged('password')) {
+                $user->mobileTokens()->delete();
+            }
+        });
+    }
+
     public function getHasPhotoAttribute(): bool
     {
         return $this->getFirstMedia('avatar') !== null;
