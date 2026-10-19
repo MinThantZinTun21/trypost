@@ -100,7 +100,8 @@ class TaskTagsViewModelTest {
 
         viewModel.openDialog(TagDialog.EditTaskTag(TaskTag("k1", "Home", "g1")))
         viewModel.saveTaskTag("House")
-        viewModel.state.first { it.dialog == null && !it.isSaving }
+        // Wait for the rename's reload too, or it races the recolour for the queued responses.
+        viewModel.state.first { it.dialog == null && !it.isSaving && !it.isLoading && server.requestCount >= 3 }
         viewModel.openDialog(TagDialog.EditTagGroup(group))
         viewModel.saveTagGroup(group.name, TagColor.Brown)
         viewModel.state.first { state -> state.dialog == null && state.tagGroups?.single()?.color == TagColor.Brown }
@@ -129,6 +130,25 @@ class TaskTagsViewModelTest {
         server.takeRequest()
         val request = server.takeRequest()
         assertEquals("DELETE /mobile/v1/tag-groups/g1", "${request.method} ${request.url.encodedPath}")
+    }
+
+    @Test
+    fun `closing the sheet while a Task tag saves keeps its page until the save ends`() = runTest {
+        server.enqueue(tagGroupsList(listOf(tagGroupJson("g1"))))
+        server.enqueue(json("""{"id":"k1","name":"Home","tag_group_id":"g1"}""", code = 201))
+        server.enqueue(tagGroupsList(listOf(tagGroupJson("g1", taskTagIds = listOf("k1")))))
+        val viewModel = viewModel()
+        val group = viewModel.listed("g1").tagGroups!!.single()
+
+        viewModel.openDialog(TagDialog.NewTaskTag(group))
+        viewModel.saveTaskTag("Home")
+        viewModel.closeDialog()
+
+        assertEquals(TagDialog.NewTaskTag(group), viewModel.state.value.dialog)
+        assertNull(viewModel.state.first { !it.isSaving }.dialog)
+        server.takeRequest()
+        val body = testJson.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject
+        assertEquals("Home", body.getValue("name").jsonPrimitive.content)
     }
 
     @Test

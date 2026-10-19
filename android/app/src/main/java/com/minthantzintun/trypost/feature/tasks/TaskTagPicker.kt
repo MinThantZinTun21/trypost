@@ -1,5 +1,6 @@
 package com.minthantzintun.trypost.feature.tasks
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,8 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +46,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -51,6 +56,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.minthantzintun.trypost.R
@@ -233,6 +240,11 @@ private fun TagGroupMenu(group: TagGroup, onOpenDialog: (TagDialog) -> Unit) {
 /**
  * The editor's tag picker: pick the Task's Task tags, and create, rename,
  * recolour and delete Tag groups and Task tags without leaving the editor.
+ *
+ * A form or delete confirm opens as a page inside the sheet, never as a
+ * dialog over it: a text field in a second window stacked on the sheet's
+ * own could not take focus, so names could not be typed. Back closes the
+ * page; closing the sheet closes it too.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -240,68 +252,113 @@ fun TaskTagPickerSheet(
     state: TaskTagsUiState,
     selectedIds: Collection<String>,
     onToggle: (String) -> Unit,
-    onOpenDialog: (TagDialog) -> Unit,
-    onRetry: () -> Unit,
+    actions: TagActions,
+    onDismiss: () -> Unit,
+) {
+    val dialog = state.dialog
+
+    ModalBottomSheet(
+        onDismissRequest = {
+            actions.onCloseDialog()
+            onDismiss()
+        },
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        BackHandler(enabled = dialog != null, onBack = actions.onCloseDialog)
+
+        when (dialog) {
+            null -> TagListPage(state, selectedIds, onToggle, actions, onDismiss)
+            TagDialog.NewTagGroup -> TagGroupPage(null, state, actions)
+            is TagDialog.EditTagGroup -> TagGroupPage(dialog.tagGroup, state, actions)
+            is TagDialog.NewTaskTag -> TaskTagPage(
+                title = stringResource(R.string.tags_new_tag_in, dialog.tagGroup.name),
+                initialName = "",
+                state = state,
+                actions = actions,
+            )
+            is TagDialog.EditTaskTag -> TaskTagPage(
+                title = stringResource(R.string.tags_rename_tag),
+                initialName = dialog.taskTag.name,
+                state = state,
+                actions = actions,
+            )
+            is TagDialog.DeleteTagGroup -> DeletePage(
+                title = stringResource(R.string.tags_delete_group_title, dialog.tagGroup.name),
+                body = stringResource(R.string.tags_delete_group_body),
+                state = state,
+                actions = actions,
+            )
+            is TagDialog.DeleteTaskTag -> DeletePage(
+                title = stringResource(R.string.tags_delete_tag_title, dialog.taskTag.name),
+                body = stringResource(R.string.tags_delete_tag_body),
+                state = state,
+                actions = actions,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TagListPage(
+    state: TaskTagsUiState,
+    selectedIds: Collection<String>,
+    onToggle: (String) -> Unit,
+    actions: TagActions,
     onDismiss: () -> Unit,
 ) {
     var isManaging by rememberSaveable { mutableStateOf(false) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.lg).testTag("tag-picker")) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = Spacing.xl, end = Spacing.md),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.tags_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                if (!state.tagGroups.isNullOrEmpty()) {
-                    TextButton(onClick = { isManaging = !isManaging }, modifier = Modifier.testTag("tags-manage")) {
-                        Text(stringResource(if (isManaging) R.string.tags_done_managing else R.string.tags_manage))
-                    }
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.lg).testTag("tag-picker")) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = Spacing.xl, end = Spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.tags_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
+            if (!state.tagGroups.isNullOrEmpty()) {
+                TextButton(onClick = { isManaging = !isManaging }, modifier = Modifier.testTag("tags-manage")) {
+                    Text(stringResource(if (isManaging) R.string.tags_done_managing else R.string.tags_manage))
                 }
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier.testTag("tag-picker-done"),
-                ) { Text(stringResource(R.string.done)) }
             }
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("tag-picker-done"),
+            ) { Text(stringResource(R.string.done)) }
+        }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.xl, vertical = Spacing.md),
-                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-            ) {
-                if (isManaging) {
-                    Text(
-                        text = stringResource(R.string.tags_manage_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                TagGroupsContent(
-                    state = state,
-                    selectedIds = selectedIds,
-                    onToggle = onToggle,
-                    onRetry = onRetry,
-                    isManaging = isManaging,
-                    onOpenDialog = onOpenDialog,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.xl, vertical = Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        ) {
+            if (isManaging) {
+                Text(
+                    text = stringResource(R.string.tags_manage_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                TextButton(
-                    onClick = { onOpenDialog(TagDialog.NewTagGroup) },
-                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                    modifier = Modifier.testTag("new-tag-group"),
-                ) {
-                    Icon(painterResource(R.drawable.ic_plus), contentDescription = null, modifier = Modifier.size(IconSize.sm))
-                    Text(stringResource(R.string.tags_new_group), modifier = Modifier.padding(start = Spacing.xs))
-                }
+            }
+            TagGroupsContent(
+                state = state,
+                selectedIds = selectedIds,
+                onToggle = onToggle,
+                onRetry = actions.onRetry,
+                isManaging = isManaging,
+                onOpenDialog = actions.onOpenDialog,
+            )
+            TextButton(
+                onClick = { actions.onOpenDialog(TagDialog.NewTagGroup) },
+                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                modifier = Modifier.testTag("new-tag-group"),
+            ) {
+                Icon(painterResource(R.drawable.ic_plus), contentDescription = null, modifier = Modifier.size(IconSize.sm))
+                Text(stringResource(R.string.tags_new_group), modifier = Modifier.padding(start = Spacing.xs))
             }
         }
     }
@@ -353,90 +410,174 @@ fun TagGroupsContent(
     }
 }
 
-/** The tag picker's open dialog: a Tag group or Task tag form, or a delete confirm. */
+/**
+ * A page of the tag sheet: a Back arrow and title, the content, then the
+ * Cancel and confirm buttons, lifted above the keyboard.
+ */
 @Composable
-fun TagDialogs(
+private fun TagSheetPage(
+    title: String,
     state: TaskTagsUiState,
-    onSaveTagGroup: (name: String, color: TagColor) -> Unit,
-    onSaveTaskTag: (name: String) -> Unit,
-    onConfirmDelete: () -> Unit,
-    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
+    confirm: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
 ) {
-    when (val dialog = state.dialog) {
-        null -> Unit
-        TagDialog.NewTagGroup -> TagGroupDialog(null, state, onSaveTagGroup, onDismiss)
-        is TagDialog.EditTagGroup -> TagGroupDialog(dialog.tagGroup, state, onSaveTagGroup, onDismiss)
-        is TagDialog.NewTaskTag -> TaskTagDialog(
-            title = stringResource(R.string.tags_new_tag_in, dialog.tagGroup.name),
-            initialName = "",
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = Spacing.lg),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = Spacing.sm, end = Spacing.xl),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ActionIconButton(
+                icon = R.drawable.ic_arrow_back,
+                label = stringResource(R.string.back),
+                onClick = onCancel,
+                enabled = !state.isSaving,
+                modifier = Modifier.testTag("tag-page-back"),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(start = Spacing.xs).semantics { heading() },
+            )
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xl, vertical = Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            content()
+            state.dialogError?.let { ErrorMessage(lines = listOf(it.message()), modifier = Modifier.testTag("tag-dialog-error")) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm, Alignment.End),
+            ) {
+                TextButton(onClick = onCancel, enabled = !state.isSaving) { Text(stringResource(R.string.cancel)) }
+                confirm()
+            }
+        }
+    }
+}
+
+/** A name field that takes focus and opens the keyboard as its page opens; Done saves. */
+@Composable
+private fun TagNameField(
+    name: String,
+    onNameChange: (String) -> Unit,
+    label: String,
+    state: TaskTagsUiState,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+    hint: String? = null,
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    FormField(
+        value = name,
+        onValueChange = onNameChange,
+        label = label,
+        enabled = !state.isSaving,
+        isError = state.nameError != null,
+        supportingText = state.nameError ?: hint,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { onDone() }),
+        modifier = modifier.fillMaxWidth().focusRequester(focusRequester),
+    )
+
+    LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
+}
+
+@Composable
+private fun TagGroupPage(tagGroup: TagGroup?, state: TaskTagsUiState, actions: TagActions) {
+    var name by rememberSaveable { mutableStateOf(tagGroup?.name.orEmpty()) }
+    var color by rememberSaveable { mutableStateOf(tagGroup?.color ?: TagColor.Blue) }
+    val save = { actions.onSaveTagGroup(name, color) }
+
+    TagSheetPage(
+        title = stringResource(if (tagGroup == null) R.string.tags_new_group else R.string.tags_edit_group),
+        state = state,
+        onCancel = actions.onCloseDialog,
+        confirm = { SaveButton(state, onClick = save, modifier = Modifier.testTag("tag-group-save")) },
+        modifier = Modifier.testTag("tag-group-page"),
+    ) {
+        TagNameField(
+            name = name,
+            onNameChange = { name = it },
+            label = stringResource(R.string.tags_group_name),
+            hint = stringResource(R.string.tags_group_name_hint),
             state = state,
-            onSave = onSaveTaskTag,
-            onDismiss = onDismiss,
+            onDone = save,
+            modifier = Modifier.testTag("tag-group-name"),
         )
-        is TagDialog.EditTaskTag -> TaskTagDialog(
-            title = stringResource(R.string.tags_rename_tag),
-            initialName = dialog.taskTag.name,
+        Text(stringResource(R.string.tags_group_color), style = MaterialTheme.typography.labelLarge)
+        ColorSwatches(selected = color, onSelect = { color = it })
+        state.colorError?.let { ErrorMessage(lines = listOf(it)) }
+    }
+}
+
+@Composable
+private fun TaskTagPage(title: String, initialName: String, state: TaskTagsUiState, actions: TagActions) {
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    val save = { actions.onSaveTaskTag(name) }
+
+    TagSheetPage(
+        title = title,
+        state = state,
+        onCancel = actions.onCloseDialog,
+        confirm = { SaveButton(state, onClick = save, modifier = Modifier.testTag("task-tag-save")) },
+        modifier = Modifier.testTag("task-tag-page"),
+    ) {
+        TagNameField(
+            name = name,
+            onNameChange = { name = it },
+            label = stringResource(R.string.tags_tag_name),
             state = state,
-            onSave = onSaveTaskTag,
-            onDismiss = onDismiss,
-        )
-        is TagDialog.DeleteTagGroup -> DeleteDialog(
-            title = stringResource(R.string.tags_delete_group_title, dialog.tagGroup.name),
-            body = stringResource(R.string.tags_delete_group_body),
-            state = state,
-            onConfirm = onConfirmDelete,
-            onDismiss = onDismiss,
-        )
-        is TagDialog.DeleteTaskTag -> DeleteDialog(
-            title = stringResource(R.string.tags_delete_tag_title, dialog.taskTag.name),
-            body = stringResource(R.string.tags_delete_tag_body),
-            state = state,
-            onConfirm = onConfirmDelete,
-            onDismiss = onDismiss,
+            onDone = save,
+            modifier = Modifier.testTag("task-tag-name"),
         )
     }
 }
 
 @Composable
-private fun TagGroupDialog(
-    tagGroup: TagGroup?,
-    state: TaskTagsUiState,
-    onSave: (name: String, color: TagColor) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var name by rememberSaveable { mutableStateOf(tagGroup?.name.orEmpty()) }
-    var color by rememberSaveable { mutableStateOf(tagGroup?.color ?: TagColor.Blue) }
+private fun SaveButton(state: TaskTagsUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Button(
+        onClick = onClick,
+        enabled = !state.isSaving,
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+        modifier = modifier,
+    ) { ButtonLabel(icon = R.drawable.ic_check, label = stringResource(R.string.save), isBusy = state.isSaving) }
+}
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (tagGroup == null) R.string.tags_new_group else R.string.tags_edit_group)) },
-        text = {
-            Column(modifier = Modifier.imePadding(), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                FormField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = stringResource(R.string.tags_group_name),
-                    enabled = !state.isSaving,
-                    isError = state.nameError != null,
-                    supportingText = state.nameError ?: stringResource(R.string.tags_group_name_hint),
-                    modifier = Modifier.testTag("tag-group-name"),
-                )
-                Text(stringResource(R.string.tags_group_color), style = MaterialTheme.typography.labelLarge)
-                ColorSwatches(selected = color, onSelect = { color = it })
-                state.colorError?.let { ErrorMessage(lines = listOf(it)) }
-                state.dialogError?.let { ErrorMessage(lines = listOf(it.message()), modifier = Modifier.testTag("tag-dialog-error")) }
-            }
-        },
-        confirmButton = {
+/** A red delete confirm that stays open with the reason when the server refuses. */
+@Composable
+private fun DeletePage(title: String, body: String, state: TaskTagsUiState, actions: TagActions) {
+    TagSheetPage(
+        title = title,
+        state = state,
+        onCancel = actions.onCloseDialog,
+        confirm = {
             Button(
-                onClick = { onSave(name, color) },
+                onClick = actions.onConfirmDelete,
                 enabled = !state.isSaving,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                modifier = Modifier.testTag("tag-group-save"),
-            ) { ButtonLabel(icon = R.drawable.ic_check, label = stringResource(R.string.save), isBusy = state.isSaving) }
+                modifier = Modifier.testTag("tag-delete-confirm"),
+            ) { ButtonLabel(icon = R.drawable.ic_delete, label = stringResource(R.string.delete), isBusy = state.isSaving) }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !state.isSaving) { Text(stringResource(R.string.cancel)) } },
-    )
+        modifier = Modifier.testTag("tag-delete-page"),
+    ) {
+        Text(body, style = MaterialTheme.typography.bodyLarge)
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -478,70 +619,3 @@ private fun ColorSwatches(selected: TagColor, onSelect: (TagColor) -> Unit) {
     }
 }
 
-@Composable
-private fun TaskTagDialog(
-    title: String,
-    initialName: String,
-    state: TaskTagsUiState,
-    onSave: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var name by rememberSaveable { mutableStateOf(initialName) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                FormField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = stringResource(R.string.tags_tag_name),
-                    enabled = !state.isSaving,
-                    isError = state.nameError != null,
-                    supportingText = state.nameError,
-                    modifier = Modifier.testTag("task-tag-name"),
-                )
-                state.dialogError?.let { ErrorMessage(lines = listOf(it.message()), modifier = Modifier.testTag("tag-dialog-error")) }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onSave(name) },
-                enabled = !state.isSaving,
-                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                modifier = Modifier.testTag("task-tag-save"),
-            ) { ButtonLabel(icon = R.drawable.ic_check, label = stringResource(R.string.save), isBusy = state.isSaving) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !state.isSaving) { Text(stringResource(R.string.cancel)) } },
-    )
-}
-
-/** A red delete confirm that stays open with the reason when the server refuses. */
-@Composable
-private fun DeleteDialog(title: String, body: String, state: TaskTagsUiState, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(painterResource(R.drawable.ic_delete), contentDescription = null) },
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                Text(body)
-                state.dialogError?.let { ErrorMessage(lines = listOf(it.message()), modifier = Modifier.testTag("tag-dialog-error")) }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = !state.isSaving,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                ),
-                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                modifier = Modifier.testTag("tag-delete-confirm"),
-            ) { ButtonLabel(icon = R.drawable.ic_delete, label = stringResource(R.string.delete), isBusy = state.isSaving) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !state.isSaving) { Text(stringResource(R.string.cancel)) } },
-    )
-}
