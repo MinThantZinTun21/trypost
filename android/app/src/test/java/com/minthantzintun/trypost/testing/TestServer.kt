@@ -117,22 +117,6 @@ fun reminderJson(
         """"repeat_until_dismissed":$repeats,"dismissed_at":${dismissedAt?.let { "\"$it\"" } ?: "null"}$task}"""
 }
 
-fun timerSessionJson(
-    id: String,
-    taskId: String = "t1",
-    mode: String = "free",
-    startedAt: String = "2030-01-01T03:00:00+00:00",
-    endedAt: String? = null,
-    plannedSeconds: Long? = null,
-    outcome: String? = null,
-    taskTitle: String? = null,
-): String {
-    val task = taskTitle?.let { ""","task":{"id":"$taskId","title":"$it","description":null}""" }.orEmpty()
-
-    return """{"id":"$id","task_id":"$taskId","mode":"$mode","started_at":"$startedAt","ended_at":${endedAt?.let { "\"$it\"" } ?: "null"},""" +
-        """"planned_seconds":${plannedSeconds ?: "null"},"outcome":${outcome?.let { "\"$it\"" } ?: "null"}$task}"""
-}
-
 fun taskAttachmentJson(id: String, type: String = "image", mimeType: String = "image/jpeg", fileName: String = "photo.jpg"): String =
     """{"id":"$id","type":"$type","url":"https://cdn.example.com/$fileName","mime_type":"$mimeType","original_filename":"$fileName",""" +
         """"size":1024,"duration":null,"created_at":"2030-01-01T08:00:00+00:00","download_url":"https://app.example.com/media/$id/download?signature=abc","file_name":"$fileName"}"""

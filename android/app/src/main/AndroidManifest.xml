@@ -13,9 +13,6 @@
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- The running timer's notification, only while a session runs. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Voice notes on a Task. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
@@ -54,15 +51,6 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-
-        <service
-            android:name=".core.timer.TimerService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Shows the Owner's running task timer with its elapsed time and Stop until they stop it." />
-        </service>
 
         <provider
             android:name="androidx.core.content.FileProvider"

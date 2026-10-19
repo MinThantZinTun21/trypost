@@ -171,8 +171,6 @@ data class TaskDto(
     @SerialName("updated_at") val updatedAt: String? = null,
     @SerialName("task_tags") val taskTags: List<TaskTagRefDto> = emptyList(),
     val reminders: List<ReminderDto> = emptyList(),
-    @SerialName("tracked_seconds") val trackedSeconds: Long = 0,
-    @SerialName("timer_sessions") val timerSessions: List<TimerSessionDto> = emptyList(),
     val attachments: List<TaskAttachmentDto> = emptyList(),
 )
 
@@ -189,35 +187,12 @@ data class ReminderDto(
     val task: TaskLabelDto? = null,
 )
 
-/** The Task a reminder or the running timer belongs to, as its notification names it. */
+/** The Task a reminder belongs to, as its notification names it. */
 @Serializable
 data class TaskLabelDto(
     val id: String,
     val title: String? = null,
     val description: String? = null,
-)
-
-/** A Timer session (`TimerSessionResource`); the running one also names its Task. */
-@Serializable
-data class TimerSessionDto(
-    val id: String,
-    @SerialName("task_id") val taskId: String,
-    val mode: String,
-    @SerialName("started_at") val startedAt: String,
-    @SerialName("ended_at") val endedAt: String? = null,
-    @SerialName("planned_seconds") val plannedSeconds: Long? = null,
-    val outcome: String? = null,
-    val task: TaskLabelDto? = null,
-)
-
-/** `GET timer`: the running Timer session, or null. */
-@Serializable
-data class RunningTimerDto(val data: TimerSessionDto? = null)
-
-@Serializable
-data class StartTimerBody(
-    val mode: String,
-    @SerialName("planned_seconds") val plannedSeconds: Long?,
 )
 
 /** A Task attachment (`TaskAttachmentResource`). */

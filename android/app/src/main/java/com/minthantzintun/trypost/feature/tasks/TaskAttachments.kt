@@ -13,24 +13,21 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,6 +48,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,18 +61,17 @@ import com.minthantzintun.trypost.core.data.AttachmentUpload
 import com.minthantzintun.trypost.core.data.ContentUriUploadSource
 import com.minthantzintun.trypost.core.data.UploadSource
 import com.minthantzintun.trypost.core.designsystem.ActionIconButton
-import com.minthantzintun.trypost.core.designsystem.ButtonLabel
 import com.minthantzintun.trypost.core.designsystem.ConfirmDialog
 import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.model.AttachmentType
+import com.minthantzintun.trypost.core.model.ClockText
 import com.minthantzintun.trypost.core.model.TaskAttachment
-import com.minthantzintun.trypost.core.model.TimerClock
 import com.minthantzintun.trypost.core.ui.message
 import kotlinx.coroutines.delay
 import java.io.File
 
-private val TileSize = 104.dp
+private val TileSize = 72.dp
 
 /** What the attachments section can ask of the Task. */
 data class AttachmentActions(
@@ -85,12 +82,11 @@ data class AttachmentActions(
 )
 
 /**
- * The Task's photos, videos and voice notes, then the ones uploading. Add
- * picks from the Photo Picker, takes a photo or video with the camera, or
- * records a voice note. A tap opens the file in the phone's viewer or
- * player; a long press deletes it.
+ * The Task's photos, videos and voice notes in one scrolling row, then the
+ * ones uploading. The header's buttons pick from the Photo Picker, take a
+ * photo or video with the camera, or record a voice note. A tap opens the
+ * file in the phone's viewer or player; a long press deletes it.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AttachmentsSection(
     attachments: List<TaskAttachment>,
@@ -103,9 +99,24 @@ fun AttachmentsSection(
     var confirmingDelete by remember { mutableStateOf<TaskAttachment?>(null) }
     var isRecording by rememberSaveable { mutableStateOf(false) }
 
-    Column(modifier = modifier.testTag("task-attachments"), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        if (attachments.isNotEmpty() || uploads.isNotEmpty()) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+    val running = uploads.filter { it.error == null }
+    val failed = uploads.filter { it.error != null }
+
+    Column(modifier = modifier.testTag("task-attachments"), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.task_attachments),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
+            AddAttachmentButtons(onAttach = actions.onAttach, onRecordVoice = { isRecording = true })
+        }
+        if (attachments.isNotEmpty() || running.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(end = Spacing.md),
+            ) {
                 attachments.forEach { attachment ->
                     AttachmentTile(
                         attachment = attachment,
@@ -114,12 +125,12 @@ fun AttachmentsSection(
                         onDelete = { confirmingDelete = attachment },
                     )
                 }
-                uploads.forEach { upload ->
-                    UploadTile(upload, onRetry = { actions.onRetryUpload(upload.id) }, onDismiss = { actions.onDismissUpload(upload.id) })
-                }
+                running.forEach { UploadTile(it) }
             }
         }
-        AddAttachmentButton(onAttach = actions.onAttach, onRecordVoice = { isRecording = true })
+        failed.forEach { upload ->
+            FailedUpload(upload, onRetry = { actions.onRetryUpload(upload.id) }, onDismiss = { actions.onDismissUpload(upload.id) })
+        }
     }
 
     if (isRecording) {
@@ -151,10 +162,10 @@ fun AttachmentsSection(
     }
 }
 
+/** Pick, take a photo, record a video and record a voice note, as four labelled icon buttons. */
 @Composable
-private fun AddAttachmentButton(onAttach: (UploadSource, AttachmentType) -> Unit, onRecordVoice: () -> Unit) {
+private fun AddAttachmentButtons(onAttach: (UploadSource, AttachmentType) -> Unit, onRecordVoice: () -> Unit) {
     val context = LocalContext.current
-    var isMenuOpen by remember { mutableStateOf(false) }
     // The camera writes here; kept across the camera's round trip, which may recreate this screen.
     var cameraFile by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -197,47 +208,38 @@ private fun AddAttachmentButton(onAttach: (UploadSource, AttachmentType) -> Unit
         }
     }
 
-    Box {
-        OutlinedButton(
-            onClick = { isMenuOpen = true },
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            modifier = Modifier.testTag("attachment-add"),
-        ) {
-            ButtonLabel(icon = R.drawable.ic_paperclip, label = stringResource(R.string.attachment_add))
-        }
-        DropdownMenu(expanded = isMenuOpen, onDismissRequest = { isMenuOpen = false }) {
-            AddMenuItem(R.drawable.ic_photo, R.string.attachment_pick, "attachment-pick") {
-                isMenuOpen = false
-                picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
-            }
-            AddMenuItem(R.drawable.ic_camera, R.string.attachment_take_photo, "attachment-take-photo") {
-                isMenuOpen = false
-                launchCamera("photo", "jpg") { takePhoto.launch(it) }
-            }
-            AddMenuItem(R.drawable.ic_video, R.string.attachment_record_video, "attachment-record-video") {
-                isMenuOpen = false
-                launchCamera("video", "mp4") { recordVideo.launch(it) }
-            }
-            AddMenuItem(R.drawable.ic_microphone, R.string.attachment_voice_note, "attachment-voice-note") {
-                isMenuOpen = false
+    Row {
+        ActionIconButton(
+            icon = R.drawable.ic_photo,
+            label = stringResource(R.string.attachment_pick),
+            onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
+            modifier = Modifier.testTag("attachment-pick"),
+        )
+        ActionIconButton(
+            icon = R.drawable.ic_camera,
+            label = stringResource(R.string.attachment_take_photo),
+            onClick = { launchCamera("photo", "jpg") { takePhoto.launch(it) } },
+            modifier = Modifier.testTag("attachment-take-photo"),
+        )
+        ActionIconButton(
+            icon = R.drawable.ic_video,
+            label = stringResource(R.string.attachment_record_video),
+            onClick = { launchCamera("video", "mp4") { recordVideo.launch(it) } },
+            modifier = Modifier.testTag("attachment-record-video"),
+        )
+        ActionIconButton(
+            icon = R.drawable.ic_microphone,
+            label = stringResource(R.string.attachment_voice_note),
+            onClick = {
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     onRecordVoice()
                 } else {
                     microphone.launch(Manifest.permission.RECORD_AUDIO)
                 }
-            }
-        }
+            },
+            modifier = Modifier.testTag("attachment-voice-note"),
+        )
     }
-}
-
-@Composable
-private fun AddMenuItem(icon: Int, label: Int, testTag: String, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = { Text(stringResource(label)) },
-        leadingIcon = { Icon(painterResource(icon), contentDescription = null) },
-        onClick = onClick,
-        modifier = Modifier.testTag(testTag),
-    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -282,7 +284,7 @@ private fun AttachmentTile(attachment: TaskAttachment, isDeleting: Boolean, onOp
                     modifier = Modifier.size(IconSize.md),
                 )
                 Text(
-                    text = attachment.durationSeconds?.let { TimerClock.format(it.toLong()) } ?: name,
+                    text = attachment.durationSeconds?.let { ClockText.format(it.toLong()) } ?: name,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
@@ -297,44 +299,48 @@ private fun AttachmentTile(attachment: TaskAttachment, isDeleting: Boolean, onOp
     }
 }
 
+/** An upload on its way, with how far it has got. */
 @Composable
-private fun UploadTile(upload: AttachmentUpload, onRetry: () -> Unit, onDismiss: () -> Unit) {
-    val error = upload.error
-
+private fun UploadTile(upload: AttachmentUpload) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(TileSize)
             .clip(MaterialTheme.shapes.medium)
-            .background(if (error == null) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.errorContainer)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .testTag("attachment-upload-${upload.id}"),
     ) {
-        if (error == null) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                CircularProgressIndicator(progress = { upload.progress }, modifier = Modifier.size(IconSize.md), strokeWidth = 2.dp)
-                Text(
-                    text = stringResource(R.string.attachment_uploading, (upload.progress * 100).toInt()),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(Spacing.xxs)) {
-                Text(
-                    text = error.message(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("attachment-upload-error"),
-                )
-                Row {
-                    ActionIconButton(icon = R.drawable.ic_repeat, label = stringResource(R.string.retry), onClick = onRetry)
-                    ActionIconButton(icon = R.drawable.ic_close, label = stringResource(R.string.attachment_dismiss), onClick = onDismiss)
-                }
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            CircularProgressIndicator(progress = { upload.progress }, modifier = Modifier.size(IconSize.md), strokeWidth = 2.dp)
+            Text(
+                text = stringResource(R.string.attachment_uploading, (upload.progress * 100).toInt()),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+    }
+}
+
+/** An upload the server or the connection refused: the reason on one line, with Retry and Dismiss. */
+@Composable
+private fun FailedUpload(upload: AttachmentUpload, onRetry: () -> Unit, onDismiss: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().testTag("attachment-upload-${upload.id}")) {
+        Icon(
+            painter = painterResource(R.drawable.ic_status_failed),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(IconSize.sm),
+        )
+        Text(
+            text = upload.error?.message().orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).padding(horizontal = Spacing.sm).testTag("attachment-upload-error"),
+        )
+        ActionIconButton(icon = R.drawable.ic_repeat, label = stringResource(R.string.retry), onClick = onRetry)
+        ActionIconButton(icon = R.drawable.ic_close, label = stringResource(R.string.attachment_dismiss), onClick = onDismiss)
     }
 }
 
@@ -366,7 +372,7 @@ private fun VoiceNoteDialog(onRecorded: (File) -> Unit, onDismiss: () -> Unit) {
         title = { Text(stringResource(R.string.attachment_voice_note)) },
         text = {
             Text(
-                text = if (hasFailed) stringResource(R.string.attachment_recording_failed) else TimerClock.format(seconds),
+                text = if (hasFailed) stringResource(R.string.attachment_recording_failed) else ClockText.format(seconds),
                 style = if (hasFailed) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.testTag("voice-note-time"),
             )

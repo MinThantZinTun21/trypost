@@ -7,7 +7,6 @@ import com.minthantzintun.trypost.core.data.TasksRepository
 import com.minthantzintun.trypost.core.di.ApplicationScope
 import com.minthantzintun.trypost.core.notifications.AppNotifications
 import com.minthantzintun.trypost.core.reminders.ReminderAlarms
-import com.minthantzintun.trypost.core.timer.TimerTracker
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -30,9 +29,6 @@ class TryPostApplication : Application() {
     lateinit var reminderAlarms: ReminderAlarms
 
     @Inject
-    lateinit var timerTracker: TimerTracker
-
-    @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
@@ -51,7 +47,6 @@ class TryPostApplication : Application() {
             sessionRepository.session.map { it != null }.distinctUntilChanged().collectLatest { isSignedIn ->
                 if (!isSignedIn) {
                     reminderAlarms.clear()
-                    timerTracker.forget()
 
                     return@collectLatest
                 }

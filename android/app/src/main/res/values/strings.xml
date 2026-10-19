@@ -38,13 +38,6 @@
     <string name="settings_signed_in_as">Signed in as</string>
     <string name="settings_server">Server address</string>
     <string name="settings_about">About</string>
-    <string name="settings_timer">Timer</string>
-    <string name="settings_pomodoro_focus">Pomodoro length</string>
-    <string name="settings_pomodoro_break">Break after a Pomodoro</string>
-    <plurals name="minutes">
-        <item quantity="one">%1$d min</item>
-        <item quantity="other">%1$d min</item>
-    </plurals>
     <string name="settings_version">App version</string>
     <string name="sign_out">Sign out</string>
     <string name="sign_out_confirm_title">Sign out?</string>
@@ -172,7 +165,6 @@
 
     <!-- Shared actions -->
     <string name="delete">Delete</string>
-    <string name="done">Done</string>
     <string name="nav_tasks">Tasks</string>
     <string name="nav_settings">Settings</string>
 
@@ -249,12 +241,11 @@
     <string name="task_priority">Priority</string>
     <string name="task_due">Due</string>
     <string name="task_no_due">No due date</string>
-    <string name="task_due_none">None</string>
-    <string name="task_due_date">Date</string>
-    <string name="task_due_date_time">Date &amp; time</string>
+    <string name="task_due_add_date">Add date</string>
+    <string name="task_due_add_time">Add time</string>
+    <string name="task_due_clear">Remove due date</string>
+    <string name="task_due_no_time">No time</string>
     <string name="task_no_tags">No tags</string>
-    <string name="task_add_tags">Add tags</string>
-    <string name="task_change_tags">Change tags</string>
     <string name="task_completed_at">Done %1$s</string>
     <string name="task_created_at">Created %1$s</string>
     <string name="task_mark_done">Done</string>
@@ -331,34 +322,8 @@
     <string name="reminder_snooze">Snooze 10 min</string>
     <string name="reminder_open">Open</string>
 
-    <!-- Timer -->
-    <string name="task_timer">Timer</string>
-    <string name="channel_timer">Running timer</string>
-    <string name="channel_timer_alerts">Pomodoro alerts</string>
-    <string name="timer_start_pomodoro">Pomodoro %1$d min</string>
-    <string name="timer_start_free">Free timer</string>
-    <string name="timer_stop">Stop</string>
-    <string name="timer_stop_failed">Couldn\'t stop the timer. Try again.</string>
-    <string name="timer_pomodoro_left">left in this Pomodoro</string>
-    <string name="timer_free_running">running</string>
-    <string name="timer_running_elsewhere">Another task\'s timer is running. Stop it first.</string>
-    <string name="timer_tracked">Tracked %1$s · %2$s</string>
-    <plurals name="timer_sessions">
-        <item quantity="one">%1$d session</item>
-        <item quantity="other">%1$d sessions</item>
-    </plurals>
-    <string name="timer_session_line">%1$s · %2$s · %3$s</string>
-    <string name="timer_mode_pomodoro">Pomodoro</string>
-    <string name="timer_mode_free">Free</string>
-    <string name="timer_untitled">Task timer</string>
-    <string name="timer_notification_pomodoro">Pomodoro, %1$d min</string>
-    <string name="timer_notification_free">Timer running</string>
-    <string name="timer_pomodoro_done">Pomodoro done</string>
-    <string name="timer_pomodoro_break">Take a %1$d-minute break from %2$s.</string>
-
     <!-- Attachments -->
     <string name="task_attachments">Attachments</string>
-    <string name="attachment_add">Add</string>
     <string name="attachment_pick">Photo or video</string>
     <string name="attachment_take_photo">Take photo</string>
     <string name="attachment_record_video">Record video</string>

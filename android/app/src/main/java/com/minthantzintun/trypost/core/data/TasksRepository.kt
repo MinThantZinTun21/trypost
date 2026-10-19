@@ -17,15 +17,11 @@ import com.minthantzintun.trypost.core.model.TaskStatus
 import com.minthantzintun.trypost.core.model.TaskTab
 import com.minthantzintun.trypost.core.model.TaskTag
 import com.minthantzintun.trypost.core.model.TaskTagRef
-import com.minthantzintun.trypost.core.model.TimerMode
-import com.minthantzintun.trypost.core.model.TimerOutcome
-import com.minthantzintun.trypost.core.model.TimerSession
 import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.core.network.MobileClient
 import com.minthantzintun.trypost.core.network.ReminderBody
 import com.minthantzintun.trypost.core.network.ReminderDto
 import com.minthantzintun.trypost.core.network.SaveTaskBody
-import com.minthantzintun.trypost.core.network.StartTimerBody
 import com.minthantzintun.trypost.core.network.TagGroupBody
 import com.minthantzintun.trypost.core.network.TagGroupDto
 import com.minthantzintun.trypost.core.network.TaskAttachmentDto
@@ -33,7 +29,6 @@ import com.minthantzintun.trypost.core.network.TaskDto
 import com.minthantzintun.trypost.core.network.TaskStatusBody
 import com.minthantzintun.trypost.core.network.TaskTagBody
 import com.minthantzintun.trypost.core.network.TaskTagDto
-import com.minthantzintun.trypost.core.network.TimerSessionDto
 import com.minthantzintun.trypost.core.network.map
 import com.minthantzintun.trypost.core.reminders.UpcomingReminder
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -54,8 +49,6 @@ sealed interface TaskChange {
     /** A Tag group or Task tag changed, which can change how every Task's Task tags read. */
     data object TaskTagsChanged : TaskChange
 
-    /** A Timer session started or stopped on [taskId], which can also move the Task to In progress. */
-    data class TimerChanged(val taskId: String, val running: TimerSession?) : TaskChange
 }
 
 /** The Owner's Tasks, Tag groups and Task tags (ADR 0016), online only like Posts and Videos. */
@@ -132,27 +125,6 @@ class TasksRepository @Inject constructor(
     /** Stops a reminder for good; Snooze never reaches the server. */
     suspend fun dismissReminder(id: String): ApiResult<Unit> = client.call { dismissReminder(id) }.map { }
 
-    /** The Timer session running now, if any; an expired Pomodoro reads as completed. */
-    suspend fun runningTimer(): ApiResult<TimerSession?> = client.call { runningTimer() }.map { it.data?.toTimerSession() }
-
-    /** Starts a Pomodoro of [plannedSeconds] or a free timer; a timer already running is a 409. */
-    suspend fun startTimer(taskId: String, mode: TimerMode, plannedSeconds: Long?): ApiResult<TimerSession?> =
-        client.call { startTimer(taskId, StartTimerBody(mode.wire, plannedSeconds.takeIf { mode == TimerMode.Pomodoro })) }
-            .map { it.toTimerSession() }
-            .also {
-                if (it is ApiResult.Success) {
-                    _changes.tryEmit(TaskChange.TimerChanged(taskId, it.value))
-                }
-            }
-
-    suspend fun stopTimer(session: TimerSession): ApiResult<TimerSession?> = client.call { stopTimer(session.id) }
-        .map { it.toTimerSession() }
-        .also {
-            if (it is ApiResult.Success) {
-                _changes.tryEmit(TaskChange.TimerChanged(session.taskId, running = null))
-            }
-        }
-
     /** Tells every screen a Task changed in a way only the server knows, such as a new attachment. */
     internal fun announce(task: Task) {
         _changes.tryEmit(TaskChange.Saved(task))
@@ -224,8 +196,6 @@ internal fun TaskDto.toTask(): Task = Task(
         )
     },
     reminders = reminders.mapNotNull { it.toReminder() },
-    trackedSeconds = trackedSeconds,
-    timerSessions = timerSessions.mapNotNull { it.toTimerSession() },
     attachments = attachments.map { it.toTaskAttachment() },
 )
 
@@ -236,17 +206,6 @@ internal fun ReminderDto.toReminder(): Reminder? = Reminder(
     minutesBefore = minutesBefore.takeIf { type == "before_due" },
     repeatsUntilDismissed = repeatUntilDismissed,
     dismissedAt = dismissedAt.toInstant(),
-)
-
-internal fun TimerSessionDto.toTimerSession(): TimerSession? = TimerSession(
-    id = id,
-    taskId = taskId,
-    mode = TimerMode.fromWire(mode),
-    startedAt = startedAt.toInstant() ?: return null,
-    endedAt = endedAt.toInstant(),
-    plannedSeconds = plannedSeconds,
-    outcome = TimerOutcome.fromWire(outcome),
-    taskLabel = task?.let { taskLabel(it.title, it.description) },
 )
 
 internal fun TaskAttachmentDto.toTaskAttachment(): TaskAttachment = TaskAttachment(

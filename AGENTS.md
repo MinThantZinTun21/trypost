@@ -373,8 +373,10 @@ before adding anything.
     DataStore) in sections Pinned, Overdue, Today, Upcoming and No date, and
     "Take a note…" replaces the New task button. The editor saves on Back,
     drops an untouched or empty new Task, and asks no "discard changes?";
-    ⋮ holds Delete and Discard changes, + the due, priority, Task tags and
-    colour. Its body is a field per block (`BodyEditorState`), never a
+    ⋮ holds Delete and Discard changes, + the due, priority, reminders, Task
+    tags and colour as compact icon-led rows. Task tags are picked, added and
+    managed inside that sheet (`TagDialogPage`), never in a second sheet
+    stacked on it. Its body is a field per block (`BodyEditorState`), never a
     Markdown text box.
 - **Reminders** (#132): a Task holds up to 10 `Reminder`s, each `at` a
   time (with its UTC offset) or `before_due` by `minutes_before` (needs a
@@ -393,6 +395,9 @@ before adding anything.
   `POST timer-sessions/{id}/stop` ends it, `GET timer` returns the running
   one. Marking a Task Done stops its timer. Elapsed time is always computed
   from `started_at`, never counted on the phone.
+  The Android app no longer has a timer (ADR 0016, amended): no Timer
+  panel, Pomodoro settings, foreground service or timer calls. The API
+  stays until the Owner decides about it.
 - **Attachments** (#134): a Task's photos, videos and voice notes are Media
   rows in its `attachments` collection, uploaded through `DirectAssetReceiver`
   (presigned PUT, object storage only) like Videos:

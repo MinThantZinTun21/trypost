@@ -1,5 +1,6 @@
 package com.minthantzintun.trypost.feature.tasks
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,7 +61,6 @@ import com.minthantzintun.trypost.core.model.ReminderDraft
 import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskBody
 import com.minthantzintun.trypost.core.model.TaskStatus
-import com.minthantzintun.trypost.core.model.TimerMode
 import com.minthantzintun.trypost.core.ui.message
 import java.time.Instant
 import java.time.LocalDate
@@ -93,8 +93,6 @@ fun TaskDetailRoute(
         onDelete = viewModel::delete,
         extras = TaskExtrasActions(
             onSaveReminders = viewModel::saveReminders,
-            onStartTimer = viewModel::startTimer,
-            onStopTimer = viewModel::stopTimer,
             attachments = AttachmentActions(
                 onAttach = viewModel::attach,
                 onRetryUpload = viewModel::retryUpload,
@@ -105,11 +103,9 @@ fun TaskDetailRoute(
     )
 }
 
-/** What the reminders, timer and attachments on the detail screen can ask for. */
+/** What the reminders and attachments on the detail screen can ask for. */
 data class TaskExtrasActions(
     val onSaveReminders: (List<ReminderDraft>) -> Unit,
-    val onStartTimer: (TimerMode) -> Unit,
-    val onStopTimer: () -> Unit,
     val attachments: AttachmentActions,
 )
 
@@ -275,22 +271,31 @@ private fun TaskDetails(task: Task, state: TaskDetailUiState, onToggleCheckbox: 
             }
         }
 
-        Panel {
-            Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                DetailRow(label = stringResource(R.string.task_due)) {
+        // The priority shows as a pill under the title, so this holds only the due and the Task tags.
+        Panel(modifier = Modifier.testTag("task-facts")) {
+            Column(
+                modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                FactLine(icon = R.drawable.ic_calendar, label = stringResource(R.string.task_due)) {
                     val due = task.due(zone)
                     if (due == null) {
-                        Text(stringResource(R.string.task_no_due), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = stringResource(R.string.task_no_due),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     } else {
                         DueText(text = dueLabel(due, today), isOverdue = task.isOverdue(now, zone), modifier = Modifier.testTag("task-due"))
                     }
                 }
-                DetailRow(label = stringResource(R.string.task_priority)) {
-                    Text(stringResource(task.priority.labelRes()), style = MaterialTheme.typography.bodyMedium)
-                }
-                DetailRow(label = stringResource(R.string.tags_title)) {
+                FactLine(icon = R.drawable.ic_tag, label = stringResource(R.string.tags_title)) {
                     if (task.taskTags.isEmpty()) {
-                        Text(stringResource(R.string.task_no_tags), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = stringResource(R.string.task_no_tags),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     } else {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                             task.taskTags.forEach { TaskTagPill(it) }
@@ -314,25 +319,14 @@ private fun TaskDetails(task: Task, state: TaskDetailUiState, onToggleCheckbox: 
             }
         }
 
-        Panel(modifier = Modifier.testTag("task-timer-panel")) {
-            Column(modifier = Modifier.padding(Spacing.lg)) {
-                DetailRow(label = stringResource(R.string.task_timer)) {
-                    TimerSection(task = task, state = state, onStart = extras.onStartTimer, onStop = extras.onStopTimer)
-                }
-            }
-        }
-
         Panel(modifier = Modifier.testTag("task-attachments-panel")) {
-            Column(modifier = Modifier.padding(Spacing.lg)) {
-                DetailRow(label = stringResource(R.string.task_attachments)) {
-                    AttachmentsSection(
-                        attachments = task.attachments,
-                        uploads = state.uploads,
-                        deletingId = state.deletingAttachmentId,
-                        actions = extras.attachments,
-                    )
-                }
-            }
+            AttachmentsSection(
+                attachments = task.attachments,
+                uploads = state.uploads,
+                deletingId = state.deletingAttachmentId,
+                actions = extras.attachments,
+                modifier = Modifier.padding(start = Spacing.lg, end = Spacing.xs, top = Spacing.xs, bottom = Spacing.md),
+            )
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
@@ -352,6 +346,20 @@ private fun TaskDetails(task: Task, state: TaskDetailUiState, onToggleCheckbox: 
                 )
             }
         }
+    }
+}
+
+/** One fact on a line: an icon that names it, then its value. */
+@Composable
+private fun FactLine(@DrawableRes icon: Int, label: String, content: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(IconSize.sm),
+        )
+        Box(modifier = Modifier.weight(1f)) { content() }
     }
 }
 

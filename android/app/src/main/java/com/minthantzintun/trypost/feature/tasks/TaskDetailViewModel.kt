@@ -14,12 +14,8 @@ import com.minthantzintun.trypost.core.model.ReminderDraft
 import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskBody
 import com.minthantzintun.trypost.core.model.TaskStatus
-import com.minthantzintun.trypost.core.model.TimerMode
-import com.minthantzintun.trypost.core.model.TimerSession
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
-import com.minthantzintun.trypost.core.settings.SettingsStore
-import com.minthantzintun.trypost.core.timer.TimerTracker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,13 +38,6 @@ data class TaskDetailUiState(
     val isDeleting: Boolean = false,
     val actionError: ApiError? = null,
     val isDeleted: Boolean = false,
-    /** This Task's running timer, if the one running is on it. */
-    val runningTimer: TimerSession? = null,
-    /** Another Task's running timer, which a start here would be refused for. */
-    val isTimerElsewhere: Boolean = false,
-    val isStartingTimer: Boolean = false,
-    val isStoppingTimer: Boolean = false,
-    val pomodoroFocusMinutes: Int = SettingsStore.DEFAULT_FOCUS_MINUTES,
     val isSavingReminders: Boolean = false,
     val uploads: List<AttachmentUpload> = emptyList(),
     val deletingAttachmentId: String? = null,
@@ -56,17 +45,15 @@ data class TaskDetailUiState(
 
 /**
  * One Task: its body's checkboxes, Done or Reopen, To do or In progress,
- * Delete, and (spec #130) its reminders, timer and attachments.
+ * Delete, and (spec #130) its reminders and attachments.
  */
 @HiltViewModel
 class TaskDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val tasksRepository: TasksRepository,
     private val clock: Clock,
-    private val timerTracker: TimerTracker,
     private val attachmentUploads: TaskAttachmentUploads,
     private val attachmentsRepository: TaskAttachmentsRepository,
-    settingsStore: SettingsStore,
 ) : ViewModel() {
 
     private val taskId: String = checkNotNull(savedStateHandle["id"]) { "TaskDetailDestination needs an id" }
@@ -95,21 +82,7 @@ class TaskDetailViewModel @Inject constructor(
                     }
                     // A renamed or deleted Task tag reads differently on this Task.
                     TaskChange.TaskTagsChanged -> load(isRefresh = true)
-                    // A start or stop changes the time tracked and the sessions.
-                    is TaskChange.TimerChanged -> if (change.taskId == taskId) {
-                        load(isRefresh = true)
-                    }
                     is TaskChange.Deleted -> Unit
-                }
-            }
-        }
-        viewModelScope.launch {
-            timerTracker.running.collect { running ->
-                _state.update {
-                    it.copy(
-                        runningTimer = running?.takeIf { session -> session.taskId == taskId },
-                        isTimerElsewhere = running != null && running.taskId != taskId,
-                    )
                 }
             }
         }
@@ -117,9 +90,6 @@ class TaskDetailViewModel @Inject constructor(
             attachmentUploads.uploads.collect { uploads ->
                 _state.update { state -> state.copy(uploads = uploads.filter { it.taskId == taskId }) }
             }
-        }
-        viewModelScope.launch {
-            settingsStore.pomodoroFocusMinutes.collect { minutes -> _state.update { it.copy(pomodoroFocusMinutes = minutes) } }
         }
     }
 
@@ -228,35 +198,6 @@ class TaskDetailViewModel @Inject constructor(
                 is ApiResult.Success -> _state.update { it.copy(task = result.value, isSavingReminders = false) }
                 is ApiResult.Failure -> _state.update { it.copy(isSavingReminders = false, actionError = result.error) }
             }
-        }
-    }
-
-    /** Starts a Pomodoro of the length in Settings, or a free timer; one timer runs at a time. */
-    fun startTimer(mode: TimerMode) {
-        val current = _state.value
-        if (current.isStartingTimer || current.runningTimer != null || current.task == null) {
-            return
-        }
-
-        _state.update { it.copy(isStartingTimer = true, actionError = null) }
-
-        viewModelScope.launch {
-            val plannedSeconds = if (mode == TimerMode.Pomodoro) current.pomodoroFocusMinutes * 60L else null
-            val result = tasksRepository.startTimer(taskId, mode, plannedSeconds)
-            _state.update { it.copy(isStartingTimer = false, actionError = (result as? ApiResult.Failure)?.error) }
-        }
-    }
-
-    fun stopTimer() {
-        if (_state.value.isStoppingTimer || _state.value.runningTimer == null) {
-            return
-        }
-
-        _state.update { it.copy(isStoppingTimer = true, actionError = null) }
-
-        viewModelScope.launch {
-            val result = timerTracker.stop()
-            _state.update { it.copy(isStoppingTimer = false, actionError = (result as? ApiResult.Failure)?.error) }
         }
     }
 

@@ -21,16 +21,4 @@ class FakeSettingsStore(initial: ThemeMode = ThemeMode.System, initialTaskLayout
     override suspend fun setTaskLayout(layout: TaskLayout) {
         this.layout.value = layout
     }
-
-    override val pomodoroFocusMinutes = MutableStateFlow(SettingsStore.DEFAULT_FOCUS_MINUTES)
-
-    override suspend fun setPomodoroFocusMinutes(minutes: Int) {
-        pomodoroFocusMinutes.value = minutes
-    }
-
-    override val pomodoroBreakMinutes = MutableStateFlow(SettingsStore.DEFAULT_BREAK_MINUTES)
-
-    override suspend fun setPomodoroBreakMinutes(minutes: Int) {
-        pomodoroBreakMinutes.value = minutes
-    }
 }

@@ -14,12 +14,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import com.minthantzintun.trypost.core.designsystem.TryPostTheme
 import com.minthantzintun.trypost.core.di.ApplicationScope
 import com.minthantzintun.trypost.core.notifications.AppNotifications
 import com.minthantzintun.trypost.core.reminders.ReminderAlarms
-import com.minthantzintun.trypost.core.timer.TimerTracker
 import com.minthantzintun.trypost.ui.AppThemeViewModel
 import com.minthantzintun.trypost.ui.TryPostApp
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,9 +31,6 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var reminderAlarms: ReminderAlarms
-
-    @Inject
-    lateinit var timerTracker: TimerTracker
 
     @Inject
     @ApplicationScope
@@ -69,12 +64,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        // In front, the app may start the timer's service again.
-        lifecycleScope.launch { timerTracker.refresh() }
     }
 
     override fun onNewIntent(intent: Intent) {

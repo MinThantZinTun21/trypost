@@ -9,8 +9,6 @@ import com.minthantzintun.trypost.core.model.TaskDue
 import com.minthantzintun.trypost.core.model.TaskPriority
 import com.minthantzintun.trypost.core.model.TaskStatus
 import com.minthantzintun.trypost.core.model.TaskTab
-import com.minthantzintun.trypost.core.model.TimerMode
-import com.minthantzintun.trypost.core.model.TimerOutcome
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.testing.FakeSessionStore
@@ -26,7 +24,6 @@ import com.minthantzintun.trypost.testing.taskTagRefJson
 import com.minthantzintun.trypost.testing.tasksPage
 import com.minthantzintun.trypost.testing.testClient
 import com.minthantzintun.trypost.testing.testJson
-import com.minthantzintun.trypost.testing.timerSessionJson
 import com.minthantzintun.trypost.testing.validationError
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
@@ -299,13 +296,12 @@ class TasksRepositoryTest {
     }
 
     @Test
-    fun `a Task reads its reminders, Timer sessions and attachments`() = runTest {
+    fun `a Task reads its reminders and attachments`() = runTest {
         server.enqueue(
             json(
                 taskJson(
                     "t1",
                     extra = """"reminders":[${reminderJson("r1", minutesBefore = 10, repeats = true)},${reminderJson("r2", dismissedAt = "2030-01-01T05:00:00+00:00")}],""" +
-                        """"tracked_seconds":1500,"timer_sessions":[${timerSessionJson("s1", mode = "pomodoro", plannedSeconds = 1500, endedAt = "2030-01-01T03:25:00+00:00", outcome = "completed")}],""" +
                         """"attachments":[${taskAttachmentJson("m1", type = "audio", mimeType = "audio/mp4", fileName = "note.m4a")}]""",
                 ),
             ),
@@ -317,8 +313,6 @@ class TasksRepositoryTest {
         assertEquals(10, task.reminders.first().minutesBefore)
         assertTrue(task.reminders.first().repeatsUntilDismissed)
         assertEquals(listOf("r1"), task.activeReminders.map { it.id })
-        assertEquals(TimerMode.Pomodoro, task.timerSessions.single().mode)
-        assertEquals(TimerOutcome.Completed, task.timerSessions.single().outcome)
         assertEquals(AttachmentType.Audio, task.attachments.single().type)
         assertEquals("note.m4a", task.attachments.single().fileName)
     }
@@ -366,33 +360,5 @@ class TasksRepositoryTest {
         assertEquals(Instant.parse("2030-01-01T05:00:00Z").toEpochMilli(), reminder.remindAtMillis)
         assertTrue(reminder.repeatsUntilDismissed)
         assertEquals("Call the bank", reminder.taskLabel)
-    }
-
-    @Test
-    fun `a Pomodoro starts with its length and a free timer without one`() = runTest {
-        val repository = repository()
-        server.enqueue(json(timerSessionJson("s1", mode = "pomodoro", plannedSeconds = 1500), code = 201))
-        server.enqueue(json(timerSessionJson("s2"), code = 201))
-
-        val pomodoro = repository.startTimer("t1", TimerMode.Pomodoro, plannedSeconds = 1500)
-        repository.startTimer("t1", TimerMode.Free, plannedSeconds = 1500)
-
-        val first = server.takeRequest()
-        assertEquals("/mobile/v1/tasks/t1/timer", first.url.encodedPath)
-        assertEquals("pomodoro", first.jsonBody().getValue("mode").jsonPrimitive.content)
-        assertEquals(1500, first.jsonBody().getValue("planned_seconds").jsonPrimitive.int)
-        assertEquals(Instant.parse("2030-01-01T03:25:00Z"), (pomodoro as ApiResult.Success).value?.plannedEndAt)
-        val second = server.takeRequest().jsonBody()
-        assertEquals("free", second.getValue("mode").jsonPrimitive.content)
-        assertTrue("planned_seconds" !in second)
-    }
-
-    @Test
-    fun `a timer already running elsewhere is a conflict`() = runTest {
-        server.enqueue(json("""{"message":"A timer is already running."}""", code = 409))
-
-        val result = repository().startTimer("t1", TimerMode.Free, plannedSeconds = null)
-
-        assertTrue(result is ApiResult.Failure)
     }
 }

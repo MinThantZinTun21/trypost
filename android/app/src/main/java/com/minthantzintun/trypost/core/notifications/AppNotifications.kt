@@ -14,29 +14,20 @@ object AppNotifications {
     /** High importance: a reminder rings and shows over other apps. */
     const val REMINDERS_CHANNEL = "task_reminders"
 
-    /** Low importance: the running timer sits quietly in the shade. */
-    const val TIMER_CHANNEL = "task_timer"
-
-    /** Default importance: a Pomodoro is up. */
-    const val TIMER_ALERTS_CHANNEL = "task_timer_alerts"
-
     const val EXTRA_TASK_ID = "com.minthantzintun.trypost.TASK_ID"
 
     /** Set by a reminder's Open, which also dismisses that reminder. */
     const val EXTRA_DISMISS_REMINDER_ID = "com.minthantzintun.trypost.DISMISS_REMINDER_ID"
 
-    const val TIMER_NOTIFICATION_ID = 1001
-    const val TIMER_DONE_NOTIFICATION_ID = 1002
+    /** The timer's channels, gone with the timer; an updated install drops them too. */
+    private val removedChannels = listOf("task_timer", "task_timer_alerts")
 
     fun ensureChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannels(
-            listOf(
-                NotificationChannel(REMINDERS_CHANNEL, context.getString(R.string.channel_reminders), NotificationManager.IMPORTANCE_HIGH),
-                NotificationChannel(TIMER_CHANNEL, context.getString(R.string.channel_timer), NotificationManager.IMPORTANCE_LOW),
-                NotificationChannel(TIMER_ALERTS_CHANNEL, context.getString(R.string.channel_timer_alerts), NotificationManager.IMPORTANCE_DEFAULT),
-            ),
+        manager.createNotificationChannel(
+            NotificationChannel(REMINDERS_CHANNEL, context.getString(R.string.channel_reminders), NotificationManager.IMPORTANCE_HIGH),
         )
+        removedChannels.forEach { manager.deleteNotificationChannel(it) }
     }
 
     /**

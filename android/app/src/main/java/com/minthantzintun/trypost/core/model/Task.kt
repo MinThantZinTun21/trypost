@@ -28,10 +28,6 @@ data class Task(
     val taskTags: List<TaskTagRef>,
     /** Ordered by when they ring. */
     val reminders: List<Reminder> = emptyList(),
-    /** Every Timer session's time together, as of the response. */
-    val trackedSeconds: Long = 0,
-    /** Newest first. */
-    val timerSessions: List<TimerSession> = emptyList(),
     /** Oldest first. */
     val attachments: List<TaskAttachment> = emptyList(),
 ) {

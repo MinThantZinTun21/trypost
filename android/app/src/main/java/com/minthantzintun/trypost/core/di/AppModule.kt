@@ -20,8 +20,6 @@ import com.minthantzintun.trypost.core.session.SessionStore
 import com.minthantzintun.trypost.core.settings.DataStoreSettingsStore
 import com.minthantzintun.trypost.core.settings.SettingsPreferences
 import com.minthantzintun.trypost.core.settings.SettingsStore
-import com.minthantzintun.trypost.core.timer.SystemTimerServiceLauncher
-import com.minthantzintun.trypost.core.timer.TimerServiceLauncher
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -74,7 +72,7 @@ object AppModule {
     @Provides
     fun provideClock(): Clock = Clock.systemDefaultZone()
 
-    /** Work that outlives a screen but not the app: uploads, reminder syncs and the timer's Stop. */
+    /** Work that outlives a screen but not the app: uploads and reminder syncs. */
     @Provides
     @Singleton
     @ApplicationScope
@@ -126,11 +124,4 @@ abstract class ReminderModule {
 
     @Binds
     abstract fun bindReminderNotifier(notifier: SystemReminderNotifier): ReminderNotifier
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class TimerModule {
-    @Binds
-    abstract fun bindTimerServiceLauncher(launcher: SystemTimerServiceLauncher): TimerServiceLauncher
 }

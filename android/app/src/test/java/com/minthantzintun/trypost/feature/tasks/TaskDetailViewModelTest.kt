@@ -8,11 +8,8 @@ import com.minthantzintun.trypost.core.data.TasksRepository
 import com.minthantzintun.trypost.core.model.ReminderDraft
 import com.minthantzintun.trypost.core.model.ReminderTiming
 import com.minthantzintun.trypost.core.model.TaskStatus
-import com.minthantzintun.trypost.core.model.TimerMode
 import com.minthantzintun.trypost.core.network.ApiError
-import com.minthantzintun.trypost.core.timer.TimerTracker
 import com.minthantzintun.trypost.testing.FakeSessionStore
-import com.minthantzintun.trypost.testing.FakeSettingsStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
 import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.noContent
@@ -23,7 +20,6 @@ import com.minthantzintun.trypost.testing.taskJson
 import com.minthantzintun.trypost.testing.taskTagRefJson
 import com.minthantzintun.trypost.testing.testClient
 import com.minthantzintun.trypost.testing.testJson
-import com.minthantzintun.trypost.testing.timerSessionJson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,7 +53,6 @@ class TaskDetailViewModelTest {
     private val server = MockWebServer()
     private lateinit var repository: TasksRepository
     private lateinit var attachmentsRepository: TaskAttachmentsRepository
-    private lateinit var timerTracker: TimerTracker
     private lateinit var uploads: TaskAttachmentUploads
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 
@@ -67,7 +62,6 @@ class TaskDetailViewModelTest {
         val client = testClient(FakeSessionStore(server.session()))
         repository = TasksRepository(client)
         attachmentsRepository = TaskAttachmentsRepository(client, PresignedUploader(OkHttpClient()), repository)
-        timerTracker = TimerTracker({}, repository, appScope, clock)
         uploads = TaskAttachmentUploads(attachmentsRepository, appScope)
     }
 
@@ -83,10 +77,8 @@ class TaskDetailViewModelTest {
         SavedStateHandle(mapOf("id" to "t1")),
         repository,
         clock,
-        timerTracker,
         uploads,
         attachmentsRepository,
-        FakeSettingsStore(),
     )
 
     private fun RecordedRequest.field(name: String) = testJson.parseToJsonElement(body!!.utf8()).jsonObject.getValue(name)
@@ -306,53 +298,6 @@ class TaskDetailViewModelTest {
         assertEquals("Call the bank", request.field("title").jsonPrimitive.content)
         assertEquals(listOf(10, 60), request.field("reminders").jsonArray.map { it.jsonObject.getValue("minutes_before").jsonPrimitive.int })
         assertNull(state.actionError)
-    }
-
-    @Test
-    fun `a Pomodoro starts with the length in Settings and shows as running`() = runTest {
-        server.enqueue(json(taskJson("t1")))
-        server.enqueue(json(timerSessionJson("s1", mode = "pomodoro", startedAt = "2030-01-01T03:45:00+00:00", plannedSeconds = 1500), code = 201))
-        server.enqueue(json(taskJson("t1", extra = """"timer_sessions":[${timerSessionJson("s1", mode = "pomodoro", startedAt = "2030-01-01T03:45:00+00:00", plannedSeconds = 1500)}]""")))
-        val viewModel = viewModel()
-        viewModel.loaded()
-
-        viewModel.startTimer(TimerMode.Pomodoro)
-        val state = viewModel.state.first { it.runningTimer != null && !it.isStartingTimer }
-
-        server.takeRequest()
-        val request = server.takeRequest()
-        assertEquals("/mobile/v1/tasks/t1/timer", request.url.encodedPath)
-        assertEquals(1500, request.field("planned_seconds").jsonPrimitive.int)
-        assertEquals("s1", state.runningTimer!!.id)
-        assertFalse(state.isTimerElsewhere)
-        // Let the Task's reload land before the test ends, or it resumes on a reset Main dispatcher.
-        viewModel.state.first { it.task?.timerSessions?.isNotEmpty() == true }
-    }
-
-    @Test
-    fun `a timer refused because another one runs shows why`() = runTest {
-        server.enqueue(json(taskJson("t1")))
-        server.enqueue(json("""{"message":"A timer is already running."}""", code = 409))
-        val viewModel = viewModel()
-        viewModel.loaded()
-
-        viewModel.startTimer(TimerMode.Free)
-        val state = viewModel.state.first { !it.isStartingTimer && it.actionError != null }
-
-        assertNull(state.runningTimer)
-    }
-
-    @Test
-    fun `a timer running on another Task is shown as running elsewhere`() = runTest {
-        server.enqueue(json(taskJson("t1")))
-        val viewModel = viewModel()
-        viewModel.loaded()
-        server.enqueue(json("""{"data":${timerSessionJson("s9", taskId = "t2")}}"""))
-
-        timerTracker.refresh()
-        val state = viewModel.state.first { it.isTimerElsewhere }
-
-        assertNull(state.runningTimer)
     }
 
     @Test
