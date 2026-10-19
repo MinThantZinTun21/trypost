@@ -224,7 +224,7 @@ class TaskDetailViewModelTest {
                 ),
             ),
         )
-        server.enqueue(json(taskJson("t1", title = "Trip", description = "Pack\n- [x] Charger\n- [x] Passport")))
+        server.enqueue(json(taskJson("t1", title = "Trip saved", description = "Pack\n- [x] Charger\n- [x] Passport")))
         val viewModel = viewModel()
         viewModel.loaded()
 
@@ -242,6 +242,8 @@ class TaskDetailViewModelTest {
         assertEquals("2030-01-05T00:00:00+06:30", request.field("due_at").jsonPrimitive.content)
         assertTrue(request.field("due_all_day").jsonPrimitive.boolean)
         assertEquals("k1", request.field("task_tags").jsonArray.single().jsonPrimitive.content)
+        // Let the reply land before the test ends, or it resumes on a reset Main dispatcher.
+        viewModel.state.first { it.task?.title == "Trip saved" }
     }
 
     @Test
@@ -262,7 +264,7 @@ class TaskDetailViewModelTest {
     fun `two quick ticks both stay and save in order`() = runTest {
         server.enqueue(json(taskJson("t1", description = "- [ ] A\n- [ ] B")))
         server.enqueue(json(taskJson("t1", description = "- [x] A\n- [x] B")))
-        server.enqueue(json(taskJson("t1", description = "- [x] A\n- [x] B")))
+        server.enqueue(json(taskJson("t1", title = "Both saved", description = "- [x] A\n- [x] B")))
         val viewModel = viewModel()
         viewModel.loaded()
 
@@ -273,7 +275,7 @@ class TaskDetailViewModelTest {
         server.takeRequest()
         assertEquals("- [x] A\n- [ ] B", server.takeRequest().field("description").jsonPrimitive.content)
         assertEquals("- [x] A\n- [x] B", server.takeRequest().field("description").jsonPrimitive.content)
-        assertEquals("- [x] A\n- [x] B", viewModel.state.value.task!!.description)
+        assertEquals("- [x] A\n- [x] B", viewModel.state.first { it.task?.title == "Both saved" }.task!!.description)
     }
 
     @Test
