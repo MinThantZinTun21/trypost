@@ -19,7 +19,7 @@ Voice uses Android's built-in speech recognizer and a rule-based English parser.
 ## Consequences
 
 - `Media\Type` gains `Audio`; the "exactly three media types" rule becomes "three for Posts, plus Audio for Task attachments".
-- The app asks for `RECORD_AUDIO`, `USE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE_SPECIAL_USE` (the running timer).
+- The app asks for `RECORD_AUDIO`, `USE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED` (it asked for `FOREGROUND_SERVICE_SPECIAL_USE` too while it had a timer; see below).
 - Repeating Tasks, a web page, MCP tools and local AI are out of scope.
 
 ## Amended: Keep-style Tasks with a rich-text body (#138)
@@ -35,3 +35,7 @@ The Owner asked for Tasks to work like Google Keep, with checklists and formatti
 - **App layout:** a grid of cards, a "Take a note…" bar, and an editor that saves on Back.
 - **Ticking a checkbox:** the app rewrites that line and sends the full `PUT`, so there is no checklist table and no new endpoint.
 - **Rejected:** a separate checklist-items table (a second shape for the same text), and `compose-rich-editor` (a new dependency that still needs custom checkbox blocks).
+
+## Amended: no timer in the app
+
+The Owner asked for the Timer section to go. The app drops the timer whole: the Timer panel, the Pomodoro settings, the foreground service and its notification channels, and its calls to `/mobile/v1`. An updated install deletes the old timer channels. The server's timer endpoints stay for now, unused, until the Owner decides whether to remove them too.

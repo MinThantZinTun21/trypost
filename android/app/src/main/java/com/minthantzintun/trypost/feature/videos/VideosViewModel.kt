@@ -2,7 +2,7 @@ package com.minthantzintun.trypost.feature.videos
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.minthantzintun.trypost.core.data.VideoSource
+import com.minthantzintun.trypost.core.data.UploadSource
 import com.minthantzintun.trypost.core.data.VideosRepository
 import com.minthantzintun.trypost.core.download.DownloadOutcome
 import com.minthantzintun.trypost.core.download.MediaDownloader
@@ -21,7 +21,7 @@ import javax.inject.Inject
 
 /** A picked video waiting for its name, and then uploading under it. */
 data class PendingUpload(
-    val source: VideoSource,
+    val source: UploadSource,
     val name: String,
 )
 
@@ -99,7 +99,7 @@ class VideosViewModel @Inject constructor(
     }
 
     /** Asks for a name, starting from the file name without its extension. */
-    fun pickVideo(source: VideoSource) {
+    fun pickVideo(source: UploadSource) {
         if (_state.value.isUploading) {
             return
         }

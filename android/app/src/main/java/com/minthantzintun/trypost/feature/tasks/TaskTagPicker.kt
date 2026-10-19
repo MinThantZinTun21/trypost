@@ -1,6 +1,5 @@
 package com.minthantzintun.trypost.feature.tasks
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,16 +26,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -90,14 +86,14 @@ fun TagGroupsChooser(
     isManaging: Boolean = false,
     onOpenDialog: ((TagDialog) -> Unit)? = null,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         tagGroups.forEach { group ->
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs), modifier = Modifier.testTag("tag-group-${group.id}")) {
+            Column(modifier = Modifier.testTag("tag-group-${group.id}")) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     TagColorDot(group.color)
                     Text(
                         text = group.name,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).semantics { heading() },
@@ -238,129 +234,43 @@ private fun TagGroupMenu(group: TagGroup, onOpenDialog: (TagDialog) -> Unit) {
 }
 
 /**
- * The editor's tag picker: pick the Task's Task tags, and create, rename,
- * recolour and delete Tag groups and Task tags without leaving the editor.
+ * The page a tag form or delete confirm opens over the editor's + sheet:
+ * create, rename or recolour a Tag group, add or rename a Task tag, or
+ * delete either.
  *
- * A form or delete confirm opens as a page inside the sheet, never as a
- * dialog over it: a text field in a second window stacked on the sheet's
- * own could not take focus, so names could not be typed. Back closes the
- * page; closing the sheet closes it too.
+ * It is a page inside the sheet, never a dialog over it: a text field in a
+ * second window stacked on the sheet's own could not take focus, so names
+ * could not be typed. Back closes the page; closing the sheet closes it too.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskTagPickerSheet(
-    state: TaskTagsUiState,
-    selectedIds: Collection<String>,
-    onToggle: (String) -> Unit,
-    actions: TagActions,
-    onDismiss: () -> Unit,
-) {
-    val dialog = state.dialog
-
-    ModalBottomSheet(
-        onDismissRequest = {
-            actions.onCloseDialog()
-            onDismiss()
-        },
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        BackHandler(enabled = dialog != null, onBack = actions.onCloseDialog)
-
-        when (dialog) {
-            null -> TagListPage(state, selectedIds, onToggle, actions, onDismiss)
-            TagDialog.NewTagGroup -> TagGroupPage(null, state, actions)
-            is TagDialog.EditTagGroup -> TagGroupPage(dialog.tagGroup, state, actions)
-            is TagDialog.NewTaskTag -> TaskTagPage(
-                title = stringResource(R.string.tags_new_tag_in, dialog.tagGroup.name),
-                initialName = "",
-                state = state,
-                actions = actions,
-            )
-            is TagDialog.EditTaskTag -> TaskTagPage(
-                title = stringResource(R.string.tags_rename_tag),
-                initialName = dialog.taskTag.name,
-                state = state,
-                actions = actions,
-            )
-            is TagDialog.DeleteTagGroup -> DeletePage(
-                title = stringResource(R.string.tags_delete_group_title, dialog.tagGroup.name),
-                body = stringResource(R.string.tags_delete_group_body),
-                state = state,
-                actions = actions,
-            )
-            is TagDialog.DeleteTaskTag -> DeletePage(
-                title = stringResource(R.string.tags_delete_tag_title, dialog.taskTag.name),
-                body = stringResource(R.string.tags_delete_tag_body),
-                state = state,
-                actions = actions,
-            )
-        }
-    }
-}
-
-@Composable
-private fun TagListPage(
-    state: TaskTagsUiState,
-    selectedIds: Collection<String>,
-    onToggle: (String) -> Unit,
-    actions: TagActions,
-    onDismiss: () -> Unit,
-) {
-    var isManaging by rememberSaveable { mutableStateOf(false) }
-
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.lg).testTag("tag-picker")) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = Spacing.xl, end = Spacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.tags_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f).semantics { heading() },
-            )
-            if (!state.tagGroups.isNullOrEmpty()) {
-                TextButton(onClick = { isManaging = !isManaging }, modifier = Modifier.testTag("tags-manage")) {
-                    Text(stringResource(if (isManaging) R.string.tags_done_managing else R.string.tags_manage))
-                }
-            }
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.testTag("tag-picker-done"),
-            ) { Text(stringResource(R.string.done)) }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Spacing.xl, vertical = Spacing.md),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-        ) {
-            if (isManaging) {
-                Text(
-                    text = stringResource(R.string.tags_manage_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            TagGroupsContent(
-                state = state,
-                selectedIds = selectedIds,
-                onToggle = onToggle,
-                onRetry = actions.onRetry,
-                isManaging = isManaging,
-                onOpenDialog = actions.onOpenDialog,
-            )
-            TextButton(
-                onClick = { actions.onOpenDialog(TagDialog.NewTagGroup) },
-                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                modifier = Modifier.testTag("new-tag-group"),
-            ) {
-                Icon(painterResource(R.drawable.ic_plus), contentDescription = null, modifier = Modifier.size(IconSize.sm))
-                Text(stringResource(R.string.tags_new_group), modifier = Modifier.padding(start = Spacing.xs))
-            }
-        }
+fun TagDialogPage(dialog: TagDialog, state: TaskTagsUiState, actions: TagActions) {
+    when (dialog) {
+        TagDialog.NewTagGroup -> TagGroupPage(null, state, actions)
+        is TagDialog.EditTagGroup -> TagGroupPage(dialog.tagGroup, state, actions)
+        is TagDialog.NewTaskTag -> TaskTagPage(
+            title = stringResource(R.string.tags_new_tag_in, dialog.tagGroup.name),
+            initialName = "",
+            state = state,
+            actions = actions,
+        )
+        is TagDialog.EditTaskTag -> TaskTagPage(
+            title = stringResource(R.string.tags_rename_tag),
+            initialName = dialog.taskTag.name,
+            state = state,
+            actions = actions,
+        )
+        is TagDialog.DeleteTagGroup -> DeletePage(
+            title = stringResource(R.string.tags_delete_group_title, dialog.tagGroup.name),
+            body = stringResource(R.string.tags_delete_group_body),
+            state = state,
+            actions = actions,
+        )
+        is TagDialog.DeleteTaskTag -> DeletePage(
+            title = stringResource(R.string.tags_delete_tag_title, dialog.taskTag.name),
+            body = stringResource(R.string.tags_delete_tag_body),
+            state = state,
+            actions = actions,
+        )
     }
 }
 

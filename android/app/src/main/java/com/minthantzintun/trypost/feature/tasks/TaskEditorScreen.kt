@@ -28,6 +28,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,17 +38,15 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +54,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,7 +73,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -81,7 +81,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
 import com.minthantzintun.trypost.core.designsystem.ActionIconButton
-import com.minthantzintun.trypost.core.designsystem.ButtonLabel
 import com.minthantzintun.trypost.core.designsystem.ConfirmDialog
 import com.minthantzintun.trypost.core.designsystem.ErrorMessage
 import com.minthantzintun.trypost.core.designsystem.IconSize
@@ -90,6 +89,7 @@ import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.designsystem.StateMessage
 import com.minthantzintun.trypost.core.model.BlockKind
 import com.minthantzintun.trypost.core.model.InlineStyle
+import com.minthantzintun.trypost.core.model.ReminderDraft
 import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.TaskDue
 import com.minthantzintun.trypost.core.model.TaskPriority
@@ -142,6 +142,7 @@ fun TaskEditorRoute(
             onDueDateChange = viewModel::changeDueDate,
             onDueTimeChange = viewModel::changeDueTime,
             onToggleTaskTag = viewModel::toggleTaskTag,
+            onRemindersChange = viewModel::changeReminders,
             onToggleBlockKind = viewModel::toggleBlockKind,
             onToggleStyle = viewModel::toggleStyle,
             body = BodyEditorActions(
@@ -186,6 +187,7 @@ data class TaskEditorActions(
     val onDueDateChange: (LocalDate) -> Unit,
     val onDueTimeChange: (LocalTime) -> Unit,
     val onToggleTaskTag: (String) -> Unit,
+    val onRemindersChange: (List<ReminderDraft>) -> Unit,
     val onToggleBlockKind: (BlockKind) -> Unit,
     val onToggleStyle: (InlineStyle) -> Unit,
     val body: BodyEditorActions,
@@ -210,7 +212,6 @@ fun TaskEditorScreen(
     tagActions: TagActions,
 ) {
     var isConfirmingDelete by rememberSaveable { mutableStateOf(false) }
-    var isPickingTags by rememberSaveable { mutableStateOf(false) }
     var dueStep by rememberSaveable { mutableStateOf(DueStep.None) }
     var panel by rememberSaveable { mutableStateOf(EditorPanel.None) }
     val containerColor = state.form.color?.tone()?.container ?: MaterialTheme.colorScheme.surface
@@ -293,16 +294,12 @@ fun TaskEditorScreen(
     if (panel == EditorPanel.Options) {
         OptionsSheet(
             state = state,
-            onDismiss = { panel = EditorPanel.None },
-            onPriorityChange = actions.onPriorityChange,
-            onDueKindChange = actions.onDueKindChange,
+            taskTagsState = taskTagsState,
+            actions = actions,
+            tagActions = tagActions,
             onPickDate = { dueStep = DueStep.Date },
             onPickTime = { dueStep = DueStep.Time },
-            onPickTags = {
-                panel = EditorPanel.None
-                isPickingTags = true
-            },
-            onColorChange = actions.onColorChange,
+            onDismiss = { panel = EditorPanel.None },
         )
     }
 
@@ -323,16 +320,12 @@ fun TaskEditorScreen(
                 actions.onDueTimeChange(it)
             },
             onDismiss = { dueStep = DueStep.None },
-        )
-    }
-
-    if (isPickingTags) {
-        TaskTagPickerSheet(
-            state = taskTagsState,
-            selectedIds = state.form.taskTagIds,
-            onToggle = actions.onToggleTaskTag,
-            actions = tagActions,
-            onDismiss = { isPickingTags = false },
+            onRemove = (state.form.due as? TaskDue.Timed)?.let {
+                {
+                    dueStep = DueStep.None
+                    actions.onDueKindChange(DueKind.Date)
+                }
+            },
         )
     }
 
@@ -576,102 +569,192 @@ private fun FormatToggle(button: FormatButton, isOn: Boolean, enabled: Boolean, 
     }
 }
 
-/** The + sheet: due, priority, Task tags and the card's colour. */
+/**
+ * The + sheet: due, reminders, priority, Task tags and the card's colour,
+ * each one compact row led by its icon. The Task tags are picked, added and
+ * managed right here: a tag form or delete confirm opens as a page of this
+ * sheet, never as a second sheet or dialog over it, which could not take
+ * taps or focus while this one closed.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OptionsSheet(
     state: TaskEditorUiState,
-    onDismiss: () -> Unit,
-    onPriorityChange: (TaskPriority) -> Unit,
-    onDueKindChange: (DueKind) -> Unit,
+    taskTagsState: TaskTagsUiState,
+    actions: TaskEditorActions,
+    tagActions: TagActions,
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
-    onPickTags: () -> Unit,
-    onColorChange: (TagColor?) -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    val form = state.form
-    val errors = state.fieldErrors
+    val dialog = taskTagsState.dialog
 
-    ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("task-options-sheet")) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(start = Spacing.gutter, end = Spacing.gutter, bottom = Spacing.xl),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-        ) {
-            OptionsSection(title = stringResource(R.string.task_due), error = errors[TaskField.Due]) {
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().testTag("task-due-kind")) {
-                    DueKind.entries.forEachIndexed { index, kind ->
-                        SegmentedButton(
-                            selected = form.dueKind == kind,
-                            onClick = { onDueKindChange(kind) },
-                            shape = SegmentedButtonDefaults.itemShape(index, DueKind.entries.size),
-                            modifier = Modifier.testTag("task-due-${kind.name.lowercase()}"),
-                        ) { Text(stringResource(kind.labelRes()), maxLines = 1) }
-                    }
-                }
-                form.due?.let { due ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                        OutlinedButton(
-                            onClick = onPickDate,
-                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                            modifier = Modifier.weight(1f).testTag("task-due-date"),
-                        ) {
-                            ButtonLabel(icon = R.drawable.ic_calendar, label = due.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)))
-                        }
-                        if (due is TaskDue.Timed) {
-                            OutlinedButton(
-                                onClick = onPickTime,
-                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                                modifier = Modifier.weight(1f).testTag("task-due-time"),
-                            ) {
-                                ButtonLabel(icon = R.drawable.ic_clock_plus, label = due.at.toLocalTime().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)))
-                            }
-                        }
-                    }
-                }
-            }
+    ModalBottomSheet(
+        onDismissRequest = {
+            tagActions.onCloseDialog()
+            onDismiss()
+        },
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        modifier = Modifier.testTag("task-options-sheet"),
+    ) {
+        BackHandler(enabled = dialog != null, onBack = tagActions.onCloseDialog)
 
-            OptionsSection(title = stringResource(R.string.task_priority), error = errors[TaskField.Priority]) {
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().testTag("task-priority")) {
-                    TaskPriority.entries.forEachIndexed { index, priority ->
-                        SegmentedButton(
-                            selected = form.priority == priority,
-                            onClick = { onPriorityChange(priority) },
-                            shape = SegmentedButtonDefaults.itemShape(index, TaskPriority.entries.size),
-                            modifier = Modifier.testTag("task-priority-${priority.name.lowercase()}"),
-                        ) { Text(stringResource(priority.labelRes()), maxLines = 1) }
-                    }
-                }
-            }
-
-            OptionsSection(title = stringResource(R.string.tags_title), error = errors[TaskField.TaskTags]) {
-                OutlinedButton(
-                    onClick = onPickTags,
-                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                    modifier = Modifier.testTag("task-pick-tags"),
-                ) {
-                    ButtonLabel(
-                        icon = R.drawable.ic_tag,
-                        label = stringResource(if (form.taskTagIds.isEmpty()) R.string.task_add_tags else R.string.task_change_tags),
-                    )
-                }
-            }
-
-            OptionsSection(title = stringResource(R.string.task_color), error = null) {
-                ColorSwatches(selected = form.color, onSelect = onColorChange, enabled = !state.isSaving && !state.isDeleting)
-            }
+        if (dialog == null) {
+            OptionsPage(state, taskTagsState, actions, tagActions, onPickDate, onPickTime)
+        } else {
+            TagDialogPage(dialog, taskTagsState, tagActions)
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun OptionsSection(title: String, error: String?, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-        content()
-        error?.let { ErrorMessage(lines = listOf(it)) }
+private fun OptionsPage(
+    state: TaskEditorUiState,
+    taskTagsState: TaskTagsUiState,
+    actions: TaskEditorActions,
+    tagActions: TagActions,
+    onPickDate: () -> Unit,
+    onPickTime: () -> Unit,
+) {
+    val form = state.form
+    val errors = state.fieldErrors
+    val enabled = !state.isSaving && !state.isDeleting
+    var isManagingTags by rememberSaveable { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(start = Spacing.gutter, end = Spacing.gutter, bottom = Spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        OptionRow(icon = R.drawable.ic_calendar, label = stringResource(R.string.task_due), error = errors[TaskField.Due]) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                itemVerticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.testTag("task-due"),
+            ) {
+                val due = form.due
+                AssistChip(
+                    onClick = onPickDate,
+                    enabled = enabled,
+                    label = {
+                        Text(
+                            text = due?.date?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) ?: stringResource(R.string.task_due_add_date),
+                            maxLines = 1,
+                        )
+                    },
+                    modifier = Modifier.testTag("task-due-date"),
+                )
+                if (due != null) {
+                    AssistChip(
+                        onClick = onPickTime,
+                        enabled = enabled,
+                        label = {
+                            Text(
+                                text = (due as? TaskDue.Timed)?.at?.toLocalTime()?.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+                                    ?: stringResource(R.string.task_due_add_time),
+                                maxLines = 1,
+                            )
+                        },
+                        leadingIcon = { Icon(painterResource(R.drawable.ic_clock), contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
+                        modifier = Modifier.testTag("task-due-time"),
+                    )
+                    ActionIconButton(
+                        icon = R.drawable.ic_close,
+                        label = stringResource(R.string.task_due_clear),
+                        onClick = { actions.onDueKindChange(DueKind.None) },
+                        enabled = enabled,
+                        modifier = Modifier.testTag("task-due-clear"),
+                    )
+                }
+            }
+        }
+
+        OptionRow(icon = R.drawable.ic_flag, label = stringResource(R.string.task_priority), error = errors[TaskField.Priority]) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), modifier = Modifier.testTag("task-priority")) {
+                TaskPriority.entries.forEach { priority ->
+                    val tone = priority.tone()
+                    FilterChip(
+                        selected = form.priority == priority,
+                        onClick = { actions.onPriorityChange(priority) },
+                        enabled = enabled,
+                        label = { Text(stringResource(priority.labelRes()), maxLines = 1) },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = tone.container, selectedLabelColor = tone.content),
+                        modifier = Modifier.testTag("task-priority-${priority.name.lowercase()}"),
+                    )
+                }
+            }
+        }
+
+        OptionRow(icon = R.drawable.ic_bell, label = stringResource(R.string.task_reminders), error = errors[TaskField.Reminders]) {
+            ReminderEditor(
+                reminders = form.reminders,
+                due = form.due,
+                onChange = actions.onRemindersChange,
+                enabled = enabled,
+            )
+        }
+
+        OptionRow(icon = R.drawable.ic_tag, label = stringResource(R.string.tags_title), error = errors[TaskField.TaskTags]) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs), modifier = Modifier.testTag("task-tags")) {
+                if (isManagingTags) {
+                    Text(
+                        text = stringResource(R.string.tags_manage_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TagGroupsContent(
+                    state = taskTagsState,
+                    selectedIds = form.taskTagIds,
+                    onToggle = actions.onToggleTaskTag,
+                    onRetry = tagActions.onRetry,
+                    isManaging = isManagingTags,
+                    onOpenDialog = tagActions.onOpenDialog,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    TextButton(
+                        onClick = { tagActions.onOpenDialog(TagDialog.NewTagGroup) },
+                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                        modifier = Modifier.testTag("new-tag-group"),
+                    ) {
+                        Icon(painterResource(R.drawable.ic_plus), contentDescription = null, modifier = Modifier.size(IconSize.sm))
+                        Text(stringResource(R.string.tags_new_group), modifier = Modifier.padding(start = Spacing.xs))
+                    }
+                    if (!taskTagsState.tagGroups.isNullOrEmpty()) {
+                        TextButton(onClick = { isManagingTags = !isManagingTags }, modifier = Modifier.testTag("tags-manage")) {
+                            Text(stringResource(if (isManagingTags) R.string.tags_done_managing else R.string.tags_manage))
+                        }
+                    }
+                }
+            }
+        }
+
+        OptionRow(icon = R.drawable.ic_circle, label = stringResource(R.string.task_color), error = null) {
+            ColorSwatches(selected = form.color, onSelect = actions.onColorChange, enabled = enabled)
+        }
+    }
+}
+
+/** One option: its icon, which also names it, then its controls beside it. */
+@Composable
+private fun OptionRow(@DrawableRes icon: Int, label: String, error: String?, content: @Composable () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        // Centred on the first line of controls, which are 48dp tall.
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.height(IconSize.touchTarget)) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(IconSize.md),
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+            content()
+            error?.let { ErrorMessage(lines = listOf(it)) }
+        }
     }
 }
 
@@ -679,11 +762,7 @@ private fun OptionsSection(title: String, error: String?, content: @Composable (
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ColorSwatches(selected: TagColor?, onSelect: (TagColor?) -> Unit, enabled: Boolean) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-        modifier = Modifier.testTag("task-colors"),
-    ) {
+    FlowRow(modifier = Modifier.testTag("task-colors")) {
         (listOf<TagColor?>(null) + TagColor.entries).forEach { color ->
             val label = stringResource(color?.labelRes() ?: R.string.task_color_none)
             val isSelected = color == selected
@@ -698,7 +777,7 @@ private fun ColorSwatches(selected: TagColor?, onSelect: (TagColor?) -> Unit, en
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(32.dp)
                         .border(
                             width = if (isSelected) 2.dp else 1.dp,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
@@ -717,15 +796,9 @@ private fun ColorSwatches(selected: TagColor?, onSelect: (TagColor?) -> Unit, en
     }
 }
 
-private fun DueKind.labelRes(): Int = when (this) {
-    DueKind.None -> R.string.task_due_none
-    DueKind.Date -> R.string.task_due_date
-    DueKind.DateTime -> R.string.task_due_date_time
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DueDateDialog(initial: LocalDate, onPicked: (LocalDate) -> Unit, onDismiss: () -> Unit) {
+internal fun DueDateDialog(initial: LocalDate, onPicked: (LocalDate) -> Unit, onDismiss: () -> Unit) {
     // DatePicker speaks in UTC midnights, so dates convert through UTC, not the phone's zone.
     // Past days stay selectable: a Task can be due on a day already gone.
     val state = rememberDatePickerState(initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
@@ -749,7 +822,7 @@ private fun DueDateDialog(initial: LocalDate, onPicked: (LocalDate) -> Unit, onD
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DueTimeDialog(initial: LocalTime, onPicked: (LocalTime) -> Unit, onDismiss: () -> Unit) {
+internal fun DueTimeDialog(initial: LocalTime, onPicked: (LocalTime) -> Unit, onDismiss: () -> Unit, onRemove: (() -> Unit)? = null) {
     val context = LocalContext.current
     val state = rememberTimePickerState(
         initialHour = initial.hour,
@@ -767,6 +840,14 @@ private fun DueTimeDialog(initial: LocalTime, onPicked: (LocalTime) -> Unit, onD
                 modifier = Modifier.testTag("task-due-time-ok"),
             ) { Text(stringResource(R.string.ok)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = {
+            Row {
+                // Takes the time off the due, keeping its day.
+                onRemove?.let {
+                    TextButton(onClick = it, modifier = Modifier.testTag("task-due-time-remove")) { Text(stringResource(R.string.task_due_no_time)) }
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            }
+        },
     )
 }

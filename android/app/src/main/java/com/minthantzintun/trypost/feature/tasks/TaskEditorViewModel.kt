@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.minthantzintun.trypost.core.data.TasksRepository
 import com.minthantzintun.trypost.core.model.BlockKind
 import com.minthantzintun.trypost.core.model.InlineStyle
+import com.minthantzintun.trypost.core.model.ReminderDraft
+import com.minthantzintun.trypost.core.model.ReminderTiming
 import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskDraft
@@ -28,7 +30,7 @@ import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 /** Where a server validation message shows on the editor. */
-enum class TaskField { Title, Description, Priority, Due, TaskTags }
+enum class TaskField { Title, Description, Priority, Due, TaskTags, Reminders }
 
 /** The editor's due choice: none, a whole day, or a day and a time. */
 enum class DueKind { None, Date, DateTime }
@@ -42,6 +44,8 @@ data class TaskForm(
     val taskTagIds: List<String> = emptyList(),
     val color: TagColor? = null,
     val isPinned: Boolean = false,
+    /** The Task's whole set of reminders, dismissed ones included so they stay dismissed. */
+    val reminders: List<ReminderDraft> = emptyList(),
 ) {
     val dueKind: DueKind
         get() = when (due) {
@@ -58,6 +62,7 @@ data class TaskForm(
         taskTagIds = taskTagIds,
         color = color,
         isPinned = isPinned,
+        reminders = reminders,
     )
 }
 
@@ -168,8 +173,13 @@ class TaskEditorViewModel @Inject constructor(
             DueKind.Date -> TaskDue.AllDay(date)
             DueKind.DateTime -> (form.due as? TaskDue.Timed) ?: TaskDue.Timed(LocalDateTime.of(date, nextFullHour()))
         }
-        form.copy(due = due)
+        // A reminder before the due goes with the due, as the server would drop it.
+        val reminders = if (due == null) form.reminders.filterNot { it.timing is ReminderTiming.BeforeDue } else form.reminders
+        form.copy(due = due, reminders = reminders)
     }
+
+    /** The Task's reminders, as the reminder editor leaves them. */
+    fun changeReminders(reminders: List<ReminderDraft>) = changeForm(TaskField.Reminders) { it.copy(reminders = reminders) }
 
     fun changeDueDate(date: LocalDate) = changeForm(TaskField.Due) { form ->
         form.copy(
@@ -300,6 +310,7 @@ class TaskEditorViewModel @Inject constructor(
         taskTagIds = taskTags.map { it.id },
         color = color,
         isPinned = isPinned,
+        reminders = reminders.map { it.toDraft(zone) },
     )
 
     private fun TaskEditorUiState.withSaveError(error: ApiError): TaskEditorUiState {
@@ -330,5 +341,6 @@ fun taskFieldForErrorKey(key: String): TaskField? = when (key.substringBefore('.
     "priority" -> TaskField.Priority
     "due_at", "due_all_day" -> TaskField.Due
     "task_tags" -> TaskField.TaskTags
+    "reminders" -> TaskField.Reminders
     else -> null
 }

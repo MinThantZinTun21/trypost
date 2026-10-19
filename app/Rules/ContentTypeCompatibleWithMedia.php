@@ -173,6 +173,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         $hasDocument = $types->contains(MediaType::Document);
 
         $violations = [
+            'no_audio_allowed' => $types->contains(MediaType::Audio),
             'no_video_allowed' => $hasVideo && ! $contentType->supportsVideo(),
             'no_image_allowed' => $hasImage && ! $contentType->supportsImage(),
             'no_document_allowed' => $hasDocument && ! $contentType->supportsDocument(),
@@ -245,7 +246,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             MediaType::Document => ['document_too_large', $contentType->maxDocumentBytes()],
             MediaType::Video => ['video_too_large', $contentType->maxVideoBytes()],
             MediaType::Image => ['image_too_large', $contentType->maxImageBytes()],
-            null => [null, null],
+            MediaType::Audio, null => [null, null],
         };
     }
 

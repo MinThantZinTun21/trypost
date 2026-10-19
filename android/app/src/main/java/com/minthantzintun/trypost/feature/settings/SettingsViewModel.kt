@@ -27,8 +27,15 @@ class SettingsViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
 ) : ViewModel() {
 
-    val state: StateFlow<SettingsUiState> = combine(settingsStore.themeMode, sessionRepository.session) { themeMode, session ->
-        SettingsUiState(themeMode = themeMode, serverUrl = session?.serverUrl, ownerName = session?.ownerName)
+    val state: StateFlow<SettingsUiState> = combine(
+        settingsStore.themeMode,
+        sessionRepository.session,
+    ) { themeMode, session ->
+        SettingsUiState(
+            themeMode = themeMode,
+            serverUrl = session?.serverUrl,
+            ownerName = session?.ownerName,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun selectThemeMode(mode: ThemeMode) {

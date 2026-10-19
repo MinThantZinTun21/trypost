@@ -159,7 +159,7 @@ class Post extends Model
     public static function allowedMediaTypesFor(Collection $platforms): array
     {
         if ($platforms->isEmpty()) {
-            return Type::cases();
+            return Type::forPosts();
         }
 
         $sets = $platforms

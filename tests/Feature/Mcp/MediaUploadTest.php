@@ -82,6 +82,7 @@ test('start_media_upload checks the file like the composer does', function (stri
         ->assertHasErrors();
 })->with([
     'unsupported extension' => ['notes.exe', 2048],
+    'audio' => ['memo.mp3', 2048],
     'too large' => ['clip.mp4', PHP_INT_MAX],
     'empty' => ['clip.mp4', 0],
 ]);
@@ -123,13 +124,16 @@ test('complete_media_upload rejects an upload that cannot be completed', functio
     'never uploaded' => [fn ($test) => startMcpUpload($test->owner)],
 ]);
 
-test('complete_media_upload rejects a file of an unsupported type', function () {
+test('complete_media_upload rejects a file of an unsupported type', function (string $mimeType) {
     $fake = fakeMcpUploadCloud();
     $fake->shouldReceive('storedSize')->andReturn(2048);
-    $fake->shouldReceive('storedMimeType')->andReturn('application/x-msdownload');
+    $fake->shouldReceive('storedMimeType')->andReturn($mimeType);
     $uploadId = startMcpUpload($this->owner);
 
     SchedulerServer::actingAs($this->owner)
         ->tool(CompleteMediaUpload::class, ['upload_id' => $uploadId])
         ->assertHasErrors([__('assets.upload.unsupported')]);
-});
+})->with([
+    'an executable' => ['application/x-msdownload'],
+    'audio, which only Task attachments take' => ['audio/mpeg'],
+]);

@@ -373,11 +373,39 @@ before adding anything.
     DataStore) in sections Pinned, Overdue, Today, Upcoming and No date, and
     "Take a note…" replaces the New task button. The editor saves on Back,
     drops an untouched or empty new Task, and asks no "discard changes?";
-    ⋮ holds Delete and Discard changes, + the due, priority, Task tags and
-    colour. Its body is a field per block (`BodyEditorState`), never a
+    ⋮ holds Delete and Discard changes, + the due, priority, reminders, Task
+    tags and colour as compact icon-led rows. Task tags are picked, added and
+    managed inside that sheet (`TagDialogPage`), never in a second sheet
+    stacked on it. Its body is a field per block (`BodyEditorState`), never a
     Markdown text box.
-- Reminders, the timer, attachments and voice entry follow in their own PRs
-  (#132–#135), after the Keep-style screens; the first spec is #130.
+- **Reminders** (#132): a Task holds up to 10 `Reminder`s, each `at` a
+  time (with its UTC offset) or `before_due` by `minutes_before` (needs a
+  due), optionally repeating until dismissed. `reminders` left out of
+  `POST`/`PUT tasks` keeps the set (and moves `before_due` ones with the due);
+  sent, it is the whole set (`SyncTaskReminders`, matched by type and time,
+  so a kept reminder keeps its id and dismissal). `GET reminders/upcoming`
+  lists undismissed reminders of open Tasks, past ones included, for the app
+  to arm with `AlarmManager.setAlarmClock()`; `POST reminders/{id}/dismiss`
+  stamps `dismissed_at`. Snooze stays on the phone.
+- **Timer** (#133): `POST tasks/{task}/timer` starts a `TimerSession`
+  (`pomodoro` with `planned_seconds`, or `free`); one runs at a time in the
+  workspace (`StartTimer` under a cache lock, else 409), a Done Task is
+  refused, and a To do Task moves to In progress. An expired pomodoro is
+  completed at its planned end whenever it is read (`finishIfElapsed()`).
+  `POST timer-sessions/{id}/stop` ends it, `GET timer` returns the running
+  one. Marking a Task Done stops its timer. Elapsed time is always computed
+  from `started_at`, never counted on the phone.
+  The Android app no longer has a timer (ADR 0016, amended): no Timer
+  panel, Pomodoro settings, foreground service or timer calls. The API
+  stays until the Owner decides about it.
+- **Attachments** (#134): a Task's photos, videos and voice notes are Media
+  rows in its `attachments` collection, uploaded through `DirectAssetReceiver`
+  (presigned PUT, object storage only) like Videos:
+  `POST tasks/{task}/attachments/uploads`, then `POST tasks/{task}/attachments`,
+  and `DELETE tasks/{task}/attachments/{media}`. The count and per-type size
+  caps come from `config('trypost.tasks.attachments')`. They are never
+  workspace assets, so Posts cannot use them.
+- Voice entry follows in its own PR (#135); the first spec is #130.
 
 ## TikTok handoff through Telegram (ADR 0009)
 
@@ -634,7 +662,7 @@ Postgres is what this fork deploys on, but CI still runs the suite on **both Pos
 
 ## Media Types (image / video / document)
 
-- A media item is one of exactly three types: **image**, **video**, **document** (PDF). There is no standalone "audio" media type.
+- A Post's media item is one of exactly three types: **image**, **video**, **document** (PDF) (`Type::forPosts()`, `POST_MEDIA_TYPES`). **Audio** (m4a, aac, mp3) exists only for Task attachments: Post uploads, the composer and `create_post` refuse it, and `Type::fromExtension()` keeps `.3gp`/`.ogg` as video.
 - Media-type detection lives in ONE place per side — NEVER hand-write `type === 'image'`, `mime_type === 'application/pdf'`, `mime.startsWith('video/')`, or extension checks inline.
     - Backend: `App\Enums\Media\Type` — `classify()`, `fromMime()`, `fromExtension()`, `isGif()`, plus the `allowedMimeTypes()` / `extensions()` allow-lists. Use these, never a raw MIME/extension comparison.
     - Frontend: `resources/js/lib/mediaType.ts` — the mirror of the backend enum: the `MediaType` union, `classify()`, `fromMimeType()` (for a browser `File.type`), `fromExtension()`, `isImage()`/`isVideo()`/`isDocument()`/`isGif()`. `@/composables/useMedia` re-exports `isImageMedia`/`isVideoMedia`/`isDocumentMedia` aliases for legacy call sites.

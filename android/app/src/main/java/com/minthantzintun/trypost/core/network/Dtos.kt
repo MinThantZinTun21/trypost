@@ -105,15 +105,16 @@ data class VideoDto(
     @SerialName("file_name") val fileName: String? = null,
 )
 
+/** The file a presigned upload is for: Videos and Task attachments alike. */
 @Serializable
-data class StartVideoUploadBody(
+data class StartUploadBody(
     @SerialName("file_name") val fileName: String,
     val size: Long,
 )
 
 /** Where to PUT the file: a presigned object storage URL with the headers it was signed with. */
 @Serializable
-data class VideoUploadDto(
+data class PresignedUploadDto(
     @SerialName("upload_id") val uploadId: String,
     val url: String,
     val headers: Map<String, String> = emptyMap(),
@@ -169,6 +170,49 @@ data class TaskDto(
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     @SerialName("task_tags") val taskTags: List<TaskTagRefDto> = emptyList(),
+    val reminders: List<ReminderDto> = emptyList(),
+    val attachments: List<TaskAttachmentDto> = emptyList(),
+)
+
+/** A Reminder (`ReminderResource`); the upcoming list also names its Task. */
+@Serializable
+data class ReminderDto(
+    val id: String,
+    @SerialName("task_id") val taskId: String,
+    val type: String,
+    @SerialName("remind_at") val remindAt: String,
+    @SerialName("minutes_before") val minutesBefore: Int? = null,
+    @SerialName("repeat_until_dismissed") val repeatUntilDismissed: Boolean = false,
+    @SerialName("dismissed_at") val dismissedAt: String? = null,
+    val task: TaskLabelDto? = null,
+)
+
+/** The Task a reminder belongs to, as its notification names it. */
+@Serializable
+data class TaskLabelDto(
+    val id: String,
+    val title: String? = null,
+    val description: String? = null,
+)
+
+/** A Task attachment (`TaskAttachmentResource`). */
+@Serializable
+data class TaskAttachmentDto(
+    val id: String,
+    val type: String,
+    val url: String? = null,
+    @SerialName("mime_type") val mimeType: String? = null,
+    @SerialName("original_filename") val originalFilename: String? = null,
+    val size: Long? = null,
+    val duration: Double? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("download_url") val downloadUrl: String? = null,
+    @SerialName("file_name") val fileName: String? = null,
+)
+
+@Serializable
+data class StoreTaskAttachmentBody(
+    @SerialName("upload_id") val uploadId: String,
 )
 
 /** A Task tag inside a Task, with its Tag group's name and colour. */
@@ -210,6 +254,17 @@ data class SaveTaskBody(
     @SerialName("due_at") val dueAt: String?,
     @SerialName("due_all_day") val dueAllDay: Boolean,
     @SerialName("task_tags") val taskTags: List<String>,
+    /** The whole set of reminders; null leaves the stored ones as they are. */
+    val reminders: List<ReminderBody>? = null,
+)
+
+/** One reminder in a save: `at` a time with its UTC offset, or `before_due` by some minutes. */
+@Serializable
+data class ReminderBody(
+    val type: String,
+    @SerialName("remind_at") val remindAt: String? = null,
+    @SerialName("minutes_before") val minutesBefore: Int? = null,
+    @SerialName("repeat_until_dismissed") val repeatUntilDismissed: Boolean,
 )
 
 @Serializable

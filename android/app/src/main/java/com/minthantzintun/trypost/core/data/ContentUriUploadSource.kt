@@ -6,14 +6,15 @@ import android.provider.OpenableColumns
 import java.io.FileNotFoundException
 import java.io.InputStream
 
-/** A video from the system Photo Picker. */
-class ContentUriVideoSource(
+/** A file from the system Photo Picker, the camera or this app's FileProvider; [fallbackMimeType] stands in when the resolver gives none. */
+class ContentUriUploadSource(
     private val contentResolver: ContentResolver,
     private val uri: Uri,
-) : VideoSource {
+    fallbackMimeType: String = "video/mp4",
+) : UploadSource {
     override val fileName: String
     override val size: Long
-    override val mimeType: String = contentResolver.getType(uri) ?: "video/mp4"
+    override val mimeType: String = contentResolver.getType(uri) ?: fallbackMimeType
 
     init {
         var name: String? = null

@@ -63,8 +63,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.data.ContentUriVideoSource
-import com.minthantzintun.trypost.core.data.VideoSource
+import com.minthantzintun.trypost.core.data.ContentUriUploadSource
+import com.minthantzintun.trypost.core.data.UploadSource
 import com.minthantzintun.trypost.core.designsystem.ActionIconButton
 import com.minthantzintun.trypost.core.designsystem.ButtonLabel
 import com.minthantzintun.trypost.core.designsystem.ConfirmDialog
@@ -114,7 +114,7 @@ fun VideosRoute(viewModel: VideosViewModel = hiltViewModel()) {
 @Composable
 fun VideosScreen(
     state: VideosUiState,
-    onPickVideo: (VideoSource) -> Unit,
+    onPickVideo: (UploadSource) -> Unit,
     onNameChange: (String) -> Unit,
     onUpload: (String) -> Unit,
     onCancelUpload: () -> Unit,
@@ -128,7 +128,7 @@ fun VideosScreen(
 ) {
     val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        uri?.let { onPickVideo(ContentUriVideoSource(context.contentResolver, it)) }
+        uri?.let { onPickVideo(ContentUriUploadSource(context.contentResolver, it)) }
     }
     var confirmingDelete by remember { mutableStateOf<Video?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }

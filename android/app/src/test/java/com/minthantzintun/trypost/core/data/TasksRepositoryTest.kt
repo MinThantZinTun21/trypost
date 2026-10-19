@@ -1,5 +1,8 @@
 package com.minthantzintun.trypost.core.data
 
+import com.minthantzintun.trypost.core.model.AttachmentType
+import com.minthantzintun.trypost.core.model.ReminderDraft
+import com.minthantzintun.trypost.core.model.ReminderTiming
 import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.TaskDraft
 import com.minthantzintun.trypost.core.model.TaskDue
@@ -11,9 +14,11 @@ import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.noContent
+import com.minthantzintun.trypost.testing.reminderJson
 import com.minthantzintun.trypost.testing.session
 import com.minthantzintun.trypost.testing.tagGroupJson
 import com.minthantzintun.trypost.testing.tagGroupsList
+import com.minthantzintun.trypost.testing.taskAttachmentJson
 import com.minthantzintun.trypost.testing.taskJson
 import com.minthantzintun.trypost.testing.taskTagRefJson
 import com.minthantzintun.trypost.testing.tasksPage
@@ -288,5 +293,72 @@ class TasksRepositoryTest {
         assertEquals("House", renamed.jsonBody().getValue("name").jsonPrimitive.content)
         val tagDeleted = server.takeRequest()
         assertEquals("DELETE /mobile/v1/task-tags/k1", "${tagDeleted.method} ${tagDeleted.url.encodedPath}")
+    }
+
+    @Test
+    fun `a Task reads its reminders and attachments`() = runTest {
+        server.enqueue(
+            json(
+                taskJson(
+                    "t1",
+                    extra = """"reminders":[${reminderJson("r1", minutesBefore = 10, repeats = true)},${reminderJson("r2", dismissedAt = "2030-01-01T05:00:00+00:00")}],""" +
+                        """"attachments":[${taskAttachmentJson("m1", type = "audio", mimeType = "audio/mp4", fileName = "note.m4a")}]""",
+                ),
+            ),
+        )
+
+        val task = (repository().task("t1") as ApiResult.Success).value
+
+        assertEquals(listOf("r1", "r2"), task.reminders.map { it.id })
+        assertEquals(10, task.reminders.first().minutesBefore)
+        assertTrue(task.reminders.first().repeatsUntilDismissed)
+        assertEquals(listOf("r1"), task.activeReminders.map { it.id })
+        assertEquals(AttachmentType.Audio, task.attachments.single().type)
+        assertEquals("note.m4a", task.attachments.single().fileName)
+    }
+
+    @Test
+    fun `a save sends the whole set of reminders, a set time with the phone's UTC offset`() = runTest {
+        server.enqueue(json(taskJson("t1")))
+
+        repository().update(
+            "t1",
+            draft().copy(
+                reminders = listOf(
+                    ReminderDraft(ReminderTiming.At(LocalDateTime.of(2030, 1, 1, 9, 0)), repeatsUntilDismissed = true),
+                    ReminderDraft(ReminderTiming.BeforeDue(60)),
+                ),
+            ),
+            yangon,
+        )
+
+        val reminders = server.takeRequest().jsonBody().getValue("reminders").jsonArray.map { it.jsonObject }
+        assertEquals("at", reminders[0].getValue("type").jsonPrimitive.content)
+        assertEquals("2030-01-01T09:00:00+06:30", reminders[0].getValue("remind_at").jsonPrimitive.content)
+        assertTrue(reminders[0].getValue("repeat_until_dismissed").jsonPrimitive.boolean)
+        assertEquals("before_due", reminders[1].getValue("type").jsonPrimitive.content)
+        assertEquals(60, reminders[1].getValue("minutes_before").jsonPrimitive.int)
+        assertFalse(reminders[1].getValue("repeat_until_dismissed").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `a save that keeps the stored reminders leaves them out`() = runTest {
+        server.enqueue(json(taskJson("t1")))
+
+        repository().update("t1", draft(), yangon)
+
+        assertFalse(server.takeRequest().jsonBody().containsKey("reminders"))
+    }
+
+    @Test
+    fun `the upcoming reminders carry the Task's title for the notification`() = runTest {
+        server.enqueue(json("""{"data":[${reminderJson("r1", taskId = "t2", repeats = true, taskTitle = "Call the bank")}]}"""))
+
+        val reminder = (repository().upcomingReminders() as ApiResult.Success).value.single()
+
+        assertEquals("t2", reminder.taskId)
+        assertEquals(Instant.parse("2030-01-01T05:00:00Z").toEpochMilli(), reminder.remindAtMillis)
+        assertTrue(reminder.repeatsUntilDismissed)
+        assertEquals("Call the bank", reminder.taskLabel)
     }
 }

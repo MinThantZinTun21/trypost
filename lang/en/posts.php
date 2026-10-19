@@ -155,6 +155,7 @@ return [
             'no_video_allowed' => 'This post type does not accept videos.',
             'no_image_allowed' => 'This post type accepts only videos.',
             'no_document_allowed' => 'This post type does not accept PDF documents.',
+            'no_audio_allowed' => 'Posts do not accept audio.',
             'no_mixed_media' => "Images and a video can't be combined in the same post.",
             'document_not_alone' => 'A PDF must be posted on its own, without other images or videos.',
             'gif_not_allowed' => 'This platform does not accept GIF. Remove the GIF or choose a different network.',

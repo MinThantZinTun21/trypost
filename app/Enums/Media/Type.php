@@ -15,6 +15,9 @@ enum Type: string
     case Video = 'video';
     case Document = 'document';
 
+    /** Only Task attachments take audio (ADR 0016); Posts never do. */
+    case Audio = 'audio';
+
     private const GIF_MIME = 'image/gif';
 
     private const MOV_MIME = 'video/quicktime';
@@ -37,6 +40,9 @@ enum Type: string
      * Document accepts PDF only. No kept platform publishes documents;
      * the type stays so existing library assets still classify.
      *
+     * Audio accepts the phone's AAC recordings (m4a) and MP3, for Task
+     * attachments only.
+     *
      * @return array<int, string>
      */
     public function allowedMimeTypes(): array
@@ -45,7 +51,19 @@ enum Type: string
             self::Image => ['image/jpeg', 'image/png', self::GIF_MIME, 'image/webp'],
             self::Video => ['video/mp4', self::MOV_MIME],
             self::Document => [self::PDF_MIME],
+            self::Audio => ['audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac', 'audio/mpeg'],
         };
+    }
+
+    /**
+     * The types a Post's media may be. Audio is left out: only Task
+     * attachments take it.
+     *
+     * @return list<self>
+     */
+    public static function forPosts(): array
+    {
+        return [self::Image, self::Video, self::Document];
     }
 
     /**
@@ -60,6 +78,7 @@ enum Type: string
             self::Image => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
             self::Video => ['mp4', 'mov'],
             self::Document => ['pdf'],
+            self::Audio => ['m4a', 'aac', 'mp3'],
         };
     }
 
@@ -108,11 +127,14 @@ enum Type: string
      * MIME registry knows as image/*, video/* or PDF resolves, so legacy files
      * already on disk (heic, mkv, avi, ...) still classify. The registry's order
      * decides: `.pdf` lists `application/pdf` before `image/pdf`, so it is a
-     * Document, not an Image.
+     * Document, not an Image. A container that may hold video as well as
+     * audio (`.3gp`, `.ogg`) stays a Video, as it was before Audio existed.
      */
     public static function fromExtension(?string $extension): ?self
     {
-        return collect(self::registeredMimeTypes($extension))->map(self::owner(...))->filter()->first();
+        $owners = collect(self::registeredMimeTypes($extension))->map(self::owner(...))->filter();
+
+        return $owners->first(fn (self $type): bool => $type !== self::Audio) ?? $owners->first();
     }
 
     /**
@@ -125,8 +147,9 @@ enum Type: string
     }
 
     /**
-     * Image and video own their MIME family (`image/*`, `video/*`), so the
-     * family is the backing value. Document is `application/pdf` alone.
+     * Image, video and audio own their MIME family (`image/*`, `video/*`,
+     * `audio/*`), so the family is the backing value. Document is
+     * `application/pdf` alone.
      * A string without a slash is not a MIME and owns nothing.
      */
     private function ownsMime(string $mimeType): bool

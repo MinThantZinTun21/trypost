@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import com.minthantzintun.trypost.core.data.TasksRepository
 import com.minthantzintun.trypost.core.model.BlockKind
 import com.minthantzintun.trypost.core.model.InlineStyle
+import com.minthantzintun.trypost.core.model.ReminderDraft
+import com.minthantzintun.trypost.core.model.ReminderTiming
 import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.TaskDue
 import com.minthantzintun.trypost.core.model.TaskPriority
@@ -12,6 +14,7 @@ import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
 import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.noContent
+import com.minthantzintun.trypost.testing.reminderJson
 import com.minthantzintun.trypost.testing.session
 import com.minthantzintun.trypost.testing.taskJson
 import com.minthantzintun.trypost.testing.taskTagRefJson
@@ -417,5 +420,59 @@ class TaskEditorViewModelTest {
         assertEquals(TaskField.TaskTags, taskFieldForErrorKey("task_tags.3"))
         assertEquals(TaskField.Priority, taskFieldForErrorKey("priority"))
         assertNull(taskFieldForErrorKey("status"))
+    }
+
+    @Test
+    fun `reminders are sent with the Task, and those before the due go when the due does`() = runTest {
+        server.enqueue(json(taskJson("t1"), code = 201))
+        val viewModel = newTask()
+        viewModel.changeTitle("Pay rent")
+        viewModel.changeDueKind(DueKind.DateTime)
+        val at = ReminderDraft(ReminderTiming.At(LocalDateTime.of(2030, 1, 1, 9, 0)), repeatsUntilDismissed = true)
+        viewModel.changeReminders(listOf(ReminderDraft(ReminderTiming.BeforeDue(10)), at))
+
+        viewModel.changeDueKind(DueKind.None)
+        assertEquals(listOf(at), viewModel.state.value.form.reminders)
+
+        viewModel.leave()
+        viewModel.closed()
+
+        val reminder = server.takeRequest().json().getValue("reminders").jsonArray.single().jsonObject
+        assertEquals("2030-01-01T09:00:00+06:30", reminder.getValue("remind_at").jsonPrimitive.content)
+        assertTrue(reminder.getValue("repeat_until_dismissed").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `an edited Task opens with its reminders`() = runTest {
+        server.enqueue(
+            json(
+                taskJson(
+                    "t1",
+                    dueAt = "2030-01-02T05:00:00+00:00",
+                    extra = """"reminders":[${reminderJson("r1", minutesBefore = 60)},${reminderJson("r2", remindAt = "2030-01-01T05:00:00+00:00")}]""",
+                ),
+            ),
+        )
+
+        val state = editTask().loaded()
+
+        assertEquals(
+            listOf(ReminderTiming.BeforeDue(60), ReminderTiming.At(LocalDateTime.of(2030, 1, 1, 11, 30))),
+            state.form.reminders.map { it.timing },
+        )
+    }
+
+    @Test
+    fun `a refused reminder shows under the reminders`() = runTest {
+        server.enqueue(validationError("reminders.0.minutes_before" to "A reminder before the due needs a due."))
+        val viewModel = newTask()
+        viewModel.changeTitle("Call")
+        viewModel.changeReminders(listOf(ReminderDraft(ReminderTiming.BeforeDue(10))))
+
+        viewModel.leave()
+        val state = viewModel.saved()
+
+        assertEquals("A reminder before the due needs a due.", state.fieldErrors[TaskField.Reminders])
+        assertNull(state.saveError)
     }
 }

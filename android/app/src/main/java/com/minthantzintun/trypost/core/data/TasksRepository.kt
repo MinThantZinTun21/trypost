@@ -1,8 +1,14 @@
 package com.minthantzintun.trypost.core.data
 
+import com.minthantzintun.trypost.core.model.AttachmentType
+import com.minthantzintun.trypost.core.model.Reminder
+import com.minthantzintun.trypost.core.model.ReminderDraft
+import com.minthantzintun.trypost.core.model.ReminderTiming
 import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.TagGroup
 import com.minthantzintun.trypost.core.model.Task
+import com.minthantzintun.trypost.core.model.TaskAttachment
+import com.minthantzintun.trypost.core.model.TaskBody
 import com.minthantzintun.trypost.core.model.TaskDraft
 import com.minthantzintun.trypost.core.model.TaskDue
 import com.minthantzintun.trypost.core.model.TaskPage
@@ -13,14 +19,18 @@ import com.minthantzintun.trypost.core.model.TaskTag
 import com.minthantzintun.trypost.core.model.TaskTagRef
 import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.core.network.MobileClient
+import com.minthantzintun.trypost.core.network.ReminderBody
+import com.minthantzintun.trypost.core.network.ReminderDto
+import com.minthantzintun.trypost.core.network.SaveTaskBody
 import com.minthantzintun.trypost.core.network.TagGroupBody
 import com.minthantzintun.trypost.core.network.TagGroupDto
-import com.minthantzintun.trypost.core.network.SaveTaskBody
+import com.minthantzintun.trypost.core.network.TaskAttachmentDto
 import com.minthantzintun.trypost.core.network.TaskDto
 import com.minthantzintun.trypost.core.network.TaskStatusBody
 import com.minthantzintun.trypost.core.network.TaskTagBody
 import com.minthantzintun.trypost.core.network.TaskTagDto
 import com.minthantzintun.trypost.core.network.map
+import com.minthantzintun.trypost.core.reminders.UpcomingReminder
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -38,6 +48,7 @@ sealed interface TaskChange {
 
     /** A Tag group or Task tag changed, which can change how every Task's Task tags read. */
     data object TaskTagsChanged : TaskChange
+
 }
 
 /** The Owner's Tasks, Tag groups and Task tags (ADR 0016), online only like Posts and Videos. */
@@ -98,6 +109,27 @@ class TasksRepository @Inject constructor(
     /** Deletes the Task tag, which leaves every Task. */
     suspend fun deleteTaskTag(id: String): ApiResult<Unit> = client.call { deleteTaskTag(id) }.taggedChange()
 
+    /** Every undismissed reminder of an open Task, past ones included, with the Task's title and body. */
+    suspend fun upcomingReminders(): ApiResult<List<UpcomingReminder>> = client.call { upcomingReminders() }.map { dto ->
+        dto.data.mapNotNull { reminder ->
+            UpcomingReminder(
+                id = reminder.id,
+                taskId = reminder.taskId,
+                remindAtMillis = reminder.remindAt.toInstant()?.toEpochMilli() ?: return@mapNotNull null,
+                repeatsUntilDismissed = reminder.repeatUntilDismissed,
+                taskLabel = reminder.task?.let { taskLabel(it.title, it.description) },
+            )
+        }
+    }
+
+    /** Stops a reminder for good; Snooze never reaches the server. */
+    suspend fun dismissReminder(id: String): ApiResult<Unit> = client.call { dismissReminder(id) }.map { }
+
+    /** Tells every screen a Task changed in a way only the server knows, such as a new attachment. */
+    internal fun announce(task: Task) {
+        _changes.tryEmit(TaskChange.Saved(task))
+    }
+
     private fun ApiResult<Task>.announced(): ApiResult<Task> = also {
         if (it is ApiResult.Success) {
             _changes.tryEmit(TaskChange.Saved(it.value))
@@ -133,7 +165,13 @@ private fun TaskDraft.toBody(zone: ZoneId): SaveTaskBody = SaveTaskBody(
     dueAt = due?.let { dueAtWire(it, zone) },
     dueAllDay = due is TaskDue.AllDay,
     taskTags = taskTagIds,
+    reminders = reminders?.map { it.toBody(zone) },
 )
+
+private fun ReminderDraft.toBody(zone: ZoneId): ReminderBody = when (val timing = timing) {
+    is ReminderTiming.At -> ReminderBody(type = "at", remindAt = timing.at.atZone(zone).format(WireDateTime), repeatUntilDismissed = repeatsUntilDismissed)
+    is ReminderTiming.BeforeDue -> ReminderBody(type = "before_due", minutesBefore = timing.minutes, repeatUntilDismissed = repeatsUntilDismissed)
+}
 
 internal fun TaskDto.toTask(): Task = Task(
     id = id,
@@ -157,7 +195,34 @@ internal fun TaskDto.toTask(): Task = Task(
             color = TagColor.fromWire(it.color),
         )
     },
+    reminders = reminders.mapNotNull { it.toReminder() },
+    attachments = attachments.map { it.toTaskAttachment() },
 )
+
+internal fun ReminderDto.toReminder(): Reminder? = Reminder(
+    id = id,
+    taskId = taskId,
+    remindAt = remindAt.toInstant() ?: return null,
+    minutesBefore = minutesBefore.takeIf { type == "before_due" },
+    repeatsUntilDismissed = repeatUntilDismissed,
+    dismissedAt = dismissedAt.toInstant(),
+)
+
+internal fun TaskAttachmentDto.toTaskAttachment(): TaskAttachment = TaskAttachment(
+    id = id,
+    type = AttachmentType.fromWire(type),
+    url = url,
+    mimeType = mimeType,
+    fileName = originalFilename ?: fileName,
+    size = size,
+    durationSeconds = duration,
+    createdAt = createdAt.toInstant(),
+    download = downloadLink(downloadUrl, fileName, mimeType),
+)
+
+/** How a notification names a Task: its title, else its body's first line as plain text. */
+internal fun taskLabel(title: String?, description: String?): String? =
+    title?.takeIf { it.isNotBlank() } ?: description?.let { TaskBody.parse(it).blocks.firstOrNull { block -> block.text.text.isNotBlank() }?.text?.text }
 
 private fun TagGroupDto.toTagGroup(): TagGroup = TagGroup(
     id = id,

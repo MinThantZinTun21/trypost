@@ -103,6 +103,28 @@ return [
             'image' => (int) env('MEDIA_IMAGE_MAX_SIZE_MB', 10),
             'video' => (int) env('MEDIA_VIDEO_MAX_SIZE_MB', 4096),
             'document' => (int) env('MEDIA_DOCUMENT_MAX_SIZE_MB', 100),
+            'audio' => (int) env('MEDIA_AUDIO_MAX_SIZE_MB', 25),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Task attachments
+    |--------------------------------------------------------------------------
+    |
+    | Photos, videos and audio the Owner attaches to a Task from the Mobile
+    | app (ADR 0016), uploaded straight to object storage like Videos.
+    |
+    */
+
+    'tasks' => [
+        'attachments' => [
+            'max_count' => (int) env('TASK_ATTACHMENTS_MAX_COUNT', 10),
+            'max_size_mb' => [
+                'image' => (int) env('TASK_ATTACHMENT_IMAGE_MAX_SIZE_MB', 10),
+                'video' => (int) env('TASK_ATTACHMENT_VIDEO_MAX_SIZE_MB', 200),
+                'audio' => (int) env('TASK_ATTACHMENT_AUDIO_MAX_SIZE_MB', 25),
+            ],
         ],
     ],
 

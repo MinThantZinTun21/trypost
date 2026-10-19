@@ -118,6 +118,12 @@ test('every content type accepts a mov video', function (ContentType $type) {
     ContentType::YouTubeShort,
 ]);
 
+test('audio is rejected on every content type', function (ContentType $type) {
+    $media = [['mime_type' => 'audio/mp4', 'original_filename' => 'memo.m4a', 'size' => 1024]];
+
+    expect(runMediaRule($type->value, $media))->toBe([__('posts.form.warnings.no_audio_allowed')]);
+})->with(ContentType::cases());
+
 test('a gif is rejected on every content type', function (ContentType $type) {
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
 

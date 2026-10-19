@@ -8,6 +8,8 @@ export const MediaType = {
     Image: 'image',
     Video: 'video',
     Document: 'document',
+    // Only Task attachments in the Mobile app take audio; Posts never do.
+    Audio: 'audio',
 } as const;
 
 export type MediaType = (typeof MediaType)[keyof typeof MediaType];
@@ -17,7 +19,21 @@ export const ALLOWED_MIME_TYPES: Record<MediaType, readonly string[]> = {
     [MediaType.Image]: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
     [MediaType.Video]: ['video/mp4', 'video/quicktime'],
     [MediaType.Document]: ['application/pdf'],
+    [MediaType.Audio]: [
+        'audio/mp4',
+        'audio/x-m4a',
+        'audio/m4a',
+        'audio/aac',
+        'audio/mpeg',
+    ],
 };
+
+/** The types a Post's media may be — mirrors Type::forPosts(). */
+export const POST_MEDIA_TYPES: readonly MediaType[] = [
+    MediaType.Image,
+    MediaType.Video,
+    MediaType.Document,
+];
 
 const GIF_MIME = 'image/gif';
 const MOV_MIME = 'video/quicktime';
@@ -63,6 +79,16 @@ const CLASSIFIABLE_EXTENSIONS: Record<MediaType, readonly string[]> = {
         'ogv',
     ],
     [MediaType.Document]: ['pdf'],
+    [MediaType.Audio]: [
+        'm4a',
+        'aac',
+        'mp3',
+        'wav',
+        'oga',
+        'opus',
+        'flac',
+        'weba',
+    ],
 };
 
 /**
@@ -92,15 +118,15 @@ const hasExtension = (path: string, extensions: readonly string[]): boolean =>
 const normalizeMime = (mime: string | null | undefined): string =>
     (mime ?? '').split(';')[0].trim().toLowerCase();
 
-/** Image and video own their MIME family (`image/*`, `video/*`); Document is `application/pdf` alone. */
+/** Image, video and audio own their MIME family (`image/*`, `video/*`, `audio/*`); Document is `application/pdf` alone. */
 const ownsMime = (type: MediaType, mime: string): boolean =>
     type === MediaType.Document
         ? mime === PDF_MIME
         : mime.startsWith(`${type}/`);
 
-/** The `accept` attribute value for a file input that takes any media we allow. */
+/** The `accept` attribute value for a file input that takes any media a Post allows. */
 export const acceptAttribute = (): string =>
-    Object.values(ALLOWED_MIME_TYPES).flat().join(',');
+    POST_MEDIA_TYPES.flatMap((type) => ALLOWED_MIME_TYPES[type]).join(',');
 
 /** The structural shape every classifiable media item satisfies. */
 interface ClassifiableMedia {

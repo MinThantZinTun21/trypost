@@ -68,6 +68,17 @@ class MediaFactory extends Factory
         ]);
     }
 
+    public function audio(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => MediaType::Audio,
+            'path' => 'media/'.now()->format('Y-m').'/'.$this->faker->uuid().'.m4a',
+            'original_filename' => $this->faker->word().'.m4a',
+            'mime_type' => 'audio/mp4',
+            'meta' => [],
+        ]);
+    }
+
     public function logo(): static
     {
         return $this->state(fn (array $attributes) => [

@@ -3,8 +3,14 @@ package com.minthantzintun.trypost.feature.tasks
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.minthantzintun.trypost.core.data.AttachmentUpload
+import com.minthantzintun.trypost.core.data.TaskAttachmentUploads
+import com.minthantzintun.trypost.core.data.TaskAttachmentsRepository
 import com.minthantzintun.trypost.core.data.TaskChange
 import com.minthantzintun.trypost.core.data.TasksRepository
+import com.minthantzintun.trypost.core.data.UploadSource
+import com.minthantzintun.trypost.core.model.AttachmentType
+import com.minthantzintun.trypost.core.model.ReminderDraft
 import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskBody
 import com.minthantzintun.trypost.core.model.TaskStatus
@@ -32,14 +38,22 @@ data class TaskDetailUiState(
     val isDeleting: Boolean = false,
     val actionError: ApiError? = null,
     val isDeleted: Boolean = false,
+    val isSavingReminders: Boolean = false,
+    val uploads: List<AttachmentUpload> = emptyList(),
+    val deletingAttachmentId: String? = null,
 )
 
-/** One Task: its body's checkboxes, Done or Reopen, To do or In progress, and Delete. */
+/**
+ * One Task: its body's checkboxes, Done or Reopen, To do or In progress,
+ * Delete, and (spec #130) its reminders and attachments.
+ */
 @HiltViewModel
 class TaskDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val tasksRepository: TasksRepository,
     private val clock: Clock,
+    private val attachmentUploads: TaskAttachmentUploads,
+    private val attachmentsRepository: TaskAttachmentsRepository,
 ) : ViewModel() {
 
     private val taskId: String = checkNotNull(savedStateHandle["id"]) { "TaskDetailDestination needs an id" }
@@ -70,6 +84,11 @@ class TaskDetailViewModel @Inject constructor(
                     TaskChange.TaskTagsChanged -> load(isRefresh = true)
                     is TaskChange.Deleted -> Unit
                 }
+            }
+        }
+        viewModelScope.launch {
+            attachmentUploads.uploads.collect { uploads ->
+                _state.update { state -> state.copy(uploads = uploads.filter { it.taskId == taskId }) }
             }
         }
     }
@@ -155,6 +174,63 @@ class TaskDetailViewModel @Inject constructor(
             when (val result = tasksRepository.delete(taskId)) {
                 is ApiResult.Success -> _state.update { it.copy(isDeleting = false, isDeleted = true) }
                 is ApiResult.Failure -> _state.update { it.copy(isDeleting = false, actionError = result.error) }
+            }
+        }
+    }
+
+    /**
+     * Gives the Task [reminders] as its whole set, keeping every other field
+     * as saved. The server keeps a dismissed reminder dismissed while it
+     * stays in the set.
+     */
+    fun saveReminders(reminders: List<ReminderDraft>) {
+        val current = _state.value
+        val task = current.task ?: return
+        if (current.isSavingReminders || current.isDeleting || pendingTicks > 0) {
+            return
+        }
+
+        _state.update { it.copy(isSavingReminders = true, actionError = null) }
+
+        viewModelScope.launch {
+            val draft = task.toDraft(clock.zone).copy(reminders = reminders)
+            when (val result = tasksRepository.update(taskId, draft, clock.zone)) {
+                is ApiResult.Success -> _state.update { it.copy(task = result.value, isSavingReminders = false) }
+                is ApiResult.Failure -> _state.update { it.copy(isSavingReminders = false, actionError = result.error) }
+            }
+        }
+    }
+
+    /** Uploads a photo, video or voice note; it goes on while the app is open, even off this screen. */
+    fun attach(source: UploadSource, type: AttachmentType) {
+        attachmentUploads.start(taskId, source, type)
+    }
+
+    fun retryUpload(id: Long) {
+        attachmentUploads.retry(id)
+    }
+
+    fun dismissUpload(id: Long) {
+        attachmentUploads.dismiss(id)
+    }
+
+    /** Deletes an attachment with its file; the Task reloads once the server confirms. */
+    fun deleteAttachment(attachmentId: String) {
+        if (_state.value.deletingAttachmentId != null) {
+            return
+        }
+
+        _state.update { it.copy(deletingAttachmentId = attachmentId, actionError = null) }
+
+        viewModelScope.launch {
+            when (val result = attachmentsRepository.delete(taskId, attachmentId)) {
+                is ApiResult.Success -> _state.update { state ->
+                    state.copy(
+                        deletingAttachmentId = null,
+                        task = state.task?.let { task -> task.copy(attachments = task.attachments.filterNot { it.id == attachmentId }) },
+                    )
+                }
+                is ApiResult.Failure -> _state.update { it.copy(deletingAttachmentId = null, actionError = result.error) }
             }
         }
     }
