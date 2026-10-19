@@ -6,10 +6,12 @@ namespace App\Services\Media;
 
 use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
+use App\Models\Task;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\Workspace;
 use App\Support\VideoDurationProbe;
+use Closure;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -58,7 +60,16 @@ final class DirectAssetReceiver
 
     public function complete(Workspace $workspace, User $user, string $uploadId, ?float $duration = null): ChunkReceipt
     {
-        return ChunkReceipt::completed($this->register($workspace, 'assets', $user, $uploadId, $duration));
+        return ChunkReceipt::completed($this->register(
+            $workspace,
+            'assets',
+            $user,
+            $uploadId,
+            $duration,
+            MediaType::forPosts(),
+            __('assets.upload.unsupported'),
+            fn (MediaType $type): int => $type->maxSizeInMb(),
+        ));
     }
 
     /**
@@ -67,16 +78,50 @@ final class DirectAssetReceiver
      */
     public function completeVideo(Video $video, User $user, string $uploadId): Media
     {
-        return $this->register($video, Video::FILE_COLLECTION, $user, $uploadId, null, MediaType::Video);
+        return $this->register(
+            $video,
+            Video::FILE_COLLECTION,
+            $user,
+            $uploadId,
+            null,
+            [MediaType::Video],
+            __('videos.not_a_video'),
+            fn (MediaType $type): int => $type->maxSizeInMb(),
+        );
     }
 
+    /**
+     * Registers a finished upload as a Task attachment (ADR 0016): a photo,
+     * a video or audio, within the Task attachment caps. Anything else is
+     * refused and removed from storage.
+     */
+    public function completeTaskAttachment(Task $task, User $user, string $uploadId): Media
+    {
+        return $this->register(
+            $task,
+            Task::ATTACHMENTS_COLLECTION,
+            $user,
+            $uploadId,
+            null,
+            [MediaType::Image, MediaType::Video, MediaType::Audio],
+            __('tasks.attachment_unsupported'),
+            Task::attachmentMaxSizeInMb(...),
+        );
+    }
+
+    /**
+     * @param  list<MediaType>  $allowedTypes
+     * @param  Closure(MediaType): int  $maxSizeInMb
+     */
     private function register(
-        Workspace|Video $owner,
+        Workspace|Video|Task $owner,
         string $collection,
         User $user,
         string $uploadId,
         ?float $duration,
-        ?MediaType $onlyType = null,
+        array $allowedTypes,
+        string $refusal,
+        Closure $maxSizeInMb,
     ): Media {
         $upload = $this->cache->pull($this->cacheKey($user, $uploadId));
         $key = (string) data_get($upload, 'key', '');
@@ -90,16 +135,13 @@ final class DirectAssetReceiver
         $mimeType = $this->cloud->storedMimeType($key, $size);
         $type = MediaType::classify($mimeType);
 
-        if ($onlyType !== null && $type !== $onlyType) {
-            $this->reject($key, __('videos.not_a_video'));
+        if ($type === null || ! in_array($type, $allowedTypes, true)) {
+            $this->reject($key, $refusal);
         }
 
-        if ($type === null) {
-            $this->reject($key, __('assets.upload.unsupported'));
-        }
-
-        if ($size > $type->maxSizeInBytes()) {
-            $this->reject($key, __('assets.upload.file_too_large', ['max' => $type->maxSizeInMb()]));
+        $maxMb = $maxSizeInMb($type);
+        if ($size > $maxMb * 1024 * 1024) {
+            $this->reject($key, __('assets.upload.file_too_large', ['max' => $maxMb]));
         }
 
         return $type === MediaType::Image
@@ -111,7 +153,7 @@ final class DirectAssetReceiver
      * Images are resized and re-encoded, so the uploaded original is pulled
      * down, stored through the image pipeline, and then discarded.
      */
-    private function registerImage(Workspace|Video $owner, string $collection, string $key, string $fileName, string $mimeType): Media
+    private function registerImage(Workspace|Video|Task $owner, string $collection, string $key, string $fileName, string $mimeType): Media
     {
         $localPath = (string) tempnam(sys_get_temp_dir(), 'direct-upload-');
 
@@ -126,7 +168,7 @@ final class DirectAssetReceiver
     }
 
     private function registerStored(
-        Workspace|Video $owner,
+        Workspace|Video|Task $owner,
         string $collection,
         string $key,
         string $fileName,

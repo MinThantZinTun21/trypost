@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class TaskController extends Controller
 {
-    private const array RELATIONS = ['taskTags.tagGroup', 'reminders', 'timerSessions'];
+    private const array RELATIONS = ['taskTags.tagGroup', 'reminders', 'timerSessions', 'attachments'];
 
     public function index(ListTasksRequest $request): AnonymousResourceCollection
     {

@@ -8,6 +8,7 @@ use App\Http\Controllers\Mobile\V1\ReminderController;
 use App\Http\Controllers\Mobile\V1\SessionController;
 use App\Http\Controllers\Mobile\V1\SocialAccountController;
 use App\Http\Controllers\Mobile\V1\TagGroupController;
+use App\Http\Controllers\Mobile\V1\TaskAttachmentController;
 use App\Http\Controllers\Mobile\V1\TaskController;
 use App\Http\Controllers\Mobile\V1\TaskTagController;
 use App\Http\Controllers\Mobile\V1\TimerController;
@@ -42,6 +43,9 @@ Route::prefix('mobile/v1')
             Route::put('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
             Route::put('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
             Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+            Route::post('tasks/{task}/attachments/uploads', [TaskAttachmentController::class, 'startUpload'])->name('tasks.attachments.uploads.store');
+            Route::post('tasks/{task}/attachments', [TaskAttachmentController::class, 'store'])->name('tasks.attachments.store');
+            Route::delete('tasks/{task}/attachments/{media}', [TaskAttachmentController::class, 'destroy'])->name('tasks.attachments.destroy');
             Route::post('tasks/{task}/timer', [TimerController::class, 'start'])->name('timer.start');
             Route::post('timer-sessions/{timerSession}/stop', [TimerController::class, 'stop'])->name('timer.stop');
             Route::get('timer', [TimerController::class, 'show'])->name('timer.show');

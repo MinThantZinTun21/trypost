@@ -115,3 +115,15 @@ _Avoid_: Tag, label, category
 **Tag group**:
 A named, coloured set of Task tags, such as Context or Area. Filtering picks Task tags with OR inside a group and AND across groups.
 _Avoid_: Tag category, folder
+
+**Reminder**:
+A moment the phone alerts the Owner about a Task: at a set time, or a number of minutes before its due. It can repeat every few minutes until dismissed; Snooze only delays it on the phone.
+_Avoid_: Alarm, notification
+
+**Timer session**:
+One stretch of time the Owner spends on a Task, a Pomodoro of a set length or a free timer, from its start to its stop. Only one runs at a time.
+_Avoid_: Time entry, tracking
+
+**Task attachment**:
+A photo, video or voice note kept on a Task. Not a Video and never usable in a Post.
+_Avoid_: Asset, file, media

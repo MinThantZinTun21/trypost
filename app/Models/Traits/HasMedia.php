@@ -6,6 +6,7 @@ namespace App\Models\Traits;
 
 use App\Enums\Media\Type;
 use App\Models\Media;
+use App\Models\Task;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\Workspace;
@@ -39,6 +40,9 @@ trait HasMedia
         ],
         Video::class => [
             Video::FILE_COLLECTION => 'single',
+        ],
+        Task::class => [
+            Task::ATTACHMENTS_COLLECTION => 'multiple',
         ],
     ];
 
@@ -255,8 +259,24 @@ trait HasMedia
 
     private function getMediaType(string $mimeType): Type
     {
-        return Type::classify($mimeType)
-            ?? throw new InvalidArgumentException("Unsupported media MIME type: {$mimeType}");
+        $type = Type::classify($mimeType);
+
+        if ($type === null || ! in_array($type, $this->acceptedMediaTypes(), true)) {
+            throw new InvalidArgumentException("Unsupported media MIME type: {$mimeType}");
+        }
+
+        return $type;
+    }
+
+    /**
+     * The media types this model takes: a Post's, unless the model says
+     * otherwise.
+     *
+     * @return list<Type>
+     */
+    protected function acceptedMediaTypes(): array
+    {
+        return Type::forPosts();
     }
 
     /**

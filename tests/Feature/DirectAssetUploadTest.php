@@ -90,6 +90,7 @@ test('direct upload rejects a file type or size the app does not accept', functi
     startDirectUpload($fileName, $totalSize)->assertUnprocessable()->assertJsonValidationErrors($field);
 })->with([
     'executable' => ['payload.exe', 1024, 'file_name'],
+    'audio' => ['memo.m4a', 1024, 'file_name'],
     'too large' => ['clip.mp4', 4097 * 1024 * 1024, 'total_size'],
     'empty' => ['clip.mp4', 0, 'total_size'],
 ]);
@@ -189,6 +190,7 @@ test('completing an upload whose bytes are not an accepted type deletes the obje
     expect(test()->workspace->getMedia('assets')->exists())->toBeFalse();
 })->with([
     'unsupported bytes' => ['application/x-msdownload', 1024],
+    'audio, which only Task attachments take' => ['audio/mp4', 1024],
     'image over the image limit' => ['image/png', 11 * 1024 * 1024],
 ]);
 

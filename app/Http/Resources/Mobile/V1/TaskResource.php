@@ -47,6 +47,7 @@ class TaskResource extends JsonResource
             'reminders' => ReminderResource::collection($this->reminders),
             'tracked_seconds' => $this->timerSessions->sum(fn (TimerSession $session): int => $session->elapsedSeconds()),
             'timer_sessions' => TimerSessionResource::collection($this->timerSessions),
+            'attachments' => TaskAttachmentResource::collection($this->attachments),
         ];
     }
 }

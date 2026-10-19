@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\Task\Priority;
 use App\Enums\Task\Status;
 use App\Enums\Task\TagColor;
+use App\Models\Traits\HasMedia;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -15,15 +17,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * One of the Owner's to-dos (ADR 0016). Only the Mobile app reaches Tasks;
- * there is no web page or MCP tool for them.
+ * there is no web page or MCP tool for them. Its attachments are Media rows
+ * on the Task, never workspace assets, so Posts cannot use them; deleting the
+ * Task deletes their files.
  */
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasMedia, HasUuids;
+
+    /** The Media collection that holds the attachments. */
+    public const string ATTACHMENTS_COLLECTION = 'attachments';
 
     protected $fillable = [
         'workspace_id',
@@ -45,6 +53,13 @@ class Task extends Model
         'pinned' => false,
         'due_all_day' => false,
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Task $task): void {
+            $task->clearMediaCollection(self::ATTACHMENTS_COLLECTION);
+        });
+    }
 
     protected function casts(): array
     {
@@ -75,6 +90,34 @@ class Task extends Model
     public function taskTags(): BelongsToMany
     {
         return $this->belongsToMany(TaskTag::class);
+    }
+
+    /**
+     * Oldest first, in the order they were added.
+     */
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Media::class, 'mediable')
+            ->where('collection', self::ATTACHMENTS_COLLECTION)
+            ->oldest()
+            ->oldest('id');
+    }
+
+    /**
+     * The largest attachment of a type, in MB; 0 for a type a Task does not
+     * take.
+     */
+    public static function attachmentMaxSizeInMb(MediaType $type): int
+    {
+        return (int) config("trypost.tasks.attachments.max_size_mb.{$type->value}", 0);
+    }
+
+    /**
+     * @return list<MediaType>
+     */
+    protected function acceptedMediaTypes(): array
+    {
+        return [MediaType::Image, MediaType::Video, MediaType::Audio];
     }
 
     /**
