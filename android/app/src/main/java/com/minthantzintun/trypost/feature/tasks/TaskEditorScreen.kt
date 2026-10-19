@@ -90,6 +90,7 @@ import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.designsystem.StateMessage
 import com.minthantzintun.trypost.core.model.BlockKind
 import com.minthantzintun.trypost.core.model.InlineStyle
+import com.minthantzintun.trypost.core.model.ReminderDraft
 import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.TaskDue
 import com.minthantzintun.trypost.core.model.TaskPriority
@@ -142,6 +143,7 @@ fun TaskEditorRoute(
             onDueDateChange = viewModel::changeDueDate,
             onDueTimeChange = viewModel::changeDueTime,
             onToggleTaskTag = viewModel::toggleTaskTag,
+            onRemindersChange = viewModel::changeReminders,
             onToggleBlockKind = viewModel::toggleBlockKind,
             onToggleStyle = viewModel::toggleStyle,
             body = BodyEditorActions(
@@ -186,6 +188,7 @@ data class TaskEditorActions(
     val onDueDateChange: (LocalDate) -> Unit,
     val onDueTimeChange: (LocalTime) -> Unit,
     val onToggleTaskTag: (String) -> Unit,
+    val onRemindersChange: (List<ReminderDraft>) -> Unit,
     val onToggleBlockKind: (BlockKind) -> Unit,
     val onToggleStyle: (InlineStyle) -> Unit,
     val body: BodyEditorActions,
@@ -303,6 +306,7 @@ fun TaskEditorScreen(
                 isPickingTags = true
             },
             onColorChange = actions.onColorChange,
+            onRemindersChange = actions.onRemindersChange,
         )
     }
 
@@ -576,7 +580,7 @@ private fun FormatToggle(button: FormatButton, isOn: Boolean, enabled: Boolean, 
     }
 }
 
-/** The + sheet: due, priority, Task tags and the card's colour. */
+/** The + sheet: due, reminders, priority, Task tags and the card's colour. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OptionsSheet(
@@ -588,6 +592,7 @@ private fun OptionsSheet(
     onPickTime: () -> Unit,
     onPickTags: () -> Unit,
     onColorChange: (TagColor?) -> Unit,
+    onRemindersChange: (List<ReminderDraft>) -> Unit,
 ) {
     val form = state.form
     val errors = state.fieldErrors
@@ -631,6 +636,15 @@ private fun OptionsSheet(
                         }
                     }
                 }
+            }
+
+            OptionsSection(title = stringResource(R.string.task_reminders), error = errors[TaskField.Reminders]) {
+                ReminderEditor(
+                    reminders = form.reminders,
+                    due = form.due,
+                    onChange = onRemindersChange,
+                    enabled = !state.isSaving && !state.isDeleting,
+                )
             }
 
             OptionsSection(title = stringResource(R.string.task_priority), error = errors[TaskField.Priority]) {
@@ -725,7 +739,7 @@ private fun DueKind.labelRes(): Int = when (this) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DueDateDialog(initial: LocalDate, onPicked: (LocalDate) -> Unit, onDismiss: () -> Unit) {
+internal fun DueDateDialog(initial: LocalDate, onPicked: (LocalDate) -> Unit, onDismiss: () -> Unit) {
     // DatePicker speaks in UTC midnights, so dates convert through UTC, not the phone's zone.
     // Past days stay selectable: a Task can be due on a day already gone.
     val state = rememberDatePickerState(initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
@@ -749,7 +763,7 @@ private fun DueDateDialog(initial: LocalDate, onPicked: (LocalDate) -> Unit, onD
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DueTimeDialog(initial: LocalTime, onPicked: (LocalTime) -> Unit, onDismiss: () -> Unit) {
+internal fun DueTimeDialog(initial: LocalTime, onPicked: (LocalTime) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val state = rememberTimePickerState(
         initialHour = initial.hour,

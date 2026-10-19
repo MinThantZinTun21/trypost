@@ -5,6 +5,8 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -33,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -44,6 +48,7 @@ import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.Panel
 import com.minthantzintun.trypost.core.designsystem.SectionHeader
 import com.minthantzintun.trypost.core.designsystem.Spacing
+import com.minthantzintun.trypost.core.settings.SettingsStore
 import com.minthantzintun.trypost.core.settings.ThemeMode
 
 @Composable
@@ -54,6 +59,8 @@ fun SettingsRoute(onBack: (() -> Unit)? = null, viewModel: SettingsViewModel = h
         state = state,
         onBack = onBack,
         onSelectThemeMode = viewModel::selectThemeMode,
+        onSelectFocusMinutes = viewModel::selectPomodoroFocusMinutes,
+        onSelectBreakMinutes = viewModel::selectPomodoroBreakMinutes,
         onSignOut = viewModel::signOut,
     )
 }
@@ -65,6 +72,8 @@ fun SettingsScreen(
     onBack: (() -> Unit)?,
     onSelectThemeMode: (ThemeMode) -> Unit,
     onSignOut: () -> Unit,
+    onSelectFocusMinutes: (Int) -> Unit = {},
+    onSelectBreakMinutes: (Int) -> Unit = {},
 ) {
     var isConfirmingSignOut by rememberSaveable { mutableStateOf(false) }
 
@@ -103,6 +112,24 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = Spacing.xs),
                 )
+
+                SectionHeader(stringResource(R.string.settings_timer), modifier = Modifier.padding(top = Spacing.lg))
+                SettingsCard {
+                    MinutesPicker(
+                        label = R.string.settings_pomodoro_focus,
+                        choices = SettingsStore.FocusChoices,
+                        selected = state.pomodoroFocusMinutes,
+                        onSelect = onSelectFocusMinutes,
+                        testTag = "pomodoro-focus",
+                    )
+                    MinutesPicker(
+                        label = R.string.settings_pomodoro_break,
+                        choices = SettingsStore.BreakChoices,
+                        selected = state.pomodoroBreakMinutes,
+                        onSelect = onSelectBreakMinutes,
+                        testTag = "pomodoro-break",
+                    )
+                }
 
                 SectionHeader(stringResource(R.string.settings_account), modifier = Modifier.padding(top = Spacing.lg))
                 SettingsCard {
@@ -169,6 +196,28 @@ private fun ThemePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
                 modifier = Modifier.testTag("theme-${mode.wire}"),
             ) {
                 Text(stringResource(mode.label()), maxLines = 1)
+            }
+        }
+    }
+}
+
+/** A Pomodoro length: the offered minutes as chips, the chosen one ticked. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MinutesPicker(@StringRes label: Int, choices: List<Int>, selected: Int, onSelect: (Int) -> Unit, testTag: String) {
+    Column(
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        Text(stringResource(label), style = MaterialTheme.typography.bodyLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            choices.forEach { minutes ->
+                FilterChip(
+                    selected = minutes == selected,
+                    onClick = { onSelect(minutes) },
+                    label = { Text(pluralStringResource(R.plurals.minutes, minutes, minutes)) },
+                    modifier = Modifier.testTag("$testTag-$minutes"),
+                )
             }
         }
     }

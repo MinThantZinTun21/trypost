@@ -1,24 +1,32 @@
 package com.minthantzintun.trypost.core.data
 
+import com.minthantzintun.trypost.core.model.AttachmentType
+import com.minthantzintun.trypost.core.model.ReminderDraft
+import com.minthantzintun.trypost.core.model.ReminderTiming
 import com.minthantzintun.trypost.core.model.TagColor
 import com.minthantzintun.trypost.core.model.TaskDraft
 import com.minthantzintun.trypost.core.model.TaskDue
 import com.minthantzintun.trypost.core.model.TaskPriority
 import com.minthantzintun.trypost.core.model.TaskStatus
 import com.minthantzintun.trypost.core.model.TaskTab
+import com.minthantzintun.trypost.core.model.TimerMode
+import com.minthantzintun.trypost.core.model.TimerOutcome
 import com.minthantzintun.trypost.core.network.ApiError
 import com.minthantzintun.trypost.core.network.ApiResult
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.noContent
+import com.minthantzintun.trypost.testing.reminderJson
 import com.minthantzintun.trypost.testing.session
 import com.minthantzintun.trypost.testing.tagGroupJson
 import com.minthantzintun.trypost.testing.tagGroupsList
+import com.minthantzintun.trypost.testing.taskAttachmentJson
 import com.minthantzintun.trypost.testing.taskJson
 import com.minthantzintun.trypost.testing.taskTagRefJson
 import com.minthantzintun.trypost.testing.tasksPage
 import com.minthantzintun.trypost.testing.testClient
 import com.minthantzintun.trypost.testing.testJson
+import com.minthantzintun.trypost.testing.timerSessionJson
 import com.minthantzintun.trypost.testing.validationError
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
@@ -288,5 +296,103 @@ class TasksRepositoryTest {
         assertEquals("House", renamed.jsonBody().getValue("name").jsonPrimitive.content)
         val tagDeleted = server.takeRequest()
         assertEquals("DELETE /mobile/v1/task-tags/k1", "${tagDeleted.method} ${tagDeleted.url.encodedPath}")
+    }
+
+    @Test
+    fun `a Task reads its reminders, Timer sessions and attachments`() = runTest {
+        server.enqueue(
+            json(
+                taskJson(
+                    "t1",
+                    extra = """"reminders":[${reminderJson("r1", minutesBefore = 10, repeats = true)},${reminderJson("r2", dismissedAt = "2030-01-01T05:00:00+00:00")}],""" +
+                        """"tracked_seconds":1500,"timer_sessions":[${timerSessionJson("s1", mode = "pomodoro", plannedSeconds = 1500, endedAt = "2030-01-01T03:25:00+00:00", outcome = "completed")}],""" +
+                        """"attachments":[${taskAttachmentJson("m1", type = "audio", mimeType = "audio/mp4", fileName = "note.m4a")}]""",
+                ),
+            ),
+        )
+
+        val task = (repository().task("t1") as ApiResult.Success).value
+
+        assertEquals(listOf("r1", "r2"), task.reminders.map { it.id })
+        assertEquals(10, task.reminders.first().minutesBefore)
+        assertTrue(task.reminders.first().repeatsUntilDismissed)
+        assertEquals(listOf("r1"), task.activeReminders.map { it.id })
+        assertEquals(TimerMode.Pomodoro, task.timerSessions.single().mode)
+        assertEquals(TimerOutcome.Completed, task.timerSessions.single().outcome)
+        assertEquals(AttachmentType.Audio, task.attachments.single().type)
+        assertEquals("note.m4a", task.attachments.single().fileName)
+    }
+
+    @Test
+    fun `a save sends the whole set of reminders, a set time with the phone's UTC offset`() = runTest {
+        server.enqueue(json(taskJson("t1")))
+
+        repository().update(
+            "t1",
+            draft().copy(
+                reminders = listOf(
+                    ReminderDraft(ReminderTiming.At(LocalDateTime.of(2030, 1, 1, 9, 0)), repeatsUntilDismissed = true),
+                    ReminderDraft(ReminderTiming.BeforeDue(60)),
+                ),
+            ),
+            yangon,
+        )
+
+        val reminders = server.takeRequest().jsonBody().getValue("reminders").jsonArray.map { it.jsonObject }
+        assertEquals("at", reminders[0].getValue("type").jsonPrimitive.content)
+        assertEquals("2030-01-01T09:00:00+06:30", reminders[0].getValue("remind_at").jsonPrimitive.content)
+        assertTrue(reminders[0].getValue("repeat_until_dismissed").jsonPrimitive.boolean)
+        assertEquals("before_due", reminders[1].getValue("type").jsonPrimitive.content)
+        assertEquals(60, reminders[1].getValue("minutes_before").jsonPrimitive.int)
+        assertFalse(reminders[1].getValue("repeat_until_dismissed").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `a save that keeps the stored reminders leaves them out`() = runTest {
+        server.enqueue(json(taskJson("t1")))
+
+        repository().update("t1", draft(), yangon)
+
+        assertFalse(server.takeRequest().jsonBody().containsKey("reminders"))
+    }
+
+    @Test
+    fun `the upcoming reminders carry the Task's title for the notification`() = runTest {
+        server.enqueue(json("""{"data":[${reminderJson("r1", taskId = "t2", repeats = true, taskTitle = "Call the bank")}]}"""))
+
+        val reminder = (repository().upcomingReminders() as ApiResult.Success).value.single()
+
+        assertEquals("t2", reminder.taskId)
+        assertEquals(Instant.parse("2030-01-01T05:00:00Z").toEpochMilli(), reminder.remindAtMillis)
+        assertTrue(reminder.repeatsUntilDismissed)
+        assertEquals("Call the bank", reminder.taskLabel)
+    }
+
+    @Test
+    fun `a Pomodoro starts with its length and a free timer without one`() = runTest {
+        val repository = repository()
+        server.enqueue(json(timerSessionJson("s1", mode = "pomodoro", plannedSeconds = 1500), code = 201))
+        server.enqueue(json(timerSessionJson("s2"), code = 201))
+
+        val pomodoro = repository.startTimer("t1", TimerMode.Pomodoro, plannedSeconds = 1500)
+        repository.startTimer("t1", TimerMode.Free, plannedSeconds = 1500)
+
+        val first = server.takeRequest()
+        assertEquals("/mobile/v1/tasks/t1/timer", first.url.encodedPath)
+        assertEquals("pomodoro", first.jsonBody().getValue("mode").jsonPrimitive.content)
+        assertEquals(1500, first.jsonBody().getValue("planned_seconds").jsonPrimitive.int)
+        assertEquals(Instant.parse("2030-01-01T03:25:00Z"), (pomodoro as ApiResult.Success).value?.plannedEndAt)
+        val second = server.takeRequest().jsonBody()
+        assertEquals("free", second.getValue("mode").jsonPrimitive.content)
+        assertTrue("planned_seconds" !in second)
+    }
+
+    @Test
+    fun `a timer already running elsewhere is a conflict`() = runTest {
+        server.enqueue(json("""{"message":"A timer is already running."}""", code = 409))
+
+        val result = repository().startTimer("t1", TimerMode.Free, plannedSeconds = null)
+
+        assertTrue(result is ApiResult.Failure)
     }
 }

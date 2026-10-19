@@ -6,6 +6,13 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.minthantzintun.trypost.core.download.MediaDownloader
 import com.minthantzintun.trypost.core.download.SystemMediaDownloader
+import com.minthantzintun.trypost.core.reminders.AlarmScheduler
+import com.minthantzintun.trypost.core.reminders.DataStoreReminderStore
+import com.minthantzintun.trypost.core.reminders.ReminderNotifier
+import com.minthantzintun.trypost.core.reminders.ReminderPreferences
+import com.minthantzintun.trypost.core.reminders.ReminderStore
+import com.minthantzintun.trypost.core.reminders.SystemAlarmScheduler
+import com.minthantzintun.trypost.core.reminders.SystemReminderNotifier
 import com.minthantzintun.trypost.core.session.DataStoreSessionStore
 import com.minthantzintun.trypost.core.session.KeystoreSecretCipher
 import com.minthantzintun.trypost.core.session.SecretCipher
@@ -13,21 +20,34 @@ import com.minthantzintun.trypost.core.session.SessionStore
 import com.minthantzintun.trypost.core.settings.DataStoreSettingsStore
 import com.minthantzintun.trypost.core.settings.SettingsPreferences
 import com.minthantzintun.trypost.core.settings.SettingsStore
+import com.minthantzintun.trypost.core.timer.SystemTimerServiceLauncher
+import com.minthantzintun.trypost.core.timer.TimerServiceLauncher
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.time.Clock
 import java.util.concurrent.TimeUnit
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+/** The app's own [CoroutineScope], alive as long as the process. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ApplicationScope
 
 private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(name = "session")
 
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+private val Context.reminderDataStore: DataStore<Preferences> by preferencesDataStore(name = "reminders")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -54,6 +74,12 @@ object AppModule {
     @Provides
     fun provideClock(): Clock = Clock.systemDefaultZone()
 
+    /** Work that outlives a screen but not the app: uploads, reminder syncs and the timer's Stop. */
+    @Provides
+    @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     @Provides
     @Singleton
     fun provideSessionDataStore(@ApplicationContext context: Context): DataStore<Preferences> = context.sessionDataStore
@@ -62,6 +88,11 @@ object AppModule {
     @Singleton
     @SettingsPreferences
     fun provideSettingsDataStore(@ApplicationContext context: Context): DataStore<Preferences> = context.settingsDataStore
+
+    @Provides
+    @Singleton
+    @ReminderPreferences
+    fun provideReminderDataStore(@ApplicationContext context: Context): DataStore<Preferences> = context.reminderDataStore
 }
 
 @Module
@@ -82,4 +113,24 @@ abstract class SessionModule {
 abstract class DownloadModule {
     @Binds
     abstract fun bindMediaDownloader(downloader: SystemMediaDownloader): MediaDownloader
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ReminderModule {
+    @Binds
+    abstract fun bindReminderStore(store: DataStoreReminderStore): ReminderStore
+
+    @Binds
+    abstract fun bindAlarmScheduler(scheduler: SystemAlarmScheduler): AlarmScheduler
+
+    @Binds
+    abstract fun bindReminderNotifier(notifier: SystemReminderNotifier): ReminderNotifier
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class TimerModule {
+    @Binds
+    abstract fun bindTimerServiceLauncher(launcher: SystemTimerServiceLauncher): TimerServiceLauncher
 }

@@ -86,6 +86,8 @@ fun taskJson(
     taskTags: List<String> = emptyList(),
     color: String? = null,
     pinned: Boolean = false,
+    /** More fields as JSON, e.g. `"reminders":[...]`. */
+    extra: String? = null,
 ): String {
     val due = dueAt?.let { "\"$it\"" } ?: "null"
     val completed = if (status == "done") "\"2030-01-03T10:00:00+00:00\"" else "null"
@@ -95,9 +97,45 @@ fun taskJson(
          "color":${JsonPrimitive(color)},"pinned":$pinned,
          "due_at":$due,"due_all_day":$dueAllDay,"completed_at":$completed,
          "created_at":"2030-01-01T08:00:00+00:00","updated_at":"2030-01-01T08:00:00+00:00",
-         "task_tags":[${taskTags.joinToString(",")}]}
+         "task_tags":[${taskTags.joinToString(",")}]${extra?.let { ",$it" }.orEmpty()}}
     """.trimIndent()
 }
+
+fun reminderJson(
+    id: String,
+    taskId: String = "t1",
+    remindAt: String = "2030-01-01T05:00:00+00:00",
+    minutesBefore: Int? = null,
+    repeats: Boolean = false,
+    dismissedAt: String? = null,
+    taskTitle: String? = null,
+): String {
+    val type = if (minutesBefore == null) "at" else "before_due"
+    val task = taskTitle?.let { ""","task":{"id":"$taskId","title":"$it","description":null}""" }.orEmpty()
+
+    return """{"id":"$id","task_id":"$taskId","type":"$type","remind_at":"$remindAt","minutes_before":${minutesBefore ?: "null"},""" +
+        """"repeat_until_dismissed":$repeats,"dismissed_at":${dismissedAt?.let { "\"$it\"" } ?: "null"}$task}"""
+}
+
+fun timerSessionJson(
+    id: String,
+    taskId: String = "t1",
+    mode: String = "free",
+    startedAt: String = "2030-01-01T03:00:00+00:00",
+    endedAt: String? = null,
+    plannedSeconds: Long? = null,
+    outcome: String? = null,
+    taskTitle: String? = null,
+): String {
+    val task = taskTitle?.let { ""","task":{"id":"$taskId","title":"$it","description":null}""" }.orEmpty()
+
+    return """{"id":"$id","task_id":"$taskId","mode":"$mode","started_at":"$startedAt","ended_at":${endedAt?.let { "\"$it\"" } ?: "null"},""" +
+        """"planned_seconds":${plannedSeconds ?: "null"},"outcome":${outcome?.let { "\"$it\"" } ?: "null"}$task}"""
+}
+
+fun taskAttachmentJson(id: String, type: String = "image", mimeType: String = "image/jpeg", fileName: String = "photo.jpg"): String =
+    """{"id":"$id","type":"$type","url":"https://cdn.example.com/$fileName","mime_type":"$mimeType","original_filename":"$fileName",""" +
+        """"size":1024,"duration":null,"created_at":"2030-01-01T08:00:00+00:00","download_url":"https://app.example.com/media/$id/download?signature=abc","file_name":"$fileName"}"""
 
 /** A Task tag as a Task carries it. */
 fun taskTagRefJson(id: String, name: String = "Tag $id", groupId: String = "g1", groupName: String = "Context", color: String = "blue"): String =

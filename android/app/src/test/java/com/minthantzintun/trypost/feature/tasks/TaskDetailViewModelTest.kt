@@ -1,26 +1,43 @@
 package com.minthantzintun.trypost.feature.tasks
 
 import androidx.lifecycle.SavedStateHandle
+import com.minthantzintun.trypost.core.data.PresignedUploader
+import com.minthantzintun.trypost.core.data.TaskAttachmentUploads
+import com.minthantzintun.trypost.core.data.TaskAttachmentsRepository
 import com.minthantzintun.trypost.core.data.TasksRepository
+import com.minthantzintun.trypost.core.model.ReminderDraft
+import com.minthantzintun.trypost.core.model.ReminderTiming
 import com.minthantzintun.trypost.core.model.TaskStatus
+import com.minthantzintun.trypost.core.model.TimerMode
 import com.minthantzintun.trypost.core.network.ApiError
+import com.minthantzintun.trypost.core.timer.TimerTracker
 import com.minthantzintun.trypost.testing.FakeSessionStore
+import com.minthantzintun.trypost.testing.FakeSettingsStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
 import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.noContent
+import com.minthantzintun.trypost.testing.reminderJson
 import com.minthantzintun.trypost.testing.session
+import com.minthantzintun.trypost.testing.taskAttachmentJson
 import com.minthantzintun.trypost.testing.taskJson
 import com.minthantzintun.trypost.testing.taskTagRefJson
 import com.minthantzintun.trypost.testing.testClient
 import com.minthantzintun.trypost.testing.testJson
+import com.minthantzintun.trypost.testing.timerSessionJson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -39,21 +56,38 @@ class TaskDetailViewModelTest {
 
     private val server = MockWebServer()
     private lateinit var repository: TasksRepository
+    private lateinit var attachmentsRepository: TaskAttachmentsRepository
+    private lateinit var timerTracker: TimerTracker
+    private lateinit var uploads: TaskAttachmentUploads
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 
     @Before
     fun setUp() {
         server.start()
-        repository = TasksRepository(testClient(FakeSessionStore(server.session())))
+        val client = testClient(FakeSessionStore(server.session()))
+        repository = TasksRepository(client)
+        attachmentsRepository = TaskAttachmentsRepository(client, PresignedUploader(OkHttpClient()), repository)
+        timerTracker = TimerTracker({}, repository, appScope, clock)
+        uploads = TaskAttachmentUploads(attachmentsRepository, appScope)
     }
 
     @After
     fun tearDown() {
+        appScope.cancel()
         server.close()
     }
 
     private val clock = Clock.fixed(Instant.parse("2030-01-01T03:50:00Z"), ZoneId.of("Asia/Yangon"))
 
-    private fun viewModel(): TaskDetailViewModel = TaskDetailViewModel(SavedStateHandle(mapOf("id" to "t1")), repository, clock)
+    private fun viewModel(): TaskDetailViewModel = TaskDetailViewModel(
+        SavedStateHandle(mapOf("id" to "t1")),
+        repository,
+        clock,
+        timerTracker,
+        uploads,
+        attachmentsRepository,
+        FakeSettingsStore(),
+    )
 
     private fun RecordedRequest.field(name: String) = testJson.parseToJsonElement(body!!.utf8()).jsonObject.getValue(name)
 
@@ -252,5 +286,86 @@ class TaskDetailViewModelTest {
 
         assertEquals("Just text", viewModel.state.value.task!!.description)
         assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `saving reminders sends the whole set and keeps every other field`() = runTest {
+        server.enqueue(json(taskJson("t1", title = "Call the bank", dueAt = "2030-01-02T05:00:00+00:00", extra = """"reminders":[${reminderJson("r1", minutesBefore = 10)}]""")))
+        server.enqueue(json(taskJson("t1", title = "Call the bank", extra = """"reminders":[${reminderJson("r1", minutesBefore = 10)},${reminderJson("r2", minutesBefore = 60)}]""")))
+        val viewModel = viewModel()
+        val loaded = viewModel.loaded()
+
+        viewModel.saveReminders(loaded.task!!.reminders.map { it.toDraft(clock.zone) } + ReminderDraft(ReminderTiming.BeforeDue(60)))
+        val state = viewModel.state.first { it.task?.reminders?.size == 2 && !it.isSavingReminders }
+
+        server.takeRequest()
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("Call the bank", request.field("title").jsonPrimitive.content)
+        assertEquals(listOf(10, 60), request.field("reminders").jsonArray.map { it.jsonObject.getValue("minutes_before").jsonPrimitive.int })
+        assertNull(state.actionError)
+    }
+
+    @Test
+    fun `a Pomodoro starts with the length in Settings and shows as running`() = runTest {
+        server.enqueue(json(taskJson("t1")))
+        server.enqueue(json(timerSessionJson("s1", mode = "pomodoro", startedAt = "2030-01-01T03:45:00+00:00", plannedSeconds = 1500), code = 201))
+        server.enqueue(json(taskJson("t1", extra = """"timer_sessions":[${timerSessionJson("s1", mode = "pomodoro", startedAt = "2030-01-01T03:45:00+00:00", plannedSeconds = 1500)}]""")))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.startTimer(TimerMode.Pomodoro)
+        val state = viewModel.state.first { it.runningTimer != null && !it.isStartingTimer }
+
+        server.takeRequest()
+        val request = server.takeRequest()
+        assertEquals("/mobile/v1/tasks/t1/timer", request.url.encodedPath)
+        assertEquals(1500, request.field("planned_seconds").jsonPrimitive.int)
+        assertEquals("s1", state.runningTimer!!.id)
+        assertFalse(state.isTimerElsewhere)
+    }
+
+    @Test
+    fun `a timer refused because another one runs shows why`() = runTest {
+        server.enqueue(json(taskJson("t1")))
+        server.enqueue(json("""{"message":"A timer is already running."}""", code = 409))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.startTimer(TimerMode.Free)
+        val state = viewModel.state.first { !it.isStartingTimer && it.actionError != null }
+
+        assertNull(state.runningTimer)
+    }
+
+    @Test
+    fun `a timer running on another Task is shown as running elsewhere`() = runTest {
+        server.enqueue(json(taskJson("t1")))
+        val viewModel = viewModel()
+        viewModel.loaded()
+        server.enqueue(json("""{"data":${timerSessionJson("s9", taskId = "t2")}}"""))
+
+        timerTracker.refresh()
+        val state = viewModel.state.first { it.isTimerElsewhere }
+
+        assertNull(state.runningTimer)
+    }
+
+    @Test
+    fun `deleting an attachment removes it once the server confirms`() = runTest {
+        server.enqueue(json(taskJson("t1", extra = """"attachments":[${taskAttachmentJson("m1")},${taskAttachmentJson("m2")}]""")))
+        server.enqueue(noContent())
+        server.enqueue(json(taskJson("t1", extra = """"attachments":[${taskAttachmentJson("m2")}]""")))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.deleteAttachment("m1")
+        val state = viewModel.state.first { it.deletingAttachmentId == null && it.task?.attachments?.size == 1 }
+
+        server.takeRequest()
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/mobile/v1/tasks/t1/attachments/m1", request.url.encodedPath)
+        assertEquals("m2", state.task!!.attachments.single().id)
     }
 }

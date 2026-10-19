@@ -45,7 +45,7 @@ interface MobileApi {
     suspend fun videos(@Query("page") page: Int): PageDto<VideoDto>
 
     @POST("mobile/v1/videos/uploads")
-    suspend fun startVideoUpload(@Body body: StartVideoUploadBody): VideoUploadDto
+    suspend fun startVideoUpload(@Body body: StartUploadBody): PresignedUploadDto
 
     @POST("mobile/v1/videos")
     suspend fun storeVideo(@Body body: StoreVideoBody): VideoDto
@@ -75,6 +75,30 @@ interface MobileApi {
 
     @DELETE("mobile/v1/tasks/{task}")
     suspend fun deleteTask(@Path("task") id: String)
+
+    @GET("mobile/v1/reminders/upcoming")
+    suspend fun upcomingReminders(): ListDto<ReminderDto>
+
+    @POST("mobile/v1/reminders/{reminder}/dismiss")
+    suspend fun dismissReminder(@Path("reminder") id: String): ReminderDto
+
+    @GET("mobile/v1/timer")
+    suspend fun runningTimer(): RunningTimerDto
+
+    @POST("mobile/v1/tasks/{task}/timer")
+    suspend fun startTimer(@Path("task") taskId: String, @Body body: StartTimerBody): TimerSessionDto
+
+    @POST("mobile/v1/timer-sessions/{timerSession}/stop")
+    suspend fun stopTimer(@Path("timerSession") id: String): TimerSessionDto
+
+    @POST("mobile/v1/tasks/{task}/attachments/uploads")
+    suspend fun startTaskAttachmentUpload(@Path("task") taskId: String, @Body body: StartUploadBody): PresignedUploadDto
+
+    @POST("mobile/v1/tasks/{task}/attachments")
+    suspend fun storeTaskAttachment(@Path("task") taskId: String, @Body body: StoreTaskAttachmentBody): TaskAttachmentDto
+
+    @DELETE("mobile/v1/tasks/{task}/attachments/{media}")
+    suspend fun deleteTaskAttachment(@Path("task") taskId: String, @Path("media") id: String)
 
     @GET("mobile/v1/tag-groups")
     suspend fun tagGroups(): ListDto<TagGroupDto>

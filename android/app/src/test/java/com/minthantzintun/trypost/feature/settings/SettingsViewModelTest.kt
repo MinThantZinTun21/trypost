@@ -69,6 +69,18 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `the Pomodoro lengths start at 25 and 5 minutes and keep what is chosen`() = runTest {
+        val viewModel = viewModel()
+        assertEquals(25 to 5, viewModel.state.first().let { it.pomodoroFocusMinutes to it.pomodoroBreakMinutes })
+
+        viewModel.selectPomodoroFocusMinutes(50)
+        viewModel.selectPomodoroBreakMinutes(10)
+
+        val state = viewModel.state.first { it.pomodoroFocusMinutes == 50 && it.pomodoroBreakMinutes == 10 }
+        assertEquals(50 to 10, state.pomodoroFocusMinutes to state.pomodoroBreakMinutes)
+    }
+
+    @Test
     fun `signing out revokes this phone's token on the server, then removes the session but keeps the theme`() = runTest {
         server.enqueue(MockResponse.Builder().code(204).build())
         settingsStore.setThemeMode(ThemeMode.Light)

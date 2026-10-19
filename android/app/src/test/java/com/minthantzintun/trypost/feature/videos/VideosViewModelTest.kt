@@ -1,10 +1,11 @@
 package com.minthantzintun.trypost.feature.videos
 
+import com.minthantzintun.trypost.core.data.PresignedUploader
 import com.minthantzintun.trypost.core.data.VideosRepository
 import com.minthantzintun.trypost.core.download.DownloadOutcome
 import com.minthantzintun.trypost.core.model.DownloadLink
 import com.minthantzintun.trypost.core.network.ApiError
-import com.minthantzintun.trypost.testing.BytesVideoSource
+import com.minthantzintun.trypost.testing.BytesUploadSource
 import com.minthantzintun.trypost.testing.FakeMediaDownloader
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.MainDispatcherRule
@@ -52,7 +53,7 @@ class VideosViewModelTest {
         server.close()
     }
 
-    private fun viewModel(): VideosViewModel = VideosViewModel(VideosRepository(testClient(store), OkHttpClient()), downloader)
+    private fun viewModel(): VideosViewModel = VideosViewModel(VideosRepository(testClient(store), PresignedUploader(OkHttpClient())), downloader)
 
     private suspend fun VideosViewModel.settled(): VideosUiState =
         state.first { !it.isLoading && !it.isRefreshing && !it.isLoadingMore && !it.isUploading }
@@ -121,7 +122,7 @@ class VideosViewModelTest {
         val viewModel = viewModel()
         viewModel.settled()
 
-        viewModel.pickVideo(BytesVideoSource(fileName = "Beach day.MP4"))
+        viewModel.pickVideo(BytesUploadSource(fileName = "Beach day.MP4"))
 
         assertEquals("Beach day", viewModel.state.value.pending?.name)
 
@@ -135,7 +136,7 @@ class VideosViewModelTest {
         server.enqueue(videosPage(emptyList()))
         val viewModel = viewModel()
         viewModel.settled()
-        val source = BytesVideoSource()
+        val source = BytesUploadSource()
         server.enqueue(server.videoUploadStarted("up-1"))
         server.enqueue(MockResponse.Builder().code(200).build())
         server.enqueue(json(videoJson("v1", name = "My clip"), code = 201))
@@ -179,7 +180,7 @@ class VideosViewModelTest {
         viewModel.settled()
         server.enqueue(json("""{"message":"Choose a video file.","errors":{"file_name":["Choose a video file."]}}""", code = 422))
 
-        viewModel.pickVideo(BytesVideoSource())
+        viewModel.pickVideo(BytesUploadSource())
         viewModel.upload("My clip")
         val state = viewModel.state.first { it.uploadError != null }
 
@@ -197,7 +198,7 @@ class VideosViewModelTest {
         server.enqueue(server.videoUploadStarted())
         server.enqueue(MockResponse.Builder().code(403).body("<Error>SignatureDoesNotMatch</Error>").build())
 
-        viewModel.pickVideo(BytesVideoSource())
+        viewModel.pickVideo(BytesUploadSource())
         viewModel.upload("My clip")
         val state = viewModel.state.first { it.uploadError != null }
 

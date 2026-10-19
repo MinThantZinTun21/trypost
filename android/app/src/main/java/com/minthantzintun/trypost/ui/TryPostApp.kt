@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -70,25 +71,37 @@ data class EditTaskDestination(val id: String)
 
 private val TopLevelDestinations = listOf(PostsDestination::class, TasksDestination::class, VideosDestination::class, SettingsDestination::class)
 
+/** [taskToOpen] is a Task a notification asked to show; [onTaskOpened] once it is on screen. */
 @Composable
-fun TryPostApp(viewModel: RootViewModel = hiltViewModel()) {
+fun TryPostApp(
+    taskToOpen: String? = null,
+    onTaskOpened: () -> Unit = {},
+    viewModel: RootViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (state) {
             RootState.Loading -> Box(Modifier.fillMaxSize())
             RootState.SignedOut -> SignInRoute()
-            is RootState.SignedIn -> SignedInNavHost()
+            is RootState.SignedIn -> SignedInNavHost(taskToOpen, onTaskOpened)
         }
     }
 }
 
 @Composable
-private fun SignedInNavHost() {
+private fun SignedInNavHost(taskToOpen: String?, onTaskOpened: () -> Unit) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
     val isTopLevel = destination != null && TopLevelDestinations.any { destination.hasRoute(it) }
+
+    LaunchedEffect(taskToOpen) {
+        if (taskToOpen != null) {
+            navController.navigate(TaskDetailDestination(taskToOpen)) { launchSingleTop = true }
+            onTaskOpened()
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),

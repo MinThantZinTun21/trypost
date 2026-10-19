@@ -56,9 +56,11 @@ import com.minthantzintun.trypost.core.designsystem.Panel
 import com.minthantzintun.trypost.core.designsystem.Skeleton
 import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.designsystem.StateMessage
+import com.minthantzintun.trypost.core.model.ReminderDraft
 import com.minthantzintun.trypost.core.model.Task
 import com.minthantzintun.trypost.core.model.TaskBody
 import com.minthantzintun.trypost.core.model.TaskStatus
+import com.minthantzintun.trypost.core.model.TimerMode
 import com.minthantzintun.trypost.core.ui.message
 import java.time.Instant
 import java.time.LocalDate
@@ -89,8 +91,27 @@ fun TaskDetailRoute(
         onSetStatus = viewModel::setStatus,
         onToggleCheckbox = viewModel::toggleCheckbox,
         onDelete = viewModel::delete,
+        extras = TaskExtrasActions(
+            onSaveReminders = viewModel::saveReminders,
+            onStartTimer = viewModel::startTimer,
+            onStopTimer = viewModel::stopTimer,
+            attachments = AttachmentActions(
+                onAttach = viewModel::attach,
+                onRetryUpload = viewModel::retryUpload,
+                onDismissUpload = viewModel::dismissUpload,
+                onDelete = viewModel::deleteAttachment,
+            ),
+        ),
     )
 }
+
+/** What the reminders, timer and attachments on the detail screen can ask for. */
+data class TaskExtrasActions(
+    val onSaveReminders: (List<ReminderDraft>) -> Unit,
+    val onStartTimer: (TimerMode) -> Unit,
+    val onStopTimer: () -> Unit,
+    val attachments: AttachmentActions,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,6 +124,7 @@ fun TaskDetailScreen(
     onSetStatus: (TaskStatus) -> Unit,
     onToggleCheckbox: (Int) -> Unit,
     onDelete: () -> Unit,
+    extras: TaskExtrasActions,
 ) {
     var isConfirmingDelete by rememberSaveable { mutableStateOf(false) }
     val task = state.task
@@ -173,7 +195,7 @@ fun TaskDetailScreen(
                     onRefresh = onRefresh,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    TaskDetails(task, onToggleCheckbox = onToggleCheckbox)
+                    TaskDetails(task, state = state, onToggleCheckbox = onToggleCheckbox, extras = extras)
                 }
             }
         }
@@ -199,7 +221,7 @@ fun TaskDetailScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TaskDetails(task: Task, onToggleCheckbox: (Int) -> Unit) {
+private fun TaskDetails(task: Task, state: TaskDetailUiState, onToggleCheckbox: (Int) -> Unit, extras: TaskExtrasActions) {
     val zone = remember { ZoneId.systemDefault() }
     val now = remember(task) { Instant.now() }
     val today = now.atZone(zone).toLocalDate()
@@ -274,6 +296,41 @@ private fun TaskDetails(task: Task, onToggleCheckbox: (Int) -> Unit) {
                             task.taskTags.forEach { TaskTagPill(it) }
                         }
                     }
+                }
+            }
+        }
+
+        Panel(modifier = Modifier.testTag("task-reminders-panel")) {
+            Column(modifier = Modifier.padding(Spacing.lg)) {
+                DetailRow(label = stringResource(R.string.task_reminders)) {
+                    ReminderEditor(
+                        reminders = remember(task.reminders, zone) { task.reminders.map { it.toDraft(zone) } },
+                        due = task.due(zone),
+                        onChange = extras.onSaveReminders,
+                        enabled = !state.isSavingReminders && !state.isDeleting,
+                        dismissed = remember(task.reminders) { task.reminders.indices.filter { task.reminders[it].dismissedAt != null }.toSet() },
+                    )
+                }
+            }
+        }
+
+        Panel(modifier = Modifier.testTag("task-timer-panel")) {
+            Column(modifier = Modifier.padding(Spacing.lg)) {
+                DetailRow(label = stringResource(R.string.task_timer)) {
+                    TimerSection(task = task, state = state, onStart = extras.onStartTimer, onStop = extras.onStopTimer)
+                }
+            }
+        }
+
+        Panel(modifier = Modifier.testTag("task-attachments-panel")) {
+            Column(modifier = Modifier.padding(Spacing.lg)) {
+                DetailRow(label = stringResource(R.string.task_attachments)) {
+                    AttachmentsSection(
+                        attachments = task.attachments,
+                        uploads = state.uploads,
+                        deletingId = state.deletingAttachmentId,
+                        actions = extras.attachments,
+                    )
                 }
             }
         }

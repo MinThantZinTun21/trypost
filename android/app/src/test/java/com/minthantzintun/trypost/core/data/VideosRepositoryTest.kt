@@ -1,7 +1,7 @@
 package com.minthantzintun.trypost.core.data
 
 import com.minthantzintun.trypost.core.network.ApiResult
-import com.minthantzintun.trypost.testing.BytesVideoSource
+import com.minthantzintun.trypost.testing.BytesUploadSource
 import com.minthantzintun.trypost.testing.FakeSessionStore
 import com.minthantzintun.trypost.testing.json
 import com.minthantzintun.trypost.testing.session
@@ -33,13 +33,13 @@ class VideosRepositoryTest {
 
     @Test
     fun `the upload reports its progress up to the whole file`() = runTest {
-        val repository = VideosRepository(testClient(FakeSessionStore(server.session())), OkHttpClient())
+        val repository = VideosRepository(testClient(FakeSessionStore(server.session())), PresignedUploader(OkHttpClient()))
         server.enqueue(server.videoUploadStarted())
         server.enqueue(MockResponse.Builder().code(200).build())
         server.enqueue(json(videoJson("v1"), code = 201))
         val progress = mutableListOf<Float>()
 
-        val result = repository.upload(BytesVideoSource(), "My clip") { progress += it }
+        val result = repository.upload(BytesUploadSource(), "My clip") { progress += it }
 
         assertTrue(result is ApiResult.Success)
         assertTrue(progress.size > 1)

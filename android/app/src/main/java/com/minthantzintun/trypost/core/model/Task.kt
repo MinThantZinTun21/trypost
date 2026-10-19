@@ -26,6 +26,14 @@ data class Task(
     val updatedAt: Instant?,
     /** Ordered by Tag group name, then Task tag name. */
     val taskTags: List<TaskTagRef>,
+    /** Ordered by when they ring. */
+    val reminders: List<Reminder> = emptyList(),
+    /** Every Timer session's time together, as of the response. */
+    val trackedSeconds: Long = 0,
+    /** Newest first. */
+    val timerSessions: List<TimerSession> = emptyList(),
+    /** Oldest first. */
+    val attachments: List<TaskAttachment> = emptyList(),
 ) {
     val isOpen: Boolean get() = status != TaskStatus.Done
 
@@ -49,7 +57,10 @@ data class Task(
         return if (isDueAllDay) dueAt.atZone(zone).toLocalDate().isBefore(now.atZone(zone).toLocalDate()) else dueAt.isBefore(now)
     }
 
-    /** Every field as a save sends it, e.g. to tick a checkbox and keep the rest. */
+    /** The reminders that still ring: not dismissed. */
+    val activeReminders: List<Reminder> get() = reminders.filter { it.dismissedAt == null }
+
+    /** Every field as a save sends it, e.g. to tick a checkbox and keep the rest; the reminders stay as stored. */
     fun toDraft(zone: ZoneId): TaskDraft = TaskDraft(
         title = title.orEmpty(),
         description = description,
@@ -164,4 +175,6 @@ data class TaskDraft(
     val taskTagIds: List<String>,
     val color: TagColor? = null,
     val isPinned: Boolean = false,
+    /** The whole set of reminders, or null to keep the stored ones. */
+    val reminders: List<ReminderDraft>? = null,
 )
