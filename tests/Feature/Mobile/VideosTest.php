@@ -12,13 +12,12 @@ use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     Cache::flush();
-    config(['trypost.mobile.token' => 'mobile-test-token']);
     Storage::fake();
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
-    $this->headers = ['Authorization' => 'Bearer mobile-test-token'];
+    $this->headers = mobileHeaders($this->owner);
 });
 
 function fakeVideoUploadCloud(bool $objectStorage = true): ChunkedCloudUploader

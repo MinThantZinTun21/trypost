@@ -178,7 +178,7 @@ Every tool acts as the Owner. Start by asking Claude to list your Social account
 
 ## Android app
 
-The app in `android/` talks to `/mobile/v1` with one bearer secret. Set `MOBILE_TOKEN` to a long random string (`openssl rand -hex 32`) in the server's `.env`; an empty token turns the mobile API off. Install the app, enter the server address (prefilled with production) and the token. Changing `MOBILE_TOKEN` signs the phone out.
+The app in `android/` talks to `/mobile/v1`. Install it and sign in with the server address (prefilled with production) and the email and password you use on the web. The server hands the phone a token of its own; signing out on the phone, or changing your password, ends it. There is nothing to set in `.env`.
 
 Build and test it with JDK 17 or newer and the Android SDK:
 
@@ -198,8 +198,7 @@ The debug APK lands in `android/app/build/outputs/apk/debug/`. A debug build may
 
 2. Add four repository secrets (Settings → Secrets and variables → Actions): `ANDROID_KEYSTORE_BASE64` (the output of `base64 -i trypost-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`trypost`) and `ANDROID_KEY_PASSWORD`.
 3. Run **Android release** from the Actions tab. It tests, builds, signs and verifies the APK, and attaches it to the run as `trypost-android-<run number>`.
-4. Set `MOBILE_TOKEN` in the server's `.env` and restart the app container.
-5. On the phone, download the artifact, unzip it, open `app-release.apk` and allow installs from that app when Android asks. Sign in with the server address and the token.
+4. On the phone, download the artifact, unzip it, open `app-release.apk` and allow installs from that app when Android asks. Sign in with the server address and your web email and password.
 
 To sign a release locally instead, put the same settings in `android/keystore.properties` (git-ignored):
 

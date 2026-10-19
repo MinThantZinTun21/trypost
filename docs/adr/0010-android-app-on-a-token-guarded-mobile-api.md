@@ -19,3 +19,5 @@ So a narrow mobile API comes back under `/mobile/v1`, guarded by one bearer secr
 - Times go over the wire as ISO 8601 with an offset; the app shows them in the phone's timezone, as the web app does in the browser's.
 
 ADR 0011 removes the Drafts tab and Unschedule (`DELETE /mobile/v1/posts/{post}/schedule`), and ADR 0012 lets the app Post now, Send to Telegram and upload Videos; those lines above no longer hold.
+
+ADR 0015 replaces `MOBILE_TOKEN` with a sign-in by the Owner's web email and password and a Mobile token per phone.
