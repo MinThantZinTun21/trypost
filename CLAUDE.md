@@ -215,7 +215,8 @@ glossary is `CONTEXT.md`; the decisions behind the fork are
 `docs/adr/0006-share-the-chord-book-server.md`; the TikTok handoff through Telegram is
 `docs/adr/0009-hand-tiktok-posts-off-through-telegram.md` (it supersedes
 `docs/adr/0008-mirror-published-posts-to-a-telegram-channel.md`); the Android app is
-`docs/adr/0010-android-app-on-a-token-guarded-mobile-api.md`. Read them
+`docs/adr/0010-android-app-on-a-token-guarded-mobile-api.md`; its Tasks are
+`docs/adr/0016-tasks-in-the-mobile-app.md`. Read them
 before adding anything.
 
 - **Removed features stay removed.** AI, Repurpose, analytics, billing, teams and
@@ -328,6 +329,36 @@ before adding anything.
   `core/designsystem`; screens read its tokens, never raw colours. Dark and
   light both pass 4.5:1; the theme follows the system unless Settings picks
   one. Icons are Tabler vector drawables; no icon dependency.
+
+## Tasks (ADR 0016)
+
+- **Tasks** are the Owner's to-dos, reached only from the Mobile app over
+  `/mobile/v1` (`TaskController`, `TagGroupController`, `TaskTagController`).
+  There is no web page and no MCP tool for them; adding one is its own
+  decision. They belong to the Owner's workspace, and another workspace's
+  Task, Tag group or Task tag is 404 (`TaskPolicy`, `TagGroupPolicy`,
+  `TaskTagPolicy`).
+- A Task is To do, In progress or Done (`App\Enums\Task\Status`); there is no
+  Archived status, and Delete is final. Done stamps `completed_at` once
+  (`SetTaskStatus`); any other status clears it. Priority is None, Low, Medium
+  or High (0–3).
+- `due_at` is optional, must carry its UTC offset and stay before 2038-01-19.
+  `due_all_day` marks a date-only due: the start of that day in the phone's
+  timezone. `PUT tasks/{task}` is a full replace through `SaveTask`, like
+  `POST tasks`: a left-out optional field is reset and `task_tags` is the
+  whole set.
+- The list tabs are `App\Enums\Mobile\TaskTab`: Open (To do and In progress,
+  by due with undated last) and Done (newest `completed_at` first).
+  `task_tags[]` filters with OR inside a Tag group and AND across groups
+  (`Task::withTaskTagsFromEachGroup()`); `q` searches title and description
+  with `whereLike()`.
+- Say **Task tag** and **Tag group** in code and API, never "Tag" (a YouTube
+  Short's Tags) or "Label" (removed). A Task tag sits in exactly one Tag group;
+  names are unique ignoring case (`UniqueNameIgnoringCase`), within the
+  workspace for groups and within the group for tags. Deleting a Tag group
+  deletes its Task tags and takes them off every Task.
+- Reminders, the timer, attachments and voice entry follow in their own PRs
+  (#132–#135); the spec is #130.
 
 ## TikTok handoff through Telegram (ADR 0009)
 

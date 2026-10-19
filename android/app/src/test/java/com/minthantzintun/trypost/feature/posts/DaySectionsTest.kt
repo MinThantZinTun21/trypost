@@ -34,7 +34,7 @@ class DaySectionsTest {
         val sections = groupByDay(posts, PostTab.Scheduled, yangon)
 
         assertEquals(listOf(LocalDate.of(2030, 1, 1), LocalDate.of(2030, 1, 2)), sections.map { it.day })
-        assertEquals(listOf(listOf("a"), listOf("b", "c")), sections.map { section -> section.posts.map { it.id } })
+        assertEquals(listOf(listOf("a"), listOf("b", "c")), sections.map { section -> section.items.map { it.id } })
     }
 
     @Test
@@ -49,7 +49,7 @@ class DaySectionsTest {
         val sections = groupByDay(posts, PostTab.Scheduled, utc)
 
         assertEquals(listOf(LocalDate.of(2030, 1, 1), LocalDate.of(2030, 1, 2)), sections.map { it.day })
-        assertEquals(listOf(listOf("a", "c"), listOf("b")), sections.map { section -> section.posts.map { it.id } })
+        assertEquals(listOf(listOf("a", "c"), listOf("b")), sections.map { section -> section.items.map { it.id } })
     }
 
     @Test

@@ -47,7 +47,7 @@ import com.minthantzintun.trypost.core.designsystem.Spacing
 import com.minthantzintun.trypost.core.settings.ThemeMode
 
 @Composable
-fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsRoute(onBack: (() -> Unit)? = null, viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     SettingsScreen(
@@ -62,7 +62,7 @@ fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMod
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onSelectThemeMode: (ThemeMode) -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -73,8 +73,11 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.testTag("back")) {
-                        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                    // Settings is a bottom bar tab, so it only has Back when opened from another screen.
+                    if (onBack != null) {
+                        IconButton(onClick = onBack, modifier = Modifier.testTag("back")) {
+                            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                        }
                     }
                 },
             )

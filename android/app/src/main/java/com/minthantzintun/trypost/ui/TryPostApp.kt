@@ -34,11 +34,17 @@ import com.minthantzintun.trypost.feature.edit.EditPostRoute
 import com.minthantzintun.trypost.feature.posts.PostsRoute
 import com.minthantzintun.trypost.feature.settings.SettingsRoute
 import com.minthantzintun.trypost.feature.signin.SignInRoute
+import com.minthantzintun.trypost.feature.tasks.TaskDetailRoute
+import com.minthantzintun.trypost.feature.tasks.TaskEditorRoute
+import com.minthantzintun.trypost.feature.tasks.TasksRoute
 import com.minthantzintun.trypost.feature.videos.VideosRoute
 import kotlinx.serialization.Serializable
 
 @Serializable
 data object PostsDestination
+
+@Serializable
+data object TasksDestination
 
 @Serializable
 data object VideosDestination
@@ -51,6 +57,17 @@ data class PostDetailDestination(val id: String)
 
 @Serializable
 data class EditPostDestination(val id: String)
+
+@Serializable
+data class TaskDetailDestination(val id: String)
+
+@Serializable
+data object NewTaskDestination
+
+@Serializable
+data class EditTaskDestination(val id: String)
+
+private val TopLevelDestinations = listOf(PostsDestination::class, TasksDestination::class, VideosDestination::class, SettingsDestination::class)
 
 @Composable
 fun TryPostApp(viewModel: RootViewModel = hiltViewModel()) {
@@ -70,7 +87,7 @@ private fun SignedInNavHost() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
-    val isTopLevel = destination?.hasRoute<PostsDestination>() == true || destination?.hasRoute<VideosDestination>() == true
+    val isTopLevel = destination != null && TopLevelDestinations.any { destination.hasRoute(it) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -78,18 +95,32 @@ private fun SignedInNavHost() {
             if (isTopLevel) {
                 NavigationBar {
                     TopLevelItem(
-                        selected = destination?.hasRoute<PostsDestination>() == true,
+                        selected = destination.hasRoute<PostsDestination>(),
                         icon = R.drawable.ic_posts,
                         label = R.string.nav_posts,
                         testTag = "nav-posts",
                         onClick = { navController.switchTo(PostsDestination) },
                     )
                     TopLevelItem(
-                        selected = destination?.hasRoute<VideosDestination>() == true,
+                        selected = destination.hasRoute<TasksDestination>(),
+                        icon = R.drawable.ic_tasks,
+                        label = R.string.nav_tasks,
+                        testTag = "nav-tasks",
+                        onClick = { navController.switchTo(TasksDestination) },
+                    )
+                    TopLevelItem(
+                        selected = destination.hasRoute<VideosDestination>(),
                         icon = R.drawable.ic_videos,
                         label = R.string.nav_videos,
                         testTag = "nav-videos",
                         onClick = { navController.switchTo(VideosDestination) },
+                    )
+                    TopLevelItem(
+                        selected = destination.hasRoute<SettingsDestination>(),
+                        icon = R.drawable.ic_settings,
+                        label = R.string.nav_settings,
+                        testTag = "nav-settings",
+                        onClick = { navController.switchTo(SettingsDestination) },
                     )
                 }
             }
@@ -126,16 +157,37 @@ private fun NavHostController.switchTo(destination: Any) {
 private fun SignedInGraph(navController: NavHostController, modifier: Modifier) {
     NavHost(navController = navController, startDestination = PostsDestination, modifier = modifier) {
         composable<PostsDestination> {
-            PostsRoute(
-                onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) },
-                onOpenSettings = { navController.navigate(SettingsDestination) },
+            PostsRoute(onOpenPost = { id -> navController.navigate(PostDetailDestination(id)) })
+        }
+        composable<TasksDestination> {
+            TasksRoute(
+                onOpenTask = { id -> navController.navigate(TaskDetailDestination(id)) },
+                onNewTask = { navController.navigate(NewTaskDestination) },
             )
         }
         composable<VideosDestination> {
             VideosRoute()
         }
         composable<SettingsDestination> {
-            SettingsRoute(onBack = { navController.popBackStack() })
+            SettingsRoute()
+        }
+        composable<TaskDetailDestination> {
+            TaskDetailRoute(
+                onBack = { navController.popBackStack() },
+                onEdit = { id -> navController.navigate(EditTaskDestination(id)) },
+            )
+        }
+        composable<NewTaskDestination> {
+            TaskEditorRoute(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
+        }
+        composable<EditTaskDestination> {
+            TaskEditorRoute(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
         }
         composable<PostDetailDestination> {
             PostDetailRoute(

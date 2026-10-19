@@ -21,6 +21,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import java.time.Clock
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
@@ -45,6 +46,13 @@ object AppModule {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
+
+    /**
+     * The phone's clock in its current timezone. Not a singleton, so each
+     * screen that asks reads the timezone the phone is in when it opens.
+     */
+    @Provides
+    fun provideClock(): Clock = Clock.systemDefaultZone()
 
     @Provides
     @Singleton

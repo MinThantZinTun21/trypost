@@ -1,0 +1,124 @@
+package com.minthantzintun.trypost.feature.tasks
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.minthantzintun.trypost.core.data.TaskChange
+import com.minthantzintun.trypost.core.data.TasksRepository
+import com.minthantzintun.trypost.core.model.Task
+import com.minthantzintun.trypost.core.model.TaskStatus
+import com.minthantzintun.trypost.core.network.ApiError
+import com.minthantzintun.trypost.core.network.ApiResult
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class TaskDetailUiState(
+    val task: Task? = null,
+    val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
+    val error: ApiError? = null,
+    /** The status the Owner just asked for, while the server saves it. */
+    val savingStatus: TaskStatus? = null,
+    val isDeleting: Boolean = false,
+    val actionError: ApiError? = null,
+    val isDeleted: Boolean = false,
+)
+
+/** One Task: Done or Reopen, To do or In progress, and Delete. */
+@HiltViewModel
+class TaskDetailViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val tasksRepository: TasksRepository,
+) : ViewModel() {
+
+    private val taskId: String = checkNotNull(savedStateHandle["id"]) { "TaskDetailDestination needs an id" }
+
+    private val _state = MutableStateFlow(TaskDetailUiState())
+    val state: StateFlow<TaskDetailUiState> = _state.asStateFlow()
+
+    private var loadJob: Job? = null
+
+    init {
+        load(isRefresh = false)
+
+        viewModelScope.launch {
+            tasksRepository.changes.collect { change ->
+                when (change) {
+                    is TaskChange.Saved -> if (change.task.id == taskId) {
+                        _state.update { it.copy(task = change.task, error = null) }
+                    }
+                    // A renamed or deleted Task tag reads differently on this Task.
+                    TaskChange.TaskTagsChanged -> load(isRefresh = true)
+                    is TaskChange.Deleted -> Unit
+                }
+            }
+        }
+    }
+
+    fun refresh() {
+        load(isRefresh = true)
+    }
+
+    fun retry() {
+        load(isRefresh = false)
+    }
+
+    /** Done, Reopen (To do), or In progress; Done sets the completed time on the server. */
+    fun setStatus(status: TaskStatus) {
+        val current = _state.value
+        if (current.savingStatus != null || current.isDeleting || current.task?.status == status) {
+            return
+        }
+
+        _state.update { it.copy(savingStatus = status, actionError = null) }
+
+        viewModelScope.launch {
+            when (val result = tasksRepository.setStatus(taskId, status)) {
+                is ApiResult.Success -> _state.update { it.copy(task = result.value, savingStatus = null) }
+                is ApiResult.Failure -> _state.update { it.copy(savingStatus = null, actionError = result.error) }
+            }
+        }
+    }
+
+    /** Deletes the Task for good; the screen closes once the server confirms. */
+    fun delete() {
+        if (_state.value.isDeleting || _state.value.savingStatus != null) {
+            return
+        }
+
+        _state.update { it.copy(isDeleting = true, actionError = null) }
+
+        viewModelScope.launch {
+            when (val result = tasksRepository.delete(taskId)) {
+                is ApiResult.Success -> _state.update { it.copy(isDeleting = false, isDeleted = true) }
+                is ApiResult.Failure -> _state.update { it.copy(isDeleting = false, actionError = result.error) }
+            }
+        }
+    }
+
+    fun dismissActionError() {
+        _state.update { it.copy(actionError = null) }
+    }
+
+    private fun load(isRefresh: Boolean) {
+        loadJob?.cancel()
+        _state.update { it.copy(isLoading = !isRefresh && it.task == null, isRefreshing = isRefresh, error = null) }
+
+        loadJob = viewModelScope.launch {
+            when (val result = tasksRepository.task(taskId)) {
+                is ApiResult.Success -> _state.update {
+                    it.copy(task = result.value, isLoading = false, isRefreshing = false, error = null)
+                }
+                is ApiResult.Failure -> _state.update {
+                    it.copy(isLoading = false, isRefreshing = false, error = result.error)
+                }
+            }
+        }
+    }
+}
