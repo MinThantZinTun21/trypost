@@ -13,6 +13,9 @@ use App\Models\Post;
 use App\Models\PostInsight;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use App\Models\TagGroup;
+use App\Models\Task;
+use App\Models\TaskTag;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\Workspace;
@@ -52,6 +55,9 @@ class AppServiceProvider extends ServiceProvider
             'postInsight' => PostInsight::class,
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,
+            'tagGroup' => TagGroup::class,
+            'task' => Task::class,
+            'taskTag' => TaskTag::class,
             'user' => User::class,
             'video' => Video::class,
             'workspace' => Workspace::class,

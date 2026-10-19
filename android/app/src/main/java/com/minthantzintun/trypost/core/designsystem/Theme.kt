@@ -69,7 +69,10 @@ fun TryPostTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    CompositionLocalProvider(LocalStatusColors provides if (darkTheme) DarkStatusColors else LightStatusColors) {
+    CompositionLocalProvider(
+        LocalStatusColors provides if (darkTheme) DarkStatusColors else LightStatusColors,
+        LocalTagColors provides if (darkTheme) DarkTagColors else LightTagColors,
+    ) {
         MaterialTheme(
             colorScheme = if (darkTheme) DarkColors else LightColors,
             typography = ExpressiveTypography,
@@ -82,4 +85,7 @@ fun TryPostTheme(
 object TryPostTheme {
     val statusColors: StatusColors
         @Composable get() = LocalStatusColors.current
+
+    val tagColors: TagColors
+        @Composable get() = LocalTagColors.current
 }

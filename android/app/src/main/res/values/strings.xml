@@ -162,4 +162,106 @@
     <string name="status_failed">Failed</string>
     <string name="status_pending">Pending</string>
     <string name="status_retrying">Retrying</string>
+
+    <!-- Shared actions -->
+    <string name="delete">Delete</string>
+    <string name="done">Done</string>
+    <string name="nav_tasks">Tasks</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Tasks list -->
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_tab_open">Open</string>
+    <string name="tasks_tab_done">Done</string>
+    <string name="tasks_new">New task</string>
+    <string name="tasks_search">Search tasks</string>
+    <string name="tasks_search_clear">Clear search</string>
+    <string name="tasks_filter">Filter by tags</string>
+    <string name="tasks_filter_title">Filter by tags</string>
+    <string name="tasks_filter_hint">Shows tasks with any picked tag in a tag group, and a picked tag in every tag group you pick from.</string>
+    <string name="tasks_filter_apply">Apply</string>
+    <string name="tasks_filter_clear">Clear</string>
+    <string name="tasks_filter_clear_all">Clear all</string>
+    <string name="tasks_filter_remove">Remove filter %1$s</string>
+    <string name="tasks_filter_unknown_tag">Tag</string>
+    <string name="tasks_error_title">Couldn\'t load tasks</string>
+    <string name="tasks_empty_open_title">Nothing to do</string>
+    <string name="tasks_empty_open_body">Add a task with New task.</string>
+    <string name="tasks_empty_done_title">No done tasks yet</string>
+    <string name="tasks_empty_done_body">Tasks you mark Done show here, newest first.</string>
+    <string name="tasks_empty_filtered_title">No matching tasks</string>
+    <string name="tasks_empty_filtered_body">Try another search or fewer tags.</string>
+    <string name="tasks_all_day">All day</string>
+    <string name="tasks_due_day_time">%1$s, %2$s</string>
+    <string name="tasks_overdue_due">Overdue · %1$s</string>
+    <string name="tasks_tag_in_group">%1$s, tag in %2$s</string>
+
+    <!-- Task -->
+    <string name="task_detail_title">Task</string>
+    <string name="task_new_title">New task</string>
+    <string name="task_edit_title">Edit task</string>
+    <string name="task_edit">Edit task</string>
+    <string name="task_delete">Delete task</string>
+    <string name="task_delete_title">Delete this task?</string>
+    <string name="task_delete_body">The task is deleted for good. Its tags stay.</string>
+    <string name="task_error_title">Couldn\'t load the task</string>
+    <string name="task_title">Title</string>
+    <string name="task_description">Description</string>
+    <string name="task_no_description">No description.</string>
+    <string name="task_priority">Priority</string>
+    <string name="task_due">Due</string>
+    <string name="task_no_due">No due date</string>
+    <string name="task_due_none">None</string>
+    <string name="task_due_date">Date</string>
+    <string name="task_due_date_time">Date &amp; time</string>
+    <string name="task_no_tags">No tags</string>
+    <string name="task_add_tags">Add tags</string>
+    <string name="task_change_tags">Change tags</string>
+    <string name="task_completed_at">Done %1$s</string>
+    <string name="task_created_at">Created %1$s</string>
+    <string name="task_mark_done">Done</string>
+    <string name="task_reopen">Reopen</string>
+    <string name="task_start">In progress</string>
+    <string name="task_back_to_todo">To do</string>
+    <string name="task_status_todo">To do</string>
+    <string name="task_status_in_progress">In progress</string>
+    <string name="task_status_done">Done</string>
+    <string name="task_priority_none">None</string>
+    <string name="task_priority_low">Low</string>
+    <string name="task_priority_medium">Medium</string>
+    <string name="task_priority_high">High</string>
+    <string name="task_priority_pill">%1$s priority</string>
+
+    <!-- Tags and Tag groups -->
+    <string name="tags_title">Tags</string>
+    <string name="tags_empty">No tags yet. Add a tag group to start.</string>
+    <string name="tags_error_title">Couldn\'t load tags</string>
+    <string name="tags_group_empty">No tags in this group.</string>
+    <string name="tags_manage">Manage</string>
+    <string name="tags_done_managing">Pick</string>
+    <string name="tags_manage_hint">Tap a tag to rename or delete it.</string>
+    <string name="tags_new_group">New tag group</string>
+    <string name="tags_edit_group">Edit tag group</string>
+    <string name="tags_delete_group">Delete tag group</string>
+    <string name="tags_delete_group_title">Delete %1$s?</string>
+    <string name="tags_delete_group_body">Its tags are deleted too and leave every task.</string>
+    <string name="tags_group_options">%1$s options</string>
+    <string name="tags_group_name">Tag group name</string>
+    <string name="tags_group_name_hint">For example Area or Client</string>
+    <string name="tags_group_color">Colour</string>
+    <string name="tags_new_tag">Add tag</string>
+    <string name="tags_new_tag_in">New tag in %1$s</string>
+    <string name="tags_rename">Rename</string>
+    <string name="tags_rename_tag">Rename tag</string>
+    <string name="tags_tag_name">Tag name</string>
+    <string name="tags_delete_tag_title">Delete %1$s?</string>
+    <string name="tags_delete_tag_body">The tag leaves every task.</string>
+    <string name="tag_color_gray">Gray</string>
+    <string name="tag_color_red">Red</string>
+    <string name="tag_color_orange">Orange</string>
+    <string name="tag_color_yellow">Yellow</string>
+    <string name="tag_color_green">Green</string>
+    <string name="tag_color_teal">Teal</string>
+    <string name="tag_color_blue">Blue</string>
+    <string name="tag_color_brown">Brown</string>
 </resources>

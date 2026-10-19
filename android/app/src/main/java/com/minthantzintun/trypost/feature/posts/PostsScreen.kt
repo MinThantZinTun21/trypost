@@ -43,8 +43,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -54,7 +52,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import coil3.compose.AsyncImage
 import com.minthantzintun.trypost.R
-import com.minthantzintun.trypost.core.designsystem.ActionIconButton
 import com.minthantzintun.trypost.core.designsystem.IconSize
 import com.minthantzintun.trypost.core.designsystem.PlatformLogo
 import com.minthantzintun.trypost.core.designsystem.Skeleton
@@ -64,12 +61,12 @@ import com.minthantzintun.trypost.core.model.Post
 import com.minthantzintun.trypost.core.model.PostStatus
 import com.minthantzintun.trypost.core.model.PostTab
 import com.minthantzintun.trypost.core.model.toPlainText
+import com.minthantzintun.trypost.core.ui.DayHeader
 import com.minthantzintun.trypost.core.ui.LoadMoreWhenNearEnd
 import com.minthantzintun.trypost.core.ui.PostStatusPill
 import com.minthantzintun.trypost.core.ui.message
 import kotlinx.coroutines.delay
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -79,7 +76,6 @@ private val ThumbnailSize = 64.dp
 @Composable
 fun PostsRoute(
     onOpenPost: (String) -> Unit,
-    onOpenSettings: () -> Unit,
     viewModel: PostsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -96,7 +92,6 @@ fun PostsRoute(
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
         onOpenPost = onOpenPost,
-        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -111,22 +106,11 @@ fun PostsScreen(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onOpenPost: (String) -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.posts_title)) },
-                    actions = {
-                        ActionIconButton(
-                            icon = R.drawable.ic_settings,
-                            label = stringResource(R.string.settings_title),
-                            onClick = onOpenSettings,
-                            modifier = Modifier.testTag("settings"),
-                        )
-                    },
-                )
+                TopAppBar(title = { Text(stringResource(R.string.posts_title)) })
                 PrimaryTabRow(selectedTabIndex = state.selectedTab.ordinal) {
                     PostTab.entries.forEach { tab ->
                         Tab(
@@ -218,7 +202,7 @@ private fun TabContent(
                     }
                     sections.forEach { section ->
                         stickyHeader(key = "day-${section.day}") { DayHeader(section.day) }
-                        items(section.posts, key = { it.id }) { post ->
+                        items(section.items, key = { it.id }) { post ->
                             PostCard(post = post, tab = tab, zone = zone, now = now, onClick = { onOpenPost(post.id) })
                         }
                     }
@@ -244,31 +228,6 @@ private fun TabContent(
             }
         }
     }
-}
-
-@Composable
-private fun DayHeader(day: LocalDate?) {
-    val today = LocalDate.now()
-    val label = when (day) {
-        null -> stringResource(R.string.posts_no_date)
-        today -> stringResource(R.string.posts_today)
-        today.plusDays(1) -> stringResource(R.string.posts_tomorrow)
-        today.minusDays(1) -> stringResource(R.string.posts_yesterday)
-        else -> day.format(
-            if (day.year == today.year) DateTimeFormatter.ofPattern("EEEE, d MMM") else DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM),
-        )
-    }
-
-    Text(
-        text = label,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(top = Spacing.md, bottom = Spacing.xs, start = Spacing.xs)
-            .semantics { heading() },
-    )
 }
 
 @Composable

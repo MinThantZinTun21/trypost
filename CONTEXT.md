@@ -103,3 +103,15 @@ _Avoid_: Telegram mirror, share, forward
 **Video**:
 A video file the Owner uploads from the Mobile app, with a name, for the Assistant to fetch. It is not part of any Post and has no Platform texts.
 _Avoid_: Library item, asset, clip, media
+
+**Task**:
+One of the Owner's to-dos in the Mobile app: a title, a status (To do, In progress, Done), a priority and an optional due. Not a Post and never published.
+_Avoid_: Todo, job, ticket
+
+**Task tag**:
+A keyword the Owner puts on Tasks, in exactly one Tag group, such as Office in Context. Not a YouTube Short's Tags.
+_Avoid_: Tag, label, category
+
+**Tag group**:
+A named, coloured set of Task tags, such as Context or Area. Filtering picks Task tags with OR inside a group and AND across groups.
+_Avoid_: Tag category, folder

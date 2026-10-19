@@ -122,6 +122,46 @@ internal val LightStatusColors = StatusColors(
 
 val LocalStatusColors = staticCompositionLocalOf { DarkStatusColors }
 
+/**
+ * The eight Tag group colours (`TagColor`), each a text tone on its own
+ * container like the status tones, at least 4.5:1 in both themes.
+ */
+@Immutable
+data class TagColors(
+    val gray: Tone,
+    val red: Tone,
+    val orange: Tone,
+    val yellow: Tone,
+    val green: Tone,
+    val teal: Tone,
+    val blue: Tone,
+    val brown: Tone,
+)
+
+internal val DarkTagColors = TagColors(
+    gray = Tone(Color(0xFFC6CABA), Color(0xFF2B2F27)),
+    red = Tone(Color(0xFFFFB4AB), Color(0xFF5C1410)),
+    orange = Tone(Color(0xFFFFB68A), Color(0xFF4F2400)),
+    yellow = Tone(Color(0xFFF0D264), Color(0xFF3A3000)),
+    green = Tone(Color(0xFF6FDDA0), Color(0xFF0C3423)),
+    teal = Tone(Color(0xFF6FD8CC), Color(0xFF003833)),
+    blue = Tone(Color(0xFF8DB8FF), Color(0xFF14284A)),
+    brown = Tone(Color(0xFFE0BFA8), Color(0xFF3D2A1E)),
+)
+
+internal val LightTagColors = TagColors(
+    gray = Tone(Color(0xFF45493E), Color(0xFFE5E8DD)),
+    red = Tone(Color(0xFFBA1A1A), Color(0xFFFFDAD6)),
+    orange = Tone(Color(0xFF8F3F00), Color(0xFFFFDBC8)),
+    yellow = Tone(Color(0xFF5F4E00), Color(0xFFFBE38A)),
+    green = Tone(Color(0xFF08734A), Color(0xFFCFF3DF)),
+    teal = Tone(Color(0xFF00655E), Color(0xFFC4F1EB)),
+    blue = Tone(Color(0xFF1A57C9), Color(0xFFDCE6FF)),
+    brown = Tone(Color(0xFF6F4A33), Color(0xFFF2DED2)),
+)
+
+val LocalTagColors = staticCompositionLocalOf { DarkTagColors }
+
 /** The networks' own logo colours; TikTok's mark follows the text colour. */
 internal val FacebookBlue = Color(0xFF0866FF)
 internal val YouTubeRed = Color(0xFFFF0033)

@@ -152,3 +152,70 @@ data class PlatformTextsBody(
     val id: String,
     val meta: JsonObject,
 )
+
+/** A Task (`App\Http\Resources\Mobile\V1\TaskResource`). */
+@Serializable
+data class TaskDto(
+    val id: String,
+    val title: String,
+    val description: String? = null,
+    val status: String = "todo",
+    val priority: Int = 0,
+    @SerialName("due_at") val dueAt: String? = null,
+    @SerialName("due_all_day") val dueAllDay: Boolean = false,
+    @SerialName("completed_at") val completedAt: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("task_tags") val taskTags: List<TaskTagRefDto> = emptyList(),
+)
+
+/** A Task tag inside a Task, with its Tag group's name and colour. */
+@Serializable
+data class TaskTagRefDto(
+    val id: String,
+    val name: String,
+    @SerialName("tag_group_id") val tagGroupId: String,
+    @SerialName("tag_group_name") val tagGroupName: String = "",
+    val color: String? = null,
+)
+
+@Serializable
+data class TagGroupDto(
+    val id: String,
+    val name: String,
+    val color: String? = null,
+    @SerialName("task_tags") val taskTags: List<TaskTagDto> = emptyList(),
+)
+
+@Serializable
+data class TaskTagDto(
+    val id: String,
+    val name: String,
+    @SerialName("tag_group_id") val tagGroupId: String,
+)
+
+/**
+ * A Task's create or update body. A save replaces the whole Task, so every
+ * field is sent; a null is left out, which the server reads as cleared.
+ */
+@Serializable
+data class TaskBody(
+    val title: String,
+    val description: String?,
+    val priority: Int,
+    @SerialName("due_at") val dueAt: String?,
+    @SerialName("due_all_day") val dueAllDay: Boolean,
+    @SerialName("task_tags") val taskTags: List<String>,
+)
+
+@Serializable
+data class TaskStatusBody(val status: String)
+
+@Serializable
+data class TagGroupBody(
+    val name: String,
+    val color: String,
+)
+
+@Serializable
+data class TaskTagBody(val name: String)

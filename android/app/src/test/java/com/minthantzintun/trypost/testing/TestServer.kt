@@ -69,3 +69,51 @@ fun videoJson(
 /** The reply to `POST /mobile/v1/videos/uploads`, pointing the PUT back at this server. */
 fun MockWebServer.videoUploadStarted(uploadId: String = "up-1"): MockResponse =
     json("""{"upload_id":"$uploadId","url":"${url("/bucket/raw.mp4?X-Amz-Signature=abc")}","headers":{"Content-Type":"video/mp4"},"expires_in_seconds":3600}""")
+
+/** One `/mobile/v1/tasks` page with the given task JSON objects. */
+fun tasksPage(tasks: List<String>, page: Int = 1, lastPage: Int = 1): MockResponse =
+    json("""{"data":[${tasks.joinToString(",")}],"meta":{"current_page":$page,"last_page":$lastPage}}""")
+
+fun taskJson(
+    id: String,
+    title: String = "Task $id",
+    status: String = "todo",
+    priority: Int = 0,
+    dueAt: String? = null,
+    dueAllDay: Boolean = false,
+    description: String? = null,
+    taskTags: List<String> = emptyList(),
+): String {
+    val due = dueAt?.let { "\"$it\"" } ?: "null"
+    val text = description?.let { "\"$it\"" } ?: "null"
+    val completed = if (status == "done") "\"2030-01-03T10:00:00+00:00\"" else "null"
+
+    return """
+        {"id":"$id","title":"$title","description":$text,"status":"$status","priority":$priority,
+         "due_at":$due,"due_all_day":$dueAllDay,"completed_at":$completed,
+         "created_at":"2030-01-01T08:00:00+00:00","updated_at":"2030-01-01T08:00:00+00:00",
+         "task_tags":[${taskTags.joinToString(",")}]}
+    """.trimIndent()
+}
+
+/** A Task tag as a Task carries it. */
+fun taskTagRefJson(id: String, name: String = "Tag $id", groupId: String = "g1", groupName: String = "Context", color: String = "blue"): String =
+    """{"id":"$id","name":"$name","tag_group_id":"$groupId","tag_group_name":"$groupName","color":"$color"}"""
+
+/** A Tag group with Task tags named by their ids. */
+fun tagGroupJson(id: String, name: String = "Group $id", color: String = "blue", taskTagIds: List<String> = emptyList()): String {
+    val taskTags = taskTagIds.joinToString(",") { """{"id":"$it","name":"Tag $it","tag_group_id":"$id"}""" }
+
+    return """{"id":"$id","name":"$name","color":"$color","task_tags":[$taskTags]}"""
+}
+
+fun tagGroupsList(groups: List<String>): MockResponse = json("""{"data":[${groups.joinToString(",")}]}""")
+
+/** Laravel's 422 with the given field messages. */
+fun validationError(vararg fields: Pair<String, String>): MockResponse {
+    val errors = fields.joinToString(",") { (key, message) -> "\"$key\":[\"$message\"]" }
+
+    return json("""{"message":"The given data was invalid.","errors":{$errors}}""", code = 422)
+}
+
+fun noContent(): MockResponse = MockResponse.Builder().code(204).build()
