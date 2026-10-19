@@ -325,6 +325,8 @@ class TaskDetailViewModelTest {
         assertEquals(1500, request.field("planned_seconds").jsonPrimitive.int)
         assertEquals("s1", state.runningTimer!!.id)
         assertFalse(state.isTimerElsewhere)
+        // Let the Task's reload land before the test ends, or it resumes on a reset Main dispatcher.
+        viewModel.state.first { it.task?.timerSessions?.isNotEmpty() == true }
     }
 
     @Test
