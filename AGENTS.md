@@ -369,6 +369,13 @@ before adding anything.
     (`required_without:description`).
   - **Colour and pin:** `color` is a `TagColor` or null; `pinned` sorts first
     on Open, and Done ignores it.
+  - **Screens:** the list is a grid of cards (two columns or one, kept in the
+    DataStore) in sections Pinned, Overdue, Today, Upcoming and No date, and
+    "Take a note…" replaces the New task button. The editor saves on Back,
+    drops an untouched or empty new Task, and asks no "discard changes?";
+    ⋮ holds Delete and Discard changes, + the due, priority, Task tags and
+    colour. Its body is a field per block (`BodyEditorState`), never a
+    Markdown text box.
 - Reminders, the timer, attachments and voice entry follow in their own PRs
   (#132–#135), after the Keep-style screens; the first spec is #130.
 
