@@ -57,7 +57,7 @@ import com.minthantzintun.trypost.core.ui.toAnnotatedString
  * Sits before each block's text so Backspace at the start still reaches the
  * field: deleting it is "Backspace at the start".
  */
-private const val Sentinel = '​'
+private const val Sentinel = '\u200B'
 
 /** What the body editor reports back. */
 data class BodyEditorActions(
@@ -125,16 +125,13 @@ private fun BlockRow(
     val isChecked = block.kind == BlockKind.Checkbox && block.isChecked
     val contentColor = LocalContentColor.current.copy(alpha = if (isChecked) 0.6f else 1f)
     val style = block.kind.textStyle(isCompact = false).let { base ->
-        when (block.kind) {
-            BlockKind.Heading1, BlockKind.Heading2 -> base.copy(fontWeight = FontWeight.SemiBold)
-            else -> base
-        }
+        if (block.kind.isHeading) base.copy(fontWeight = FontWeight.SemiBold) else base
     }.copy(color = contentColor, textDecoration = if (isChecked) TextDecoration.LineThrough else null)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = if (block.kind == BlockKind.Heading1 || block.kind == BlockKind.Heading2) Spacing.xs else 0.dp),
+            .padding(top = if (block.kind.isHeading) Spacing.xs else 0.dp),
         verticalAlignment = if (block.kind == BlockKind.Checkbox) Alignment.CenterVertically else Alignment.Top,
     ) {
         when (block.kind) {

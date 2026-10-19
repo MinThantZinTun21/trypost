@@ -560,33 +560,35 @@ private fun TaskCard(task: Task, zone: ZoneId, now: Instant, today: LocalDate, o
         modifier = Modifier.fillMaxWidth().testTag("task-${task.id}"),
     ) {
         Column(modifier = Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            if (task.title != null || task.isPinned) {
-                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    Text(
-                        text = task.title.orEmpty(),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (task.isPinned) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_pin),
-                            contentDescription = stringResource(R.string.task_pinned),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(IconSize.sm).testTag("task-${task.id}-pinned"),
+            // Without a title the body's first line heads the card, next to the pin.
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    task.title?.let { title ->
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    if (preview != null) {
+                        TaskBodyBlocks(blocks = preview.blocks, isCompact = true)
+                        if (preview.moreCount > 0) {
+                            Text(
+                                text = pluralStringResource(R.plurals.tasks_card_more, preview.moreCount, preview.moreCount),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag("task-${task.id}-more"),
+                            )
+                        }
+                    }
                 }
-            }
-            if (preview != null) {
-                TaskBodyBlocks(blocks = preview.blocks, isCompact = true)
-                if (preview.moreCount > 0) {
-                    Text(
-                        text = pluralStringResource(R.plurals.tasks_card_more, preview.moreCount, preview.moreCount),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.testTag("task-${task.id}-more"),
+                if (task.isPinned) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_pin),
+                        contentDescription = stringResource(R.string.task_pinned),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(IconSize.sm).testTag("task-${task.id}-pinned"),
                     )
                 }
             }

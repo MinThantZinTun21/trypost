@@ -125,10 +125,22 @@ class TaskSectionsTest {
 
         val preview = taskCardPreview(markdown)!!
 
-        assertEquals(5, preview.blocks.size)
+        assertEquals(6, preview.blocks.size)
         assertEquals(BlockKind.Paragraph, preview.blocks.first().kind)
-        assertEquals(3, preview.moreCount)
+        assertEquals(5, preview.blocks.count { it.kind == BlockKind.Checkbox })
+        assertEquals(2, preview.moreCount)
         assertEquals(ChecklistProgress(checked = 2, total = 7), preview.checklist)
+    }
+
+    @Test
+    fun `text and a checklist together stop at eight lines`() {
+        val markdown = "# Trip\nPack light\nLeave at 6\n" + (1..6).joinToString("\n") { "- [ ] Item $it" }
+
+        val preview = taskCardPreview(markdown)!!
+
+        assertEquals(8, preview.blocks.size)
+        assertEquals(5, preview.blocks.count { it.kind == BlockKind.Checkbox })
+        assertEquals(1, preview.moreCount)
     }
 
     @Test
@@ -136,12 +148,5 @@ class TaskSectionsTest {
         assertEquals(0, taskCardPreview("- [ ]\n- [ ] Milk")!!.moreCount)
         assertNull(taskCardPreview(null))
         assertNull(taskCardPreview("  \n"))
-    }
-
-    @Test
-    fun `a Task without a title is shown by its body's first line`() {
-        assertEquals("Call mum", task("a", title = "Call mum", description = "Body").shownTitle())
-        assertEquals("Buy milk", task("b", title = null, description = "\n- [ ] **Buy** milk\nEggs").shownTitle())
-        assertNull(task("c", title = null, description = null).shownTitle())
     }
 }

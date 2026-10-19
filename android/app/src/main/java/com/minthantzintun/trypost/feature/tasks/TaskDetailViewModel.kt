@@ -125,11 +125,12 @@ class TaskDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             tickLock.withLock {
-                val latest = _state.value.task ?: return@withLock
-                val result = tasksRepository.update(taskId, latest.toDraft(clock.zone), clock.zone)
+                val latest = _state.value.task
+                val result = latest?.let { tasksRepository.update(taskId, it.toDraft(clock.zone), clock.zone) }
                 pendingTicks--
 
                 when (result) {
+                    null -> Unit
                     is ApiResult.Success -> {
                         confirmedTask = result.value
                         if (pendingTicks == 0) {

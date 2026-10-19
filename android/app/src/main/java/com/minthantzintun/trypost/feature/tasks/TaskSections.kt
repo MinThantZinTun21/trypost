@@ -44,14 +44,14 @@ data class TaskCardPreview(
     val checklist: ChecklistProgress?,
 )
 
-/** A card shows this many lines of a body, or this many rows of a checklist. */
+/** A card shows at most this many lines of a body, of which at most this many checklist rows. */
 const val CARD_MAX_LINES = 8
 const val CARD_MAX_CHECKLIST_ROWS = 5
 
 /**
- * The card's view of [description]: blank lines dropped, then up to
- * [CARD_MAX_CHECKLIST_ROWS] rows when the body has a checklist (Keep's
- * checklist cards), or [CARD_MAX_LINES] lines otherwise.
+ * The card's view of [description]: blank lines dropped, then lines in
+ * order up to [CARD_MAX_LINES], stopping before a checklist row past
+ * [CARD_MAX_CHECKLIST_ROWS]. The rest is counted as more.
  */
 fun taskCardPreview(description: String?): TaskCardPreview? {
     if (description.isNullOrBlank()) {
@@ -60,13 +60,13 @@ fun taskCardPreview(description: String?): TaskCardPreview? {
 
     val body = TaskBody.parse(description)
     val lines = body.blocks.filter { it.text.text.isNotBlank() || it.kind == BlockKind.Checkbox }
-    val checklist = body.checklist()
-    val max = if (checklist != null) CARD_MAX_CHECKLIST_ROWS else CARD_MAX_LINES
+    var rows = 0
+    val shown = lines.take(CARD_MAX_LINES).takeWhile { block ->
+        if (block.kind == BlockKind.Checkbox) {
+            rows++
+        }
+        rows <= CARD_MAX_CHECKLIST_ROWS
+    }
 
-    return TaskCardPreview(blocks = lines.take(max), moreCount = (lines.size - max).coerceAtLeast(0), checklist = checklist)
-}
-
-/** The Task's title, else its body's first line as plain text, else null. */
-fun Task.shownTitle(): String? = title ?: description?.let { markdown ->
-    TaskBody.parse(markdown).blocks.firstOrNull { it.text.text.isNotBlank() }?.text?.text?.trim()
+    return TaskCardPreview(blocks = shown, moreCount = lines.size - shown.size, checklist = body.checklist())
 }

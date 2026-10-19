@@ -34,6 +34,9 @@ import com.minthantzintun.trypost.core.model.BlockKind
 import com.minthantzintun.trypost.core.model.BodyBlock
 import com.minthantzintun.trypost.core.ui.toAnnotatedString
 
+/** True for the two heading kinds. */
+val BlockKind.isHeading: Boolean get() = this == BlockKind.Heading1 || this == BlockKind.Heading2
+
 /** The type a body block reads in, for a card or for the full Task. */
 @Composable
 fun BlockKind.textStyle(isCompact: Boolean): TextStyle = with(MaterialTheme.typography) {

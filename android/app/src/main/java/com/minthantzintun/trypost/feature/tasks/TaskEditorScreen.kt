@@ -3,6 +3,7 @@ package com.minthantzintun.trypost.feature.tasks
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -522,12 +523,12 @@ private fun EditorBottomBar(
     }
 }
 
-private data class FormatButton(@DrawableRes val icon: Int, val label: Int, val tag: String)
+private data class FormatButton(@DrawableRes val icon: Int, @StringRes val label: Int, val tag: String)
 
 @Composable
 private fun FormatRow(state: TaskEditorUiState, onToggleBlockKind: (BlockKind) -> Unit, onToggleStyle: (InlineStyle) -> Unit) {
     val body = state.body
-    val enabled = body.selection != null && !state.isSaving
+    val enabled = body.selection != null && !state.isSaving && !state.isDeleting
     val kinds = listOf(
         BlockKind.Heading1 to FormatButton(R.drawable.ic_h1, R.string.task_format_h1, "h1"),
         BlockKind.Heading2 to FormatButton(R.drawable.ic_h2, R.string.task_format_h2, "h2"),
@@ -659,7 +660,7 @@ private fun OptionsSheet(
             }
 
             OptionsSection(title = stringResource(R.string.task_color), error = null) {
-                ColorSwatches(selected = form.color, onSelect = onColorChange)
+                ColorSwatches(selected = form.color, onSelect = onColorChange, enabled = !state.isSaving && !state.isDeleting)
             }
         }
     }
@@ -677,7 +678,7 @@ private fun OptionsSection(title: String, error: String?, content: @Composable (
 /** No colour, then each Tag group colour, as round swatches with the picked one ringed. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ColorSwatches(selected: TagColor?, onSelect: (TagColor?) -> Unit) {
+private fun ColorSwatches(selected: TagColor?, onSelect: (TagColor?) -> Unit, enabled: Boolean) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalArrangement = Arrangement.spacedBy(Spacing.xs),
@@ -690,7 +691,7 @@ private fun ColorSwatches(selected: TagColor?, onSelect: (TagColor?) -> Unit) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(IconSize.touchTarget)
-                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(color) })
+                    .selectable(selected = isSelected, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(color) })
                     .semantics { contentDescription = label }
                     .testTag("task-color-${color?.wire ?: "none"}"),
             ) {
