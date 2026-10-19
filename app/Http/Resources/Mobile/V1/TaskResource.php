@@ -6,6 +6,7 @@ namespace App\Http\Resources\Mobile\V1;
 
 use App\Models\Task;
 use App\Models\TaskTag;
+use App\Models\TimerSession;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -44,6 +45,8 @@ class TaskResource extends JsonResource
                 ->values()
                 ->all(),
             'reminders' => ReminderResource::collection($this->reminders),
+            'tracked_seconds' => $this->timerSessions->sum(fn (TimerSession $session): int => $session->elapsedSeconds()),
+            'timer_sessions' => TimerSessionResource::collection($this->timerSessions),
         ];
     }
 }

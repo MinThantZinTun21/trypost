@@ -10,6 +10,7 @@ use App\Http\Controllers\Mobile\V1\SocialAccountController;
 use App\Http\Controllers\Mobile\V1\TagGroupController;
 use App\Http\Controllers\Mobile\V1\TaskController;
 use App\Http\Controllers\Mobile\V1\TaskTagController;
+use App\Http\Controllers\Mobile\V1\TimerController;
 use App\Http\Controllers\Mobile\V1\VideoController;
 use App\Http\Middleware\AuthenticateMobileToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
@@ -41,6 +42,9 @@ Route::prefix('mobile/v1')
             Route::put('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
             Route::put('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
             Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+            Route::post('tasks/{task}/timer', [TimerController::class, 'start'])->name('timer.start');
+            Route::post('timer-sessions/{timerSession}/stop', [TimerController::class, 'stop'])->name('timer.stop');
+            Route::get('timer', [TimerController::class, 'show'])->name('timer.show');
             Route::get('reminders/upcoming', [ReminderController::class, 'upcoming'])->name('reminders.upcoming');
             Route::post('reminders/{reminder}/dismiss', [ReminderController::class, 'dismiss'])->name('reminders.dismiss');
             Route::get('tag-groups', [TagGroupController::class, 'index'])->name('tag-groups.index');

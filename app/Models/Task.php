@@ -77,6 +77,14 @@ class Task extends Model
         return $this->belongsToMany(TaskTag::class);
     }
 
+    /**
+     * Newest first.
+     */
+    public function timerSessions(): HasMany
+    {
+        return $this->hasMany(TimerSession::class)->latest('started_at');
+    }
+
     public function reminders(): HasMany
     {
         return $this->hasMany(Reminder::class)->orderBy('remind_at');

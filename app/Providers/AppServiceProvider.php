@@ -17,6 +17,7 @@ use App\Models\SocialAccount;
 use App\Models\TagGroup;
 use App\Models\Task;
 use App\Models\TaskTag;
+use App\Models\TimerSession;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\Workspace;
@@ -60,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
             'tagGroup' => TagGroup::class,
             'task' => Task::class,
             'taskTag' => TaskTag::class,
+            'timerSession' => TimerSession::class,
             'user' => User::class,
             'video' => Video::class,
             'workspace' => Workspace::class,
