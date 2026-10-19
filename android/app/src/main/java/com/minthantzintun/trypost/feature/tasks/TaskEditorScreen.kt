@@ -249,19 +249,10 @@ fun TaskEditorScreen(
             state = taskTagsState,
             selectedIds = state.form.taskTagIds,
             onToggle = onToggleTaskTag,
-            onOpenDialog = tagActions.onOpenDialog,
-            onRetry = tagActions.onRetry,
+            actions = tagActions,
             onDismiss = { isPickingTags = false },
         )
     }
-
-    TagDialogs(
-        state = taskTagsState,
-        onSaveTagGroup = tagActions.onSaveTagGroup,
-        onSaveTaskTag = tagActions.onSaveTaskTag,
-        onConfirmDelete = tagActions.onConfirmDelete,
-        onDismiss = tagActions.onCloseDialog,
-    )
 
     if (isConfirmingDiscard) {
         ConfirmDialog(

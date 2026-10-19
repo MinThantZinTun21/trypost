@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** The dialog the tag picker has open: a form or a delete confirm. */
+/** The page the tag picker has open over its list: a form or a delete confirm. */
 sealed interface TagDialog {
     data object NewTagGroup : TagDialog
 
