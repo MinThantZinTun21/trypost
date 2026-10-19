@@ -35,6 +35,21 @@ test('password can be updated', function () {
     expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
 });
 
+test('any password can be set, even a short one', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->from(route('app.authentication.edit'))
+        ->put(route('app.authentication.update-password'), [
+            'current_password' => 'password',
+            'password' => '1234',
+            'password_confirmation' => '1234',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(Hash::check('1234', $user->refresh()->password))->toBeTrue();
+});
+
 test('correct password must be provided to update password', function () {
     $user = User::factory()->create();
 

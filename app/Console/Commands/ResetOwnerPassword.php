@@ -7,7 +7,6 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
 
 class ResetOwnerPassword extends Command
 {
@@ -39,7 +38,7 @@ class ResetOwnerPassword extends Command
 
         $validator = Validator::make(
             ['password' => $password, 'password_confirmation' => $confirmation],
-            ['password' => ['required', 'confirmed', Password::defaults()]],
+            ['password' => ['required', 'string', 'confirmed']],
         );
 
         if ($validator->fails()) {
