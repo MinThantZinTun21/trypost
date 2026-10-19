@@ -11,7 +11,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * The sign-in throttle the web login and the Mobile app share: five wrong
- * tries per email and IP, then a pause, both reported on `email`.
+ * tries per email and IP, then a pause, both reported on `email`. Use it in
+ * a FormRequest: it reads the request's `email` and IP.
  */
 trait ThrottlesSignIn
 {
@@ -62,6 +63,8 @@ trait ThrottlesSignIn
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        $email = Str::lower($this->string('email'));
+
+        return Str::transliterate("{$email}|{$this->ip()}");
     }
 }

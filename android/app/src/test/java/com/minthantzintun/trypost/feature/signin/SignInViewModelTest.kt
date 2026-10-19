@@ -141,6 +141,20 @@ class SignInViewModelTest {
     }
 
     @Test
+    fun `each error shows under the field it is about`() {
+        val credentials = ApiError.Validation("Wrong.", mapOf("email" to listOf("Wrong.")))
+        val passwordOnly = ApiError.Validation("Short.", mapOf("password" to listOf("Short.")))
+
+        assertEquals(SignInField.ServerUrl, SignInError.InvalidAddress.field)
+        assertEquals(SignInField.ServerUrl, SignInError.Api(ApiError.NotFound).field)
+        assertEquals(SignInField.Email, SignInError.MissingEmail.field)
+        assertEquals(SignInField.Email, SignInError.Api(credentials).field)
+        assertEquals(SignInField.Password, SignInError.MissingPassword.field)
+        assertEquals(SignInField.Password, SignInError.Api(passwordOnly).field)
+        assertEquals(SignInField.Password, SignInError.Api(ApiError.Unreachable).field)
+    }
+
+    @Test
     fun `editing a field clears the error`() = runTest {
         submit(password = "")
 

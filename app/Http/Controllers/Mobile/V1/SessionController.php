@@ -19,7 +19,7 @@ class SessionController extends Controller
      */
     public function store(SignInRequest $request): JsonResponse
     {
-        $owner = $request->owner();
+        $owner = $request->authenticateOwner();
 
         return response()->json([
             'token' => MobileToken::issueFor($owner),

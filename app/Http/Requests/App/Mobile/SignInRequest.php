@@ -42,7 +42,7 @@ class SignInRequest extends FormRequest
      *
      * @throws ValidationException
      */
-    public function owner(): User
+    public function authenticateOwner(): User
     {
         $this->ensureIsNotRateLimited();
 

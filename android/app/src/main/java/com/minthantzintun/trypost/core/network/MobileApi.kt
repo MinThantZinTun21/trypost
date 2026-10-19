@@ -16,9 +16,6 @@ interface MobileApi {
     @DELETE("mobile/v1/session")
     suspend fun signOut()
 
-    @GET("mobile/v1/me")
-    suspend fun me(): OwnerDto
-
     @GET("mobile/v1/posts")
     suspend fun posts(
         @Query("status") tab: String,

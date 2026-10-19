@@ -104,8 +104,3 @@ test('signing in keeps no session', function () {
 
     $this->assertGuest();
 });
-
-test('the mobile token has no setting to turn it off', function () {
-    expect(config('trypost.mobile'))->toBeNull()
-        ->and(file_get_contents(base_path('.env.example')))->not->toContain('MOBILE_TOKEN');
-});

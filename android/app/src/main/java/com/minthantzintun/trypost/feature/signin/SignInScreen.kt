@@ -82,9 +82,10 @@ fun SignInScreen(
             else -> error.error.message()
         }
     }
-    val isAddressError = state.error == SignInError.InvalidAddress || (state.error as? SignInError.Api)?.error == ApiError.NotFound
-    val isEmailError = state.error == SignInError.MissingEmail
-    val isPasswordError = state.error != null && !isAddressError && !isEmailError
+    val errorField = state.error?.field
+    val isAddressError = errorField == SignInField.ServerUrl
+    val isEmailError = errorField == SignInField.Email
+    val isPasswordError = errorField == SignInField.Password
 
     Scaffold { padding ->
         Column(

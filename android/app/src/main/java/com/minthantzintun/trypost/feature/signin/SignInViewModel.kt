@@ -32,6 +32,25 @@ sealed interface SignInError {
     data class Api(val error: ApiError) : SignInError
 }
 
+enum class SignInField { ServerUrl, Email, Password }
+
+/**
+ * The field an error shows under. The server reports wrong credentials and
+ * the wait after too many tries on `email`; anything not about one field
+ * shows under Password, next to Sign in.
+ */
+val SignInError.field: SignInField
+    get() = when (this) {
+        SignInError.InvalidAddress -> SignInField.ServerUrl
+        SignInError.MissingEmail -> SignInField.Email
+        SignInError.MissingPassword -> SignInField.Password
+        is SignInError.Api -> when (error) {
+            ApiError.NotFound -> SignInField.ServerUrl
+            is ApiError.Validation -> if ("email" in error.fields || "password" !in error.fields) SignInField.Email else SignInField.Password
+            else -> SignInField.Password
+        }
+    }
+
 /**
  * Signs the Owner in. On success the stored session changes and the app's
  * root swaps to the post list; this screen only reports failures.

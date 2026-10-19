@@ -46,19 +46,6 @@ class User extends Authenticatable
         'photo_url',
     ];
 
-    /**
-     * A new password, from web Settings or `owner:reset-password`, signs
-     * every phone out of the Mobile app (ADR 0015).
-     */
-    protected static function booted(): void
-    {
-        static::updated(function (User $user): void {
-            if ($user->wasChanged('password')) {
-                $user->mobileTokens()->delete();
-            }
-        });
-    }
-
     public function getHasPhotoAttribute(): bool
     {
         return $this->getFirstMedia('avatar') !== null;
@@ -98,6 +85,17 @@ class User extends Authenticatable
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Sets a new password and signs every phone out of the Mobile app
+     * (ADR 0015). Web Settings and `owner:reset-password` both come here; a
+     * login that only rehashes the same password does not.
+     */
+    public function changePassword(string $password): void
+    {
+        $this->update(['password' => $password]);
+        $this->mobileTokens()->delete();
     }
 
     /**

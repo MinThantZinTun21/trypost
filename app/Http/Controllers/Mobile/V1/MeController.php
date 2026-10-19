@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 class MeController extends Controller
 {
     /**
-     * Confirms the token and names the Owner, for the app's sign-in.
+     * Names the Owner the Mobile token belongs to.
      */
     public function __invoke(Request $request): JsonResponse
     {

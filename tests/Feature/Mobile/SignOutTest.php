@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\MobileToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Hash;
 
 beforeEach(function () {
     $this->owner = User::factory()->create();
@@ -50,10 +51,22 @@ test('resetting the owner password on the server revokes every mobile token', fu
     expect(MobileToken::query()->count())->toBe(0);
 });
 
-test('saving the owner without a new password keeps their mobile tokens', function () {
+test('saving the owner without changing the password keeps their mobile tokens', function () {
     mobileHeaders($this->owner);
 
     $this->owner->update(['name' => 'A new name']);
 
     expect(MobileToken::query()->count())->toBe(1);
+});
+
+test('a web sign in that only rehashes the same password keeps the mobile tokens', function () {
+    $this->owner->update(['email' => 'owner@example.com']);
+    mobileHeaders($this->owner);
+    config(['hashing.bcrypt.rounds' => 5]);
+    Hash::forgetDrivers();
+
+    $this->post(route('login.store'), ['email' => 'owner@example.com', 'password' => 'password'])->assertSessionHasNoErrors();
+
+    expect(Hash::info($this->owner->fresh()->password)['options']['cost'])->toBe(5)
+        ->and(MobileToken::query()->count())->toBe(1);
 });

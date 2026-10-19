@@ -265,7 +265,8 @@ before adding anything.
 - `DELETE /mobile/v1/session` is Sign out: it deletes the calling phone's
   Mobile token (204) and leaves other phones signed in. A new password (web
   Settings or `owner:reset-password`) deletes every Mobile token through
-  `User::booted()`, so any password path revokes them.
+  `User::changePassword()`; set a new password only through it. A model event
+  would also fire on the web login's rehash and sign every phone out.
 - Tests sign in with `mobileHeaders($user)` (`tests/Pest.php`).
 - The app views Posts, edits their texts, Reschedules them, Posts them now and
   Sends them to Telegram (ADR 0012). It never creates Posts or changes media, Social
