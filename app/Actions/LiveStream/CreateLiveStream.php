@@ -8,6 +8,7 @@ use App\Enums\LiveStream\Privacy;
 use App\Enums\LiveStream\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\YouTubeLiveException;
+use App\Jobs\RunLiveStream;
 use App\Models\LiveStream;
 use App\Models\Media;
 use App\Models\SocialAccount;
@@ -23,8 +24,8 @@ class CreateLiveStream
 {
     /**
      * Checks the Video is stream-ready, creates and binds the YouTube
-     * broadcast, then stores the Live stream (ADR 0017). Nothing is stored
-     * when YouTube refuses.
+     * broadcast, then stores the Live stream (ADR 0017) and, when it starts
+     * now, hands it to the live worker. Nothing is stored when YouTube refuses.
      *
      * @param  array{title: string, description: ?string, privacy: Privacy, starts_at: ?CarbonInterface, stops_at: ?CarbonInterface, thumbnail: ?Media}  $details  A null starts_at starts it now.
      * @return array{live_stream: LiveStream, warnings: list<string>}
@@ -85,6 +86,11 @@ class CreateLiveStream
             'youtube_stream_id' => $broadcast['stream_id'],
             'ingest_url' => $broadcast['ingest_url'],
         ]);
+
+        if ($startsNow) {
+            $liveStream->update(['heartbeat_at' => now()]);
+            RunLiveStream::dispatch($liveStream);
+        }
 
         return ['live_stream' => $liveStream, 'warnings' => $readiness->warnings()];
     }

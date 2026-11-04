@@ -8,6 +8,7 @@ use App\Console\Commands\ProcessScheduledPosts;
 use App\Console\Commands\ReadInsights;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
+use App\Console\Commands\StartDueLiveStreams;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
@@ -29,3 +30,5 @@ Schedule::call(fn () => Artisan::call(RecoverStuckPosts::class))
     ->name('social:recover-stuck-posts')->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
 Schedule::call(fn () => Artisan::call(ReadInsights::class))
     ->name('insights:read')->dailyAt('09:00')->withoutOverlapping()->onOneServer();
+Schedule::call(fn () => Artisan::call(StartDueLiveStreams::class))
+    ->name('live-streams:start-due')->everyMinute()->withoutOverlapping()->onOneServer();

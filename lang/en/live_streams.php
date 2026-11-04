@@ -11,4 +11,6 @@ return [
     'no_file' => 'The Video has no file yet.',
     'one_at_a_time' => 'Another Live stream is live. Stop it first, or schedule this one for later.',
     'youtube_refused' => 'YouTube refused the live stream: :reason',
+    'no_disk' => 'The server has :free free disk but needs :needed to hold the Video while it streams.',
+    'ffmpeg_exited' => 'ffmpeg stopped (exit :code): :output',
 ];

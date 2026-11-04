@@ -37,6 +37,17 @@ return [
             'driver' => 'sync',
         ],
 
+        // Live streams (ADR 0017) run for hours on their own worker; nothing
+        // else listens here, so the reservation never expires mid-stream.
+        'live' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'live',
+            'retry_after' => 60 * 60 * 24 * 365,
+            'after_commit' => false,
+        ],
+
         'database' => [
             'driver' => 'database',
             'connection' => env('DB_QUEUE_CONNECTION'),

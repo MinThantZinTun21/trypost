@@ -29,6 +29,7 @@ return new class extends Migration
             $table->timestamp('stops_at')->nullable();
             $table->timestamp('started_at')->nullable();
             $table->timestamp('ended_at')->nullable();
+            $table->timestamp('heartbeat_at')->nullable();
             $table->string('youtube_broadcast_id')->nullable();
             $table->string('youtube_stream_id')->nullable();
             $table->text('ingest_url')->nullable();

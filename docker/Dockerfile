@@ -25,6 +25,7 @@ RUN apk add --no-cache \
         shadow \
         tzdata \
         postgresql-client \
+        ffmpeg \
         postgresql-dev \
         mysql-client \
         libpng-dev \

@@ -7,6 +7,7 @@ use App\Enums\LiveStream\Privacy;
 use App\Enums\LiveStream\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\YouTubeLiveException;
+use App\Jobs\RunLiveStream;
 use App\Mcp\Servers\SchedulerServer;
 use App\Mcp\Tools\CreateLiveStream;
 use App\Mcp\Tools\GetLiveStream;
@@ -19,6 +20,7 @@ use App\Models\Video;
 use App\Models\Workspace;
 use App\Services\Media\StreamProbe;
 use App\Services\Social\YouTubeLive;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\Fluent\AssertableJson;
 
@@ -102,6 +104,17 @@ test('create_live_stream starting now starts the broadcast right away', function
         ->assertOk();
 
     expect(LiveStream::query()->sole()->stops_at->equalTo(now()->addHours(3)->startOfSecond()))->toBeTrue();
+});
+
+test('create_live_stream hands a stream starting now to the live worker, and leaves a scheduled one for its time', function () {
+    Queue::fake();
+
+    SchedulerServer::actingAs($this->owner)->tool(CreateLiveStream::class, liveStreamInput())->assertOk();
+    Queue::assertNothingPushed();
+
+    SchedulerServer::actingAs($this->owner)->tool(CreateLiveStream::class, liveStreamInput(['mode' => 'now', 'starts_at' => null]))->assertOk();
+    Queue::assertPushedOn('live', RunLiveStream::class, fn (RunLiveStream $job) => $job->liveStream->is(LiveStream::query()->latest()->latest('id')->first()));
+    Queue::assertPushed(RunLiveStream::class, 1);
 });
 
 test('create_live_stream sets the thumbnail from an uploaded image', function () {

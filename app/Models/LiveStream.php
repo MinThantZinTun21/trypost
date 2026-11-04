@@ -37,6 +37,7 @@ class LiveStream extends Model
         'stops_at',
         'started_at',
         'ended_at',
+        'heartbeat_at',
         'youtube_broadcast_id',
         'youtube_stream_id',
         'ingest_url',
@@ -59,6 +60,7 @@ class LiveStream extends Model
             'stops_at' => 'datetime',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'heartbeat_at' => 'datetime',
             'ingest_url' => 'encrypted',
         ];
     }
