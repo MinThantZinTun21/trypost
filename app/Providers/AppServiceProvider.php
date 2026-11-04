@@ -48,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'account' => Account::class,
+            'liveStream' => LiveStream::class,
             'media' => Media::class,
             'mobileToken' => MobileToken::class,
             'notification' => Notification::class,
@@ -61,7 +62,6 @@ class AppServiceProvider extends ServiceProvider
             'taskTag' => TaskTag::class,
             'user' => User::class,
             'video' => Video::class,
-            'live_stream' => LiveStream::class,
             'workspace' => Workspace::class,
         ]);
     }

@@ -19,8 +19,8 @@ class YouTubeLiveException extends RuntimeException
         $message = (string) data_get($e->getErrors(), '0.message', $e->getMessage());
 
         return new self(match ($reason) {
-            'liveStreamingNotEnabled' => 'The channel is not enabled for live streaming. Turn on live streaming in YouTube Studio (it can take 24 hours the first time).',
-            'livePermissionBlocked' => 'The channel is blocked from live streaming. Check its standing in YouTube Studio.',
+            'liveStreamingNotEnabled' => __('live_streams.youtube_not_enabled'),
+            'livePermissionBlocked' => __('live_streams.youtube_blocked'),
             default => $message,
         }, (int) $e->getCode(), $e);
     }

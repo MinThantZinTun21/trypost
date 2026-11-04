@@ -24,6 +24,9 @@ class LiveStream extends Model
     /** @use HasFactory<LiveStreamFactory> */
     use HasFactory, HasUuids;
 
+    /** A heartbeat older than this means no worker is playing the Live stream. */
+    public const int STALE_AFTER_SECONDS = 120;
+
     protected $fillable = [
         'workspace_id',
         'user_id',
@@ -94,6 +97,31 @@ class LiveStream extends Model
     public function scopeLive(Builder $query): void
     {
         $query->where('status', Status::Live);
+    }
+
+    /**
+     * Whether a Live stream other than $except is live, or is being readied
+     * by the live worker (claimed with a fresh heartbeat). Only one plays at
+     * a time on this install.
+     */
+    public static function anotherIsPlaying(?LiveStream $except = null): bool
+    {
+        return self::query()
+            ->when($except, fn (Builder $query) => $query->whereKeyNot($except->id))
+            ->where(fn (Builder $query) => $query
+                ->where('status', Status::Live)
+                ->orWhere(fn (Builder $query) => $query
+                    ->where('status', Status::Scheduled)
+                    ->where('heartbeat_at', '>=', now()->subSeconds(self::STALE_AFTER_SECONDS))))
+            ->exists();
+    }
+
+    /**
+     * Where the live worker keeps its copy of the Video while it plays.
+     */
+    public function localVideoPath(): string
+    {
+        return storage_path("app/live/{$this->id}.mp4");
     }
 
     /**

@@ -44,7 +44,7 @@ class CreateLiveStream
 
         $startsNow = $details['starts_at'] === null;
 
-        if ($startsNow && $workspace->liveStreams()->live()->exists()) {
+        if ($startsNow && LiveStream::anotherIsPlaying()) {
             throw ValidationException::withMessages(['mode' => __('live_streams.one_at_a_time')]);
         }
 
@@ -65,10 +65,17 @@ class CreateLiveStream
                 'starts_at' => $startsAt,
             ]);
 
+        } catch (YouTubeLiveException $e) {
+            throw ValidationException::withMessages(['social_account_id' => __('live_streams.youtube_refused', ['reason' => $e->getMessage()])]);
+        }
+
+        try {
             if ($details['thumbnail'] !== null) {
                 $youtube->setThumbnail($account, $broadcast['broadcast_id'], $details['thumbnail']);
             }
         } catch (YouTubeLiveException $e) {
+            rescue(fn () => $youtube->delete($account, $broadcast['broadcast_id']), report: false);
+
             throw ValidationException::withMessages(['social_account_id' => __('live_streams.youtube_refused', ['reason' => $e->getMessage()])]);
         }
 

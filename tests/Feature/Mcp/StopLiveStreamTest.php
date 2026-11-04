@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\LiveStream\StopLiveStream as StopLiveStreamAction;
 use App\Console\Commands\StopDueLiveStreams;
 use App\Enums\LiveStream\Status;
 use App\Exceptions\Social\YouTubeLiveException;
@@ -84,4 +85,16 @@ test('a live stream is stopped when its stop time arrives', function () {
 
     expect($due->fresh()->status)->toBe(Status::Stopped)
         ->and($later->fresh()->status)->toBe(Status::Scheduled);
+});
+
+test('stop_live_stream completes a broadcast that went live after it was loaded', function () {
+    $stream = LiveStream::factory()->for($this->workspace)->create(['social_account_id' => $this->channel->id, 'youtube_broadcast_id' => 'bc1']);
+    $loaded = $stream->fresh();
+    $stream->update(['status' => Status::Live]);
+    $this->youtube->shouldReceive('complete')->once();
+    $this->youtube->shouldNotReceive('delete');
+
+    StopLiveStreamAction::execute($loaded);
+
+    expect($stream->fresh()->status)->toBe(Status::Stopped);
 });

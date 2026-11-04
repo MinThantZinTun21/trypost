@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Name('get_live_stream')]
-#[Description('Gets one of the Owner\'s Live streams: its status, title, Video, YouTube channel, times, failure reason and watch link.')]
+#[Description('Gets one of the Owner\'s Live streams: its status, title, Video, YouTube Social account, times, failure reason and watch link.')]
 #[IsReadOnly]
 class GetLiveStream extends Tool
 {

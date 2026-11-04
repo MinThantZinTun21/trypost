@@ -21,7 +21,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('create_live_stream')]
-#[Description('Creates a Live stream: plays one Video on repeat as a live broadcast on a YouTube channel, right away or from starts_at, until it is Stopped or stops_at arrives. The Video must be H.264 with a keyframe at least every 4 seconds and AAC audio. A scheduled one shows as Upcoming on YouTube. Only one Live stream is live at a time. Confirm the channel and time with the Owner first.')]
+#[Description('Creates a Live stream: plays one Video on repeat as a live broadcast on a YouTube Social account, right away or from starts_at, until it is Stopped or stops_at arrives. The Video must be H.264 with a keyframe at least every 4 seconds and AAC audio. A scheduled one shows as Upcoming on YouTube. Only one Live stream is live at a time. Confirm the Social account and time with the Owner first.')]
 class CreateLiveStream extends Tool
 {
     public function handle(Request $request): ResponseFactory

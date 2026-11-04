@@ -15,6 +15,9 @@ class StopDueLiveStreams extends Command
 
     protected $description = 'Stop Live streams whose stop time has come';
 
+    /**
+     * A Live stream the Owner Stopped in the meantime is skipped.
+     */
     public function handle(): void
     {
         LiveStream::query()
@@ -25,7 +28,7 @@ class StopDueLiveStreams extends Command
                 try {
                     StopLiveStream::execute($liveStream);
                 } catch (ValidationException) {
-                    // Stopped by the Owner in the meantime.
+                    return;
                 }
             });
     }

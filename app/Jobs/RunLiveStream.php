@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Actions\LiveStream\FailLiveStream;
 use App\Enums\LiveStream\Status;
 use App\Models\LiveStream;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Process\InvokedProcess;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Plays one Live stream (ADR 0017) on the `live` worker: copies its Video
@@ -50,15 +52,14 @@ class RunLiveStream implements ShouldQueue
 
     private const int SIGTERM = 15;
 
+    private const int COPY_CHUNK_BYTES = 8 * 1024 * 1024;
+
+    private ?CarbonInterface $lastBeat = null;
+
     public function __construct(public LiveStream $liveStream)
     {
         $this->onConnection('live');
         $this->onQueue('live');
-    }
-
-    public static function localDirectory(): string
-    {
-        return storage_path('app/live');
     }
 
     public function handle(): void
@@ -69,28 +70,31 @@ class RunLiveStream implements ShouldQueue
             return;
         }
 
-        $otherIsLive = LiveStream::query()->live()->whereKeyNot($liveStream->id)->exists();
-
-        if ($otherIsLive) {
+        if (LiveStream::anotherIsPlaying($liveStream)) {
             $this->markFailed(__('live_streams.one_at_a_time'));
 
             return;
         }
 
-        $path = self::localDirectory()."/{$liveStream->id}.mp4";
+        $path = $liveStream->localVideoPath();
 
         try {
             if (! $this->copyVideo($path)) {
                 return;
             }
 
-            $liveStream->update([
-                'status' => Status::Live,
-                'started_at' => $liveStream->started_at ?? now(),
-                'heartbeat_at' => now(),
-            ]);
+            $wentLive = LiveStream::query()
+                ->whereKey($liveStream->id)
+                ->whereIn('status', Status::active())
+                ->update([
+                    'status' => Status::Live,
+                    'started_at' => $liveStream->started_at ?? now(),
+                    'heartbeat_at' => now(),
+                ]);
 
-            $this->play($path);
+            if ($wentLive) {
+                $this->play($path);
+            }
         } finally {
             if ($liveStream->refresh()->status !== Status::Live) {
                 File::delete($path);
@@ -115,8 +119,8 @@ class RunLiveStream implements ShouldQueue
             return true;
         }
 
-        File::ensureDirectoryExists(self::localDirectory());
-        $free = (int) disk_free_space(self::localDirectory());
+        File::ensureDirectoryExists(dirname($this->liveStream->localVideoPath()));
+        $free = (int) disk_free_space(dirname($this->liveStream->localVideoPath()));
 
         if ($free < (int) $file->size + self::DISK_HEADROOM_BYTES) {
             $this->markFailed(__('live_streams.no_disk', [
@@ -136,11 +140,41 @@ class RunLiveStream implements ShouldQueue
         }
 
         $target = fopen($path, 'wb');
-        stream_copy_to_stream($source, $target);
-        fclose($target);
-        fclose($source);
 
-        return true;
+        try {
+            while (! feof($source)) {
+                fwrite($target, (string) fread($source, self::COPY_CHUNK_BYTES));
+                $this->beat();
+            }
+        } finally {
+            fclose($target);
+            fclose($source);
+        }
+
+        return $this->liveStream->refresh()->status !== Status::Stopped;
+    }
+
+    /**
+     * Freshens heartbeat_at at most once per TICK_SECONDS, so a long copy is
+     * not mistaken for a dead worker.
+     */
+    private function beat(): void
+    {
+        if ($this->lastBeat !== null && $this->lastBeat->gt(now()->subSeconds(self::TICK_SECONDS))) {
+            return;
+        }
+
+        $this->lastBeat = now();
+        LiveStream::query()->whereKey($this->liveStream->id)->update(['heartbeat_at' => now()]);
+    }
+
+    /**
+     * An unexpected exception fails the Live stream instead of leaving it to
+     * be handed out again and again.
+     */
+    public function failed(Throwable $exception): void
+    {
+        FailLiveStream::execute($this->liveStream, Str::limit($exception->getMessage(), 500));
     }
 
     /**
@@ -164,11 +198,11 @@ class RunLiveStream implements ShouldQueue
                 return;
             }
 
-            $exits = array_values(array_filter($exits, fn ($at): bool => $at->gt(now()->subMinutes(self::RETRY_WINDOW_MINUTES))));
+            $exits = array_values(array_filter($exits, fn (CarbonInterface $at): bool => $at->gt(now()->subMinutes(self::RETRY_WINDOW_MINUTES))));
             $exits[] = now();
 
             if (count($exits) > self::MAX_RETRIES) {
-                FailLiveStream::execute($this->liveStream, $failure);
+                $this->markFailed($failure);
 
                 return;
             }

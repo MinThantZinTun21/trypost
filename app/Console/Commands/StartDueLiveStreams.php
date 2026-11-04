@@ -17,9 +17,6 @@ class StartDueLiveStreams extends Command
 
     protected $description = 'Hand due Live streams, and live ones left behind by a restart, to the live worker';
 
-    /** A Live stream whose heartbeat is older than this has no worker playing it. */
-    public const int STALE_AFTER_SECONDS = 120;
-
     /**
      * Hands out due scheduled Live streams, and live ones nobody is playing
      * any more (the worker restarted), which resume from the start of the
@@ -41,9 +38,7 @@ class StartDueLiveStreams extends Command
                     return;
                 }
 
-                $otherIsLive = LiveStream::query()->live()->whereKeyNot($liveStream->id)->exists();
-
-                if ($liveStream->status === Status::Scheduled && $otherIsLive) {
+                if ($liveStream->status === Status::Scheduled && LiveStream::anotherIsPlaying($liveStream)) {
                     FailLiveStream::execute($liveStream, __('live_streams.one_at_a_time'));
 
                     return;
@@ -61,6 +56,6 @@ class StartDueLiveStreams extends Command
     {
         return $query->where(fn (Builder $query) => $query
             ->whereNull('heartbeat_at')
-            ->orWhere('heartbeat_at', '<', now()->subSeconds(self::STALE_AFTER_SECONDS)));
+            ->orWhere('heartbeat_at', '<', now()->subSeconds(LiveStream::STALE_AFTER_SECONDS)));
     }
 }

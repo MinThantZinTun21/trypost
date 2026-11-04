@@ -8,20 +8,29 @@ use App\Enums\LiveStream\Status;
 use App\Enums\Notification\Type;
 use App\Jobs\SendNotification;
 use App\Models\LiveStream;
+use Illuminate\Support\Facades\File;
 
 class FailLiveStream
 {
     /**
-     * Marks a Live stream Failed and leaves the Owner a Live stream failed
-     * Notification with the reason (ADR 0017).
+     * Marks a scheduled or live Live stream Failed, removes the worker's
+     * copy of its Video and leaves the Owner a Live stream failed
+     * Notification with the reason (ADR 0017). One already Stopped stays
+     * stopped.
      */
     public static function execute(LiveStream $liveStream, string $reason): void
     {
-        $liveStream->update([
-            'status' => Status::Failed,
-            'ended_at' => now(),
-            'failure_reason' => $reason,
-        ]);
+        $failed = LiveStream::query()
+            ->whereKey($liveStream->id)
+            ->whereIn('status', Status::active())
+            ->update(['status' => Status::Failed, 'ended_at' => now(), 'failure_reason' => $reason]);
+
+        $liveStream->refresh();
+        File::delete($liveStream->localVideoPath());
+
+        if (! $failed) {
+            return;
+        }
 
         $owner = $liveStream->workspace?->owner;
 

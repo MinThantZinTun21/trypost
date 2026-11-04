@@ -19,7 +19,7 @@ use Illuminate\Support\Sleep;
 beforeEach(function () {
     Storage::fake();
     Sleep::fake();
-    File::deleteDirectory(RunLiveStream::localDirectory());
+    File::deleteDirectory(storage_path('app/live'));
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
@@ -35,7 +35,7 @@ beforeEach(function () {
 test('it copies the video to local disk and plays it on repeat into the ingest url', function () {
     $copied = null;
     Process::fake(function (PendingProcess $process) use (&$copied) {
-        $copied = file_get_contents(RunLiveStream::localDirectory().'/'.$this->stream->id.'.mp4');
+        $copied = file_get_contents($this->stream->localVideoPath());
 
         return Process::result();
     });
@@ -44,7 +44,7 @@ test('it copies the video to local disk and plays it on repeat into the ingest u
 
     Process::assertRan(fn (PendingProcess $process) => $process->command === [
         'ffmpeg', '-hide_banner', '-loglevel', 'warning', '-re', '-stream_loop', '-1',
-        '-i', RunLiveStream::localDirectory().'/'.$this->stream->id.'.mp4',
+        '-i', $this->stream->localVideoPath(),
         '-c', 'copy', '-f', 'flv', 'rtmps://a.rtmps.youtube.com/live2/key-789',
     ]);
     expect($copied)->toBe('video bytes');
@@ -73,7 +73,7 @@ test('it ends ffmpeg once the live stream is no longer live and removes the loca
     (new RunLiveStream($this->stream))->handle();
 
     expect($this->stream->fresh()->status)->toBe(Status::Stopped)
-        ->and(file_exists(RunLiveStream::localDirectory().'/'.$this->stream->id.'.mp4'))->toBeFalse();
+        ->and(file_exists($this->stream->localVideoPath()))->toBeFalse();
 });
 
 test('it restarts ffmpeg after it exits, then fails with a notification once the retries run out', function () {
@@ -130,8 +130,8 @@ test('it fails a live stream whose start finds another one live', function () {
 
 test('a live stream left live by a restart plays again from its local copy', function () {
     $this->stream->update(['status' => Status::Live, 'started_at' => now()->subHour()]);
-    File::ensureDirectoryExists(RunLiveStream::localDirectory());
-    File::put(RunLiveStream::localDirectory().'/'.$this->stream->id.'.mp4', 'video bytes');
+    File::ensureDirectoryExists(dirname($this->stream->localVideoPath()));
+    File::put($this->stream->localVideoPath(), 'video bytes');
     $this->video->file->update(['size' => strlen('video bytes')]);
     Storage::delete($this->video->file->path);
     Process::fake(['*' => Process::describe()->iterations(2)]);
@@ -163,4 +163,33 @@ test('it does nothing for a live stream that was stopped before it ran', functio
     (new RunLiveStream($this->stream))->handle();
 
     Process::assertNothingRan();
+});
+
+test('an unexpected exception fails the live stream and tells the owner', function () {
+    (new RunLiveStream($this->stream))->failed(new RuntimeException('R2 read timed out'));
+
+    expect($this->stream->fresh()->status)->toBe(Status::Failed)
+        ->and($this->stream->fresh()->failure_reason)->toBe('R2 read timed out')
+        ->and(Notification::query()->sole()->type)->toBe(NotificationType::LiveStreamFailed);
+});
+
+test('a failure never overwrites a stop, and removes the local copy', function () {
+    $this->stream->update(['status' => Status::Stopped]);
+    File::ensureDirectoryExists(dirname($this->stream->localVideoPath()));
+    File::put($this->stream->localVideoPath(), 'video bytes');
+
+    (new RunLiveStream($this->stream))->failed(new RuntimeException('late'));
+
+    expect($this->stream->fresh()->status)->toBe(Status::Stopped)
+        ->and(file_exists($this->stream->localVideoPath()))->toBeFalse()
+        ->and(Notification::query()->exists())->toBeFalse();
+});
+
+test('it keeps the heartbeat fresh while it copies the video', function () {
+    $this->stream->update(['heartbeat_at' => now()->subMinutes(10)]);
+    Process::fake();
+
+    (new RunLiveStream($this->stream))->handle();
+
+    expect($this->stream->fresh()->heartbeat_at->gt(now()->subMinute()))->toBeTrue();
 });

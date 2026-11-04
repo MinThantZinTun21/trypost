@@ -172,6 +172,27 @@ test('create_live_stream starting now is refused while another live stream is li
         ->assertHasErrors([__('live_streams.one_at_a_time')]);
 });
 
+test('create_live_stream starting now is refused while the live worker readies another one', function () {
+    LiveStream::factory()->create(['starts_at' => now()->subMinute(), 'heartbeat_at' => now()]);
+    $this->youtube->shouldNotReceive('createBroadcast');
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(CreateLiveStream::class, liveStreamInput(['mode' => 'now', 'starts_at' => null]))
+        ->assertHasErrors([__('live_streams.one_at_a_time')]);
+});
+
+test('create_live_stream removes the broadcast when youtube refuses the thumbnail', function () {
+    $image = Media::factory()->for($this->workspace, 'mediable')->create(['collection' => 'assets', 'mime_type' => 'image/png', 'path' => 'medias/thumb.png']);
+    $this->youtube->shouldReceive('setThumbnail')->andThrow(new YouTubeLiveException('Thumbnail too large.'));
+    $this->youtube->shouldReceive('delete')->once()->withArgs(fn (SocialAccount $account, string $id) => $id === 'bc123');
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(CreateLiveStream::class, liveStreamInput(['thumbnail_media_id' => $image->id]))
+        ->assertHasErrors([__('live_streams.youtube_refused', ['reason' => 'Thumbnail too large.'])]);
+
+    expect(LiveStream::query()->exists())->toBeFalse();
+});
+
 test('create_live_stream refuses an account that is not youtube, another workspace\'s video, and a bad input', function (array $input) {
     $this->youtube->shouldNotReceive('createBroadcast');
 

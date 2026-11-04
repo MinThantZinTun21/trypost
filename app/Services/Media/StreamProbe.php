@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Media;
 
 use App\Dto\StreamReadiness;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Process;
 
 /**
@@ -38,7 +39,7 @@ class StreamProbe
             ->values();
 
         $maxGap = $keyframes->count() < 2 ? null : $keyframes->sliding(2)
-            ->map(fn ($pair): float => round($pair->last() - $pair->first(), 3))
+            ->map(fn (Collection $pair): float => round($pair->last() - $pair->first(), 3))
             ->max();
 
         return new StreamReadiness(

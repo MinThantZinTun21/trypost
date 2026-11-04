@@ -8,6 +8,7 @@ use App\Enums\LiveStream\Status;
 use App\Exceptions\Social\YouTubeLiveException;
 use App\Models\LiveStream;
 use App\Services\Social\YouTubeLive;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -23,11 +24,14 @@ class StopLiveStream
      */
     public static function execute(LiveStream $liveStream): LiveStream
     {
-        $wasLive = $liveStream->status === Status::Live;
-
-        $stopped = LiveStream::query()
+        $wasLive = (bool) LiveStream::query()
             ->whereKey($liveStream->id)
-            ->whereIn('status', Status::active())
+            ->where('status', Status::Live)
+            ->update(['status' => Status::Stopped, 'ended_at' => now()]);
+
+        $stopped = $wasLive || LiveStream::query()
+            ->whereKey($liveStream->id)
+            ->where('status', Status::Scheduled)
             ->update(['status' => Status::Stopped, 'ended_at' => now()]);
 
         if (! $stopped) {
@@ -35,6 +39,10 @@ class StopLiveStream
         }
 
         $liveStream->refresh();
+
+        if (! $wasLive) {
+            File::delete($liveStream->localVideoPath());
+        }
         $account = $liveStream->socialAccount;
 
         if ($account !== null && $liveStream->youtube_broadcast_id !== null) {

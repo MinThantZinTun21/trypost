@@ -60,26 +60,43 @@ class YouTubeLive
                 ]),
             ]));
 
-            $stream = $youtube->liveStreams->insert('snippet,cdn,contentDetails', new YouTubeLiveStream([
-                'snippet' => new LiveStreamSnippet(['title' => $details['title']]),
-                'cdn' => new CdnSettings([
-                    'ingestionType' => 'rtmp',
-                    'resolution' => 'variable',
-                    'frameRate' => 'variable',
-                ]),
-            ]));
+            try {
+                return $this->streamInto($youtube, $broadcast->getId(), $details['title']);
+            } catch (GoogleServiceException $e) {
+                rescue(fn () => $youtube->liveBroadcasts->delete($broadcast->getId()), report: false);
 
-            $youtube->liveBroadcasts->bind($broadcast->getId(), 'id,contentDetails', ['streamId' => $stream->getId()]);
-
-            $ingestion = $stream->getCdn()->getIngestionInfo();
-            $address = $ingestion->getRtmpsIngestionAddress() ?: $ingestion->getIngestionAddress();
-
-            return [
-                'broadcast_id' => $broadcast->getId(),
-                'stream_id' => $stream->getId(),
-                'ingest_url' => rtrim((string) $address, '/').'/'.$ingestion->getStreamName(),
-            ];
+                throw $e;
+            }
         });
+    }
+
+    /**
+     * Creates a stream, binds it to the broadcast and returns where to send
+     * the video.
+     *
+     * @return array{broadcast_id: string, stream_id: string, ingest_url: string}
+     */
+    private function streamInto(YouTube $youtube, string $broadcastId, string $title): array
+    {
+        $stream = $youtube->liveStreams->insert('snippet,cdn,contentDetails', new YouTubeLiveStream([
+            'snippet' => new LiveStreamSnippet(['title' => $title]),
+            'cdn' => new CdnSettings([
+                'ingestionType' => 'rtmp',
+                'resolution' => 'variable',
+                'frameRate' => 'variable',
+            ]),
+        ]));
+
+        $youtube->liveBroadcasts->bind($broadcastId, 'id,contentDetails', ['streamId' => $stream->getId()]);
+
+        $ingestion = $stream->getCdn()->getIngestionInfo();
+        $address = $ingestion->getRtmpsIngestionAddress() ?: $ingestion->getIngestionAddress();
+
+        return [
+            'broadcast_id' => $broadcastId,
+            'stream_id' => $stream->getId(),
+            'ingest_url' => rtrim((string) $address, '/').'/'.$ingestion->getStreamName(),
+        ];
     }
 
     /**

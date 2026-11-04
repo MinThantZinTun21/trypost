@@ -24,6 +24,6 @@ return [
     ],
     'live_stream_failed' => [
         'title' => 'Live stream failed',
-        'body' => ':title stopped: :reason',
+        'body' => ':title failed: :reason',
     ],
 ];

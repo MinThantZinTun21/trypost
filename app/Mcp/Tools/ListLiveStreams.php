@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Name('list_live_streams')]
-#[Description('Lists the Owner\'s Live streams, newest first, one page per call: each one\'s status (scheduled, live, stopped or failed), title, Video, YouTube channel, times and watch link.')]
+#[Description('Lists the Owner\'s Live streams, newest first, one page per call: each one\'s status (scheduled, live, stopped or failed), title, Video, YouTube Social account, times and watch link.')]
 #[IsReadOnly]
 class ListLiveStreams extends Tool
 {

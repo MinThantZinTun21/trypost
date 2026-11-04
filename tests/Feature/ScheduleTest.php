@@ -32,6 +32,14 @@ test('due posts are processed every minute', function () {
         ->and($event->expression)->toBe('* * * * *');
 });
 
+test('live streams are started and stopped every minute', function (string $name) {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn (Event $event): bool => $event->description === $name);
+
+    expect($event)->not->toBeNull()
+        ->and($event->expression)->toBe('* * * * *');
+})->with(['live-streams:start-due', 'live-streams:stop-due']);
+
 test('a schedule run queues a due post that the worker publishes', function () {
     config()->set('queue.default', 'database');
     // A minute when only posts:process-scheduled is due.
