@@ -7,9 +7,11 @@ use App\Enums\Notification\Type as NotificationType;
 use App\Jobs\RunLiveStream;
 use App\Models\LiveStream;
 use App\Models\Notification;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\Workspace;
+use App\Services\Social\YouTubeLive;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
@@ -20,10 +22,12 @@ beforeEach(function () {
     Storage::fake();
     Sleep::fake();
     File::deleteDirectory(storage_path('app/live'));
+    $this->youtube = Mockery::mock(YouTubeLive::class)->shouldIgnoreMissing();
+    app()->instance(YouTubeLive::class, $this->youtube);
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
-    $this->video = Video::factory()->for($this->workspace)->withFile()->create();
+    $this->video = Video::factory()->for($this->workspace)->withFile(size: strlen('video bytes'))->create();
     Storage::put($this->video->file->path, 'video bytes');
     $this->stream = LiveStream::factory()->for($this->workspace)->create([
         'video_id' => $this->video->id,
@@ -192,4 +196,32 @@ test('it keeps the heartbeat fresh while it copies the video', function () {
     (new RunLiveStream($this->stream))->handle();
 
     expect($this->stream->fresh()->heartbeat_at->gt(now()->subMinute()))->toBeTrue();
+});
+
+test('a failure ends the broadcast: a live one is completed, a scheduled one removed with its stream', function () {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $this->stream->update(['status' => Status::Live, 'social_account_id' => $account->id]);
+    $this->youtube->shouldReceive('complete')->once()->with(Mockery::any(), $this->stream->youtube_broadcast_id);
+
+    (new RunLiveStream($this->stream))->failed(new RuntimeException('boom'));
+
+    $scheduled = LiveStream::factory()->for($this->workspace)->create(['video_id' => $this->video->id, 'social_account_id' => $account->id]);
+    $this->youtube->shouldReceive('delete')->once()
+        ->with(Mockery::any(), $scheduled->youtube_broadcast_id, $scheduled->youtube_stream_id);
+
+    (new RunLiveStream($scheduled))->failed(new RuntimeException('boom'));
+
+    expect($this->stream->fresh()->status)->toBe(Status::Failed)
+        ->and($scheduled->fresh()->status)->toBe(Status::Failed);
+});
+
+test('a truncated copy of the video fails the live stream instead of playing it', function () {
+    $this->video->file->update(['size' => 999]);
+    Process::fake();
+
+    expect(fn () => (new RunLiveStream($this->stream))->handle())
+        ->toThrow(RuntimeException::class, 'incomplete');
+
+    Process::assertNothingRan();
+    expect(file_exists($this->stream->localVideoPath()))->toBeFalse();
 });

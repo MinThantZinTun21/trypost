@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A Video played on repeat as a live broadcast on one YouTube channel
+ * A Video played on repeat as a live broadcast on one YouTube Social account
  * (ADR 0017). It is not a Post. The app creates and binds the broadcast
  * through the YouTube Live API; the `live` worker plays the Video into its
  * ingest URL with ffmpeg. Only one runs at a time.

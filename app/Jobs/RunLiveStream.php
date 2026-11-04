@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -141,31 +142,55 @@ class RunLiveStream implements ShouldQueue
 
         $target = fopen($path, 'wb');
 
+        if ($target === false) {
+            fclose($source);
+
+            throw new RuntimeException("Could not open {$path} for writing.");
+        }
+
         try {
             while (! feof($source)) {
-                fwrite($target, (string) fread($source, self::COPY_CHUNK_BYTES));
-                $this->beat();
+                $chunk = (string) fread($source, self::COPY_CHUNK_BYTES);
+
+                if (fwrite($target, $chunk) !== strlen($chunk)) {
+                    throw new RuntimeException("Could not write the Video to {$path}.");
+                }
+
+                if (! $this->beat()) {
+                    return false;
+                }
             }
         } finally {
             fclose($target);
             fclose($source);
         }
 
-        return $this->liveStream->refresh()->status !== Status::Stopped;
+        clearstatcache(true, $path);
+
+        if (File::size($path) !== (int) $file->size) {
+            throw new RuntimeException("The copy of the Video at {$path} is incomplete.");
+        }
+
+        return true;
     }
 
     /**
      * Freshens heartbeat_at at most once per TICK_SECONDS, so a long copy is
-     * not mistaken for a dead worker.
+     * not mistaken for a dead worker. Returns false once the Live stream is
+     * no longer scheduled or live (it was Stopped), so the copy ends early.
      */
-    private function beat(): void
+    private function beat(): bool
     {
         if ($this->lastBeat !== null && $this->lastBeat->gt(now()->subSeconds(self::TICK_SECONDS))) {
-            return;
+            return true;
         }
 
         $this->lastBeat = now();
-        LiveStream::query()->whereKey($this->liveStream->id)->update(['heartbeat_at' => now()]);
+
+        return (bool) LiveStream::query()
+            ->whereKey($this->liveStream->id)
+            ->whereIn('status', Status::active())
+            ->update(['heartbeat_at' => now()]);
     }
 
     /**
@@ -192,7 +217,15 @@ class RunLiveStream implements ShouldQueue
                 '-c', 'copy', '-f', 'flv', (string) $this->liveStream->ingest_url,
             ]);
 
-            $failure = $this->watch($process);
+            try {
+                $failure = $this->watch($process);
+            } catch (Throwable $e) {
+                if ($process->running()) {
+                    $process->signal(self::SIGTERM);
+                }
+
+                throw $e;
+            }
 
             if ($failure === null) {
                 return;

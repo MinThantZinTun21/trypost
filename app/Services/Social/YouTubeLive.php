@@ -20,10 +20,11 @@ use Google\Service\YouTube\LiveBroadcastStatus;
 use Google\Service\YouTube\LiveStream as YouTubeLiveStream;
 use Google\Service\YouTube\LiveStreamSnippet;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 /**
  * The YouTube Live Streaming API calls a Live stream needs (ADR 0017), made
- * with the channel's `youtube.force-ssl` token. Each failure is a
+ * with the Social account's `youtube.force-ssl` token. Each failure is a
  * YouTubeLiveException carrying YouTube's reason.
  */
 class YouTubeLive
@@ -62,7 +63,7 @@ class YouTubeLive
 
             try {
                 return $this->streamInto($youtube, $broadcast->getId(), $details['title']);
-            } catch (GoogleServiceException $e) {
+            } catch (Throwable $e) {
                 rescue(fn () => $youtube->liveBroadcasts->delete($broadcast->getId()), report: false);
 
                 throw $e;
@@ -87,7 +88,13 @@ class YouTubeLive
             ]),
         ]));
 
-        $youtube->liveBroadcasts->bind($broadcastId, 'id,contentDetails', ['streamId' => $stream->getId()]);
+        try {
+            $youtube->liveBroadcasts->bind($broadcastId, 'id,contentDetails', ['streamId' => $stream->getId()]);
+        } catch (Throwable $e) {
+            rescue(fn () => $youtube->liveStreams->delete($stream->getId()), report: false);
+
+            throw $e;
+        }
 
         $ingestion = $stream->getCdn()->getIngestionInfo();
         $address = $ingestion->getRtmpsIngestionAddress() ?: $ingestion->getIngestionAddress();
@@ -122,13 +129,19 @@ class YouTubeLive
     }
 
     /**
-     * Removes a broadcast that never went live.
+     * Removes a broadcast that never went live, and its stream when given.
      *
      * @throws YouTubeLiveException
      */
-    public function delete(SocialAccount $account, string $broadcastId): void
+    public function delete(SocialAccount $account, string $broadcastId, ?string $streamId = null): void
     {
-        $this->call($account, fn (YouTube $youtube) => $youtube->liveBroadcasts->delete($broadcastId));
+        $this->call($account, function (YouTube $youtube) use ($broadcastId, $streamId): void {
+            $youtube->liveBroadcasts->delete($broadcastId);
+
+            if ($streamId !== null) {
+                $youtube->liveStreams->delete($streamId);
+            }
+        });
     }
 
     /**

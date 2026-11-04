@@ -64,7 +64,6 @@ class CreateLiveStream
                 'privacy' => $details['privacy'],
                 'starts_at' => $startsAt,
             ]);
-
         } catch (YouTubeLiveException $e) {
             throw ValidationException::withMessages(['social_account_id' => __('live_streams.youtube_refused', ['reason' => $e->getMessage()])]);
         }
@@ -74,7 +73,7 @@ class CreateLiveStream
                 $youtube->setThumbnail($account, $broadcast['broadcast_id'], $details['thumbnail']);
             }
         } catch (YouTubeLiveException $e) {
-            rescue(fn () => $youtube->delete($account, $broadcast['broadcast_id']), report: false);
+            rescue(fn () => $youtube->delete($account, $broadcast['broadcast_id'], $broadcast['stream_id']), report: false);
 
             throw ValidationException::withMessages(['social_account_id' => __('live_streams.youtube_refused', ['reason' => $e->getMessage()])]);
         }

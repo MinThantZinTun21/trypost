@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\LiveStream;
 
 use App\Enums\LiveStream\Status;
-use App\Exceptions\Social\YouTubeLiveException;
 use App\Models\LiveStream;
-use App\Services\Social\YouTubeLive;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class StopLiveStream
@@ -39,24 +36,9 @@ class StopLiveStream
         }
 
         $liveStream->refresh();
+        File::delete($liveStream->localVideoPath());
 
-        if (! $wasLive) {
-            File::delete($liveStream->localVideoPath());
-        }
-        $account = $liveStream->socialAccount;
-
-        if ($account !== null && $liveStream->youtube_broadcast_id !== null) {
-            try {
-                $wasLive
-                    ? app(YouTubeLive::class)->complete($account, $liveStream->youtube_broadcast_id)
-                    : app(YouTubeLive::class)->delete($account, $liveStream->youtube_broadcast_id);
-            } catch (YouTubeLiveException $e) {
-                Log::warning('YouTube refused to end a Live stream\'s broadcast', [
-                    'live_stream_id' => $liveStream->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+        EndLiveBroadcast::execute($liveStream, $wasLive);
 
         return $liveStream;
     }
