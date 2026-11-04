@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Mobile\V1\LiveStreamController;
 use App\Http\Controllers\Mobile\V1\MeController;
 use App\Http\Controllers\Mobile\V1\PostController;
 use App\Http\Controllers\Mobile\V1\SessionController;
@@ -51,5 +52,7 @@ Route::prefix('mobile/v1')
             Route::post('videos/uploads', [VideoController::class, 'startUpload'])->name('videos.uploads.store');
             Route::post('videos', [VideoController::class, 'store'])->name('videos.store');
             Route::delete('videos/{video}', [VideoController::class, 'destroy'])->name('videos.destroy');
+            Route::get('live-streams', [LiveStreamController::class, 'index'])->name('live-streams.index');
+            Route::post('live-streams/{liveStream}/stop', [LiveStreamController::class, 'stop'])->name('live-streams.stop');
         });
     });
