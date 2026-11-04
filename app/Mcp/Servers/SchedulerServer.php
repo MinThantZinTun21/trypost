@@ -21,6 +21,7 @@ use App\Mcp\Tools\ListSocialAccounts;
 use App\Mcp\Tools\ListVideos;
 use App\Mcp\Tools\StartMediaUpload;
 use App\Mcp\Tools\StartVideoUpload;
+use App\Mcp\Tools\StopLiveStream;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -32,7 +33,7 @@ use Laravel\Mcp\Server\Attributes\Version;
  */
 #[Name('TryPost')]
 #[Version('1.0.0')]
-#[Instructions('Schedules the Owner\'s posts to their Social accounts on Facebook Pages, TikTok and YouTube. Start with list_social_accounts to see where you can post. It can delete a Post that has not gone out with delete_post; ask the Owner first. For Facebook Pages it can read stored Insights with get_page_insights and get_post_insights. Videos are files the Owner uploads from their phone, or that you upload with start_video_upload and create_video; they are not Posts: list them with list_videos, download one through get_video\'s Download link, and delete one with delete_video after asking the Owner. A Live stream plays a Video on repeat as a live broadcast on a YouTube channel: confirm the channel and time with the Owner before create_live_stream.')]
+#[Instructions('Schedules the Owner\'s posts to their Social accounts on Facebook Pages, TikTok and YouTube. Start with list_social_accounts to see where you can post. It can delete a Post that has not gone out with delete_post; ask the Owner first. For Facebook Pages it can read stored Insights with get_page_insights and get_post_insights. Videos are files the Owner uploads from their phone, or that you upload with start_video_upload and create_video; they are not Posts: list them with list_videos, download one through get_video\'s Download link, and delete one with delete_video after asking the Owner. A Live stream plays a Video on repeat as a live broadcast on a YouTube channel: confirm the channel and time with the Owner before create_live_stream, and ask before stop_live_stream.')]
 class SchedulerServer extends Server
 {
     protected array $tools = [
@@ -52,6 +53,7 @@ class SchedulerServer extends Server
         ListLiveStreams::class,
         GetLiveStream::class,
         CreateLiveStream::class,
+        StopLiveStream::class,
         DeleteVideo::class,
     ];
 
