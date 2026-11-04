@@ -22,4 +22,8 @@ return [
         'title' => 'Send to Telegram failed',
         'body' => 'The post did not reach Telegram: :reason',
     ],
+    'live_stream_failed' => [
+        'title' => 'Live stream failed',
+        'body' => ':title stopped: :reason',
+    ],
 ];

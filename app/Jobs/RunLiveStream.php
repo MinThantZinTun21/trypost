@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Actions\LiveStream\FailLiveStream;
 use App\Enums\LiveStream\Status;
 use App\Models\LiveStream;
 use Illuminate\Contracts\Process\InvokedProcess;
@@ -22,6 +23,8 @@ use Illuminate\Support\Str;
  * YouTube ingest URL until the Live stream stops being live. It runs for
  * hours, so it lives on its own connection and worker with no timeout, and
  * proves it is alive through heartbeat_at instead of the queue's reservation.
+ * An ffmpeg that exits on its own is restarted up to MAX_RETRIES times within
+ * RETRY_WINDOW_MINUTES before the Live stream fails.
  */
 class RunLiveStream implements ShouldQueue
 {
@@ -36,6 +39,14 @@ class RunLiveStream implements ShouldQueue
 
     /** Free disk kept on top of the Video's size. */
     private const int DISK_HEADROOM_BYTES = 512 * 1024 * 1024;
+
+    /** ffmpeg is restarted at most this many times within RETRY_WINDOW_MINUTES. */
+    public const int MAX_RETRIES = 5;
+
+    public const int RETRY_WINDOW_MINUTES = 10;
+
+    /** Seconds to wait before restarting ffmpeg. */
+    public const int RETRY_DELAY_SECONDS = 10;
 
     private const int SIGTERM = 15;
 
@@ -79,13 +90,7 @@ class RunLiveStream implements ShouldQueue
                 'heartbeat_at' => now(),
             ]);
 
-            $process = Process::forever()->start([
-                'ffmpeg', '-hide_banner', '-loglevel', 'warning', '-re', '-stream_loop', '-1',
-                '-i', $path,
-                '-c', 'copy', '-f', 'flv', (string) $liveStream->ingest_url,
-            ]);
-
-            $this->watch($process);
+            $this->play($path);
         } finally {
             if ($liveStream->refresh()->status !== Status::Live) {
                 File::delete($path);
@@ -123,6 +128,13 @@ class RunLiveStream implements ShouldQueue
         }
 
         $source = Storage::readStream($file->path);
+
+        if ($source === null) {
+            $this->markFailed(__('live_streams.no_file'));
+
+            return false;
+        }
+
         $target = fopen($path, 'wb');
         stream_copy_to_stream($source, $target);
         fclose($target);
@@ -132,10 +144,49 @@ class RunLiveStream implements ShouldQueue
     }
 
     /**
-     * Keeps the heartbeat fresh while ffmpeg runs, and ends ffmpeg once the
-     * Live stream is no longer live (it was Stopped).
+     * Runs ffmpeg, restarting it after an unexpected exit until the retries
+     * run out or the Live stream stops being live.
      */
-    private function watch(InvokedProcess $process): void
+    private function play(string $path): void
+    {
+        $exits = [];
+
+        while (true) {
+            $process = Process::forever()->start([
+                'ffmpeg', '-hide_banner', '-loglevel', 'warning', '-re', '-stream_loop', '-1',
+                '-i', $path,
+                '-c', 'copy', '-f', 'flv', (string) $this->liveStream->ingest_url,
+            ]);
+
+            $failure = $this->watch($process);
+
+            if ($failure === null) {
+                return;
+            }
+
+            $exits = array_values(array_filter($exits, fn ($at): bool => $at->gt(now()->subMinutes(self::RETRY_WINDOW_MINUTES))));
+            $exits[] = now();
+
+            if (count($exits) > self::MAX_RETRIES) {
+                FailLiveStream::execute($this->liveStream, $failure);
+
+                return;
+            }
+
+            Sleep::for(self::RETRY_DELAY_SECONDS)->seconds();
+
+            if ($this->liveStream->refresh()->status !== Status::Live) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Keeps the heartbeat fresh while ffmpeg runs, and ends ffmpeg once the
+     * Live stream is no longer live (it was Stopped). Returns why ffmpeg
+     * exited on its own, or null when it was ended on purpose.
+     */
+    private function watch(InvokedProcess $process): ?string
     {
         while ($process->running()) {
             Sleep::for(self::TICK_SECONDS)->seconds();
@@ -146,7 +197,7 @@ class RunLiveStream implements ShouldQueue
                 $process->signal(self::SIGTERM);
                 $process->wait();
 
-                return;
+                return null;
             }
 
             $this->liveStream->update(['heartbeat_at' => now()]);
@@ -154,20 +205,18 @@ class RunLiveStream implements ShouldQueue
 
         $result = $process->wait();
 
-        if ($this->liveStream->refresh()->status === Status::Live) {
-            $this->markFailed(__('live_streams.ffmpeg_exited', [
-                'code' => (string) $result->exitCode(),
-                'output' => Str::limit(trim($result->errorOutput() ?: $result->output()), 500),
-            ]));
+        if ($this->liveStream->refresh()->status !== Status::Live) {
+            return null;
         }
+
+        return __('live_streams.ffmpeg_exited', [
+            'code' => (string) $result->exitCode(),
+            'output' => Str::limit(trim($result->errorOutput() ?: $result->output()), 500),
+        ]);
     }
 
     private function markFailed(string $reason): void
     {
-        $this->liveStream->update([
-            'status' => Status::Failed,
-            'ended_at' => now(),
-            'failure_reason' => $reason,
-        ]);
+        FailLiveStream::execute($this->liveStream, $reason);
     }
 }
