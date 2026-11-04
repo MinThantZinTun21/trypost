@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\Account;
+use App\Models\LiveStream;
 use App\Models\Media;
 use App\Models\MobileToken;
 use App\Models\Notification;
@@ -60,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
             'taskTag' => TaskTag::class,
             'user' => User::class,
             'video' => Video::class,
+            'live_stream' => LiveStream::class,
             'workspace' => Workspace::class,
         ]);
     }

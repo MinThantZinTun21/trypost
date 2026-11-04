@@ -9,11 +9,11 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use App\Services\Social\Concerns\CreatesGoogleClient;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeTags;
 use App\Support\YouTubeTitle;
-use Google\Client as GoogleClient;
 use Google\Service\Exception;
 use Google\Service\YouTube;
 use Google\Service\YouTube\Video;
@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Log;
 
 class YouTubePublisher
 {
-    use HasSocialHttpClient;
+    use CreatesGoogleClient, HasSocialHttpClient;
 
     private const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
@@ -65,31 +65,6 @@ class YouTubePublisher
         }
 
         return $this->publishShort($firstMedia, $account, $title, $description, $tags);
-    }
-
-    private function createGoogleClient(SocialAccount $account): GoogleClient
-    {
-        $client = app(GoogleClient::class);
-        $client->setClientId(config('services.google.client_id'));
-        $client->setClientSecret(config('services.google.client_secret'));
-
-        $remainingSeconds = $account->token_expires_at
-            ? max(0, (int) now()->diffInSeconds($account->token_expires_at, false))
-            : 3600;
-
-        $tokenData = [
-            'access_token' => $account->access_token,
-            'created' => time(),
-            'expires_in' => $remainingSeconds,
-        ];
-
-        if ($account->refresh_token) {
-            $tokenData['refresh_token'] = $account->refresh_token;
-        }
-
-        $client->setAccessToken($tokenData);
-
-        return $client;
     }
 
     /**

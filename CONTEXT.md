@@ -61,11 +61,11 @@ Keywords a YouTube Short carries to help people find it. Set per Post platform.
 _Avoid_: Hashtags, keywords
 
 **Assistant**:
-An AI tool, such as Claude Code, connected to the app over MCP that reads Social accounts and creates Posts on the Owner's behalf.
+An AI tool, such as Claude Code, connected to the app over MCP that reads Social accounts, creates Posts, uploads Videos and runs Live streams on the Owner's behalf.
 _Avoid_: Bot, agent, API client
 
 **Mobile app**:
-The Owner's Android app. It views Posts, edits their texts, Reschedules them, Posts them now and Sends them to Telegram, and it uploads Videos; it never creates Posts or changes a Post's media.
+The Owner's Android app. It views Posts, edits their texts, Reschedules them, Posts them now and Sends them to Telegram, it uploads Videos, and it lists and Stops Live streams; it never creates Posts or changes a Post's media.
 _Avoid_: Client, API client
 
 **Mobile token**:
@@ -101,8 +101,16 @@ The Owner's manual action that sends one Post's media and then its text to the O
 _Avoid_: Telegram mirror, share, forward
 
 **Video**:
-A video file the Owner uploads from the Mobile app, with a name, for the Assistant to fetch. It is not part of any Post and has no Platform texts.
+A video file with a name, uploaded from the Mobile app or by the Assistant, for the Assistant to fetch or a Live stream to play. It is not part of any Post and has no Platform texts.
 _Avoid_: Library item, asset, clip, media
+
+**Live stream**:
+A Video played on repeat as a live broadcast on one YouTube channel, from a chosen time (or right away) until the Owner Stops it or its optional stop time arrives. It has a title, a description, a thumbnail and a privacy, and only one runs at a time. It is not a Post.
+_Avoid_: Broadcast, live post, stream (alone), premiere
+
+**Stop**:
+End a running Live stream, or cancel one that has not started yet, so its broadcast on YouTube ends or is removed.
+_Avoid_: Cancel (for a running stream), end, kill
 
 **Task**:
 One of the Owner's to-dos in the Mobile app: a title or a Markdown body (or both; the body may hold checkboxes), a status (To do, In progress, Done), a priority, an optional due, an optional colour and a pin. Not a Post and never published.

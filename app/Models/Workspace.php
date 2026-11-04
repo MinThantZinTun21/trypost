@@ -61,6 +61,11 @@ class Workspace extends Model
         return $this->hasMany(Video::class);
     }
 
+    public function liveStreams(): HasMany
+    {
+        return $this->hasMany(LiveStream::class);
+    }
+
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);

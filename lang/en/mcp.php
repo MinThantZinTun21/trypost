@@ -21,6 +21,9 @@ return [
     'video' => [
         'not_found' => 'No Video with that id exists for the Owner. Use an id from list_videos.',
     ],
+    'live_stream' => [
+        'not_found' => 'No Live stream with that id exists for the Owner. Use an id from list_live_streams.',
+    ],
     'upload' => [
         'not_object_storage' => 'Uploads from an Assistant need object storage (for example Cloudflare R2 or S3) as the default disk. Upload the file in the composer instead.',
     ],
