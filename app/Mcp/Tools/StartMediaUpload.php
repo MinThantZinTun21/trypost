@@ -53,7 +53,7 @@ class StartMediaUpload extends Tool
             'url' => $url,
             'headers' => $headers,
             'expires_in_seconds' => ChunkedCloudUploader::UPLOAD_URL_TTL_SECONDS,
-            'curl' => $this->curlCommand($fileName, $url, $headers),
+            'curl' => self::curlCommand($fileName, $url, $headers),
         ]);
     }
 
@@ -69,9 +69,11 @@ class StartMediaUpload extends Tool
     }
 
     /**
+     * A ready-to-run curl that PUTs the file to the signed URL.
+     *
      * @param  array<string, string>  $headers
      */
-    private function curlCommand(string $fileName, string $url, array $headers): string
+    public static function curlCommand(string $fileName, string $url, array $headers): string
     {
         $headerFlags = collect($headers)
             ->map(fn (string $value, string $name): string => '-H '.escapeshellarg("{$name}: {$value}"))
