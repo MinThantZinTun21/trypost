@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
+use App\Actions\Video\DeleteVideo as DeleteVideoAction;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Laravel\Mcp\Request;
@@ -15,7 +16,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[Name('delete_video')]
-#[Description('Deletes one of the Owner\'s Videos and its file for good; its Download link stops working. Ask the Owner before deleting.')]
+#[Description('Deletes one of the Owner\'s Videos and its file for good; its Download link stops working. A Video a scheduled or live Live stream plays cannot be deleted. Ask the Owner before deleting.')]
 #[IsDestructive]
 class DeleteVideo extends Tool
 {
@@ -29,7 +30,7 @@ class DeleteVideo extends Tool
             return Response::error(__('mcp.video.not_found'));
         }
 
-        $video->delete();
+        DeleteVideoAction::execute($video);
 
         return Response::structured([
             'deleted' => true,

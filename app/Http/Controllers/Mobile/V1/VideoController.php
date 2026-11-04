@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Mobile\V1;
 
 use App\Actions\Video\CreateVideo;
+use App\Actions\Video\DeleteVideo;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Mobile\StartVideoUploadRequest;
 use App\Http\Requests\App\Mobile\StoreVideoRequest;
@@ -74,7 +75,7 @@ class VideoController extends Controller
     {
         $this->authorize('delete', $video);
 
-        $video->delete();
+        DeleteVideo::execute($video);
 
         return response()->noContent();
     }

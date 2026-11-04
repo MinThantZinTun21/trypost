@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\LiveStream;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Video;
@@ -190,4 +191,15 @@ test('another workspace\'s video is not deleted', function () {
 
 test('videos need the token', function () {
     $this->getJson(route('mobile.v1.videos.index'))->assertUnauthorized();
+});
+
+test('a video a live stream plays is not deleted', function () {
+    $video = Video::factory()->for($this->workspace)->withFile()->create();
+    LiveStream::factory()->for($this->workspace)->live()->create(['video_id' => $video->id, 'title' => 'Evening talk']);
+
+    $this->deleteJson(route('mobile.v1.videos.destroy', $video), [], $this->headers)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['video' => __('videos.used_by_live_stream', ['title' => 'Evening talk'])]);
+
+    expect($video->fresh())->not->toBeNull();
 });

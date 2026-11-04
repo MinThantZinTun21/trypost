@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\LiveStream\Status;
 use App\Mcp\Servers\SchedulerServer;
 use App\Mcp\Tools\DeleteVideo;
 use App\Mcp\Tools\GetVideo;
 use App\Mcp\Tools\ListVideos;
+use App\Models\LiveStream;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Video;
@@ -90,3 +92,21 @@ test('delete_video removes the video and its file', function () {
         ->and(Media::query()->exists())->toBeFalse();
     Storage::assertMissing($path);
 });
+
+test('delete_video refuses a video a scheduled or live live stream plays, until it stops', function (string $status) {
+    $video = Video::factory()->for($this->workspace)->withFile()->create();
+    $liveStream = LiveStream::factory()->for($this->workspace)->create(['video_id' => $video->id, 'status' => $status, 'title' => 'Evening talk']);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeleteVideo::class, ['id' => $video->id])
+        ->assertHasErrors([__('videos.used_by_live_stream', ['title' => 'Evening talk'])]);
+    expect($video->fresh())->not->toBeNull();
+
+    $liveStream->update(['status' => Status::Stopped]);
+
+    SchedulerServer::actingAs($this->owner)
+        ->tool(DeleteVideo::class, ['id' => $video->id])
+        ->assertOk();
+    expect($video->fresh())->toBeNull()
+        ->and($liveStream->fresh()->video_id)->toBeNull();
+})->with(['scheduled', 'live']);
